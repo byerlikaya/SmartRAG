@@ -25,7 +25,7 @@ public class ImageParserService : IImageParserService, IDisposable
 
     private const string TesseractPath40 = "/usr/share/tesseract-ocr/4.00/tessdata";
     private const string TesseractPathDefault = "/usr/share/tesseract-ocr/tessdata";
-    private const string TesseractPathWindows = "C:\\Program Files\\Tesseract-OCR\\tessdata";
+    private const string TesseractPathWindows = @"C:\Program Files\Tesseract-OCR\tessdata";
 
     private const string CurrencyMisreadPatternMain = @"(\d+)\s*%(?=\s*(?:\p{Lu}|\d|$))";
     private const string CurrencyMisreadPatternCompact = @"(\d+)%(?=\p{Lu}|\s+\p{Lu}|$)";
@@ -39,7 +39,7 @@ public class ImageParserService : IImageParserService, IDisposable
     private const string CurrencyMisreadPatternCentCompact = @"(\d+)¢";
     private const string CurrencyMisreadPatternPercentCent = @"(\d+)%¢";
 
-    private static readonly Dictionary<string, string> ReverseLanguageCodeMapping = new Dictionary<string, string>
+    private static readonly Dictionary<string, string> ReverseLanguageCodeMapping = new()
     {
         { "tr", "tur" }, { "en", "eng" }, { "de", "deu" }, { "fr", "fra" },
         { "es", "spa" }, { "it", "ita" }, { "ru", "rus" }, { "ja", "jpn" },
@@ -55,7 +55,7 @@ public class ImageParserService : IImageParserService, IDisposable
     /// CRITICAL: Generic mapping - no specific language names (follows Generic Code rule)
     /// Supports both ISO 639-1 (2-letter: tr, en, de) and ISO 639-2/T (3-letter: tur, eng, deu)
     /// </summary>
-    private static readonly Dictionary<string, string> LanguageCodeToTesseractCode = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+    private static readonly Dictionary<string, string> LanguageCodeToTesseractCode = new(StringComparer.OrdinalIgnoreCase)
     {
         { "tr", "tur" }, { "en", "eng" }, { "de", "deu" }, { "fr", "fra" },
         { "es", "spa" }, { "it", "ita" }, { "ru", "rus" }, { "ja", "jpn" },
@@ -75,10 +75,10 @@ public class ImageParserService : IImageParserService, IDisposable
 
     private readonly ILogger<ImageParserService> _logger;
     private string _ocrEngineDataPath;
-    private readonly object _ocrEngineDataPathLock = new object();
-    private bool _disposed = false;
-    private static bool _dyldLibraryPathInitialized = false;
-    private static readonly object _dyldLibraryPathLock = new object();
+    private readonly object _ocrEngineDataPathLock = new();
+    private bool _disposed;
+    private static bool _dyldLibraryPathInitialized;
+    private static readonly object DyldLibraryPathLock = new();
 
     /// <summary>
     /// Gets the OCR engine data path (lazy initialization to avoid blocking during service registration)
@@ -87,14 +87,13 @@ public class ImageParserService : IImageParserService, IDisposable
     {
         get
         {
-            if (string.IsNullOrEmpty(_ocrEngineDataPath))
+            if (!string.IsNullOrEmpty(_ocrEngineDataPath))
+                return _ocrEngineDataPath;
+            lock (_ocrEngineDataPathLock)
             {
-                lock (_ocrEngineDataPathLock)
+                if (string.IsNullOrEmpty(_ocrEngineDataPath))
                 {
-                    if (string.IsNullOrEmpty(_ocrEngineDataPath))
-                    {
-                        _ocrEngineDataPath = FindOcrEngineDataPath(_logger);
-                    }
+                    _ocrEngineDataPath = FindOcrEngineDataPath(_logger);
                 }
             }
             return _ocrEngineDataPath;
@@ -116,7 +115,7 @@ public class ImageParserService : IImageParserService, IDisposable
         if (_dyldLibraryPathInitialized || !RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
             return;
 
-        lock (_dyldLibraryPathLock)
+        lock (DyldLibraryPathLock)
         {
             if (_dyldLibraryPathInitialized)
                 return;
@@ -133,13 +132,8 @@ public class ImageParserService : IImageParserService, IDisposable
             };
 
             var validPaths = new List<string> { baseDirectory };
-            foreach (var path in possibleNativePaths)
-            {
-                if (Directory.Exists(path))
-                {
-                    validPaths.Add(path);
-                }
-            }
+
+            validPaths.AddRange(possibleNativePaths.Where(Directory.Exists));
 
             var newPath = string.Join(":", validPaths);
             if (!string.IsNullOrEmpty(currentPath))
@@ -155,7 +149,7 @@ public class ImageParserService : IImageParserService, IDisposable
     /// <summary>
     /// [AI Query] Parses an image stream and extracts text using OCR
     /// </summary>
-    public async Task<string> ExtractTextFromImageAsync(Stream imageStream, string language = null, CancellationToken cancellationToken = default)
+    public async Task<string> ExtractTextFromImageAsync(Stream imageStream, string? language = null, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (_disposed)
@@ -174,7 +168,7 @@ public class ImageParserService : IImageParserService, IDisposable
         return result.Text;
     }
 
-    private async Task<OcrResult> ExtractTextWithConfidenceAsync(Stream imageStream, string language = null, CancellationToken cancellationToken = default)
+    private async Task<OcrResult> ExtractTextWithConfidenceAsync(Stream imageStream, string? language = null, CancellationToken cancellationToken = default)
     {
         if (_disposed)
             throw new ObjectDisposedException(nameof(ImageParserService));
@@ -193,20 +187,20 @@ public class ImageParserService : IImageParserService, IDisposable
 
         try
         {
-            using var preprocessedStream = await PreprocessImageAsync(imageStream, cancellationToken);
+            await using var preprocessedStream = await PreprocessImageAsync(imageStream, cancellationToken);
             preprocessedStream.Position = 0;
 
             cancellationToken.ThrowIfCancellationRequested();
-            var (Text, Confidence) = await PerformOcrAsync(preprocessedStream, language, cancellationToken);
+            var (text, confidence) = await PerformOcrAsync(preprocessedStream, language, cancellationToken);
 
             var processingTime = (DateTime.UtcNow - startTime).TotalMilliseconds;
 
             return new OcrResult
             {
-                Text = Text,
-                Confidence = Confidence,
+                Text = text,
+                Confidence = confidence,
                 ProcessingTimeMs = (long)processingTime,
-                WordCount = CountWords(Text),
+                WordCount = CountWords(text),
                 Language = language
             };
         }
@@ -256,7 +250,7 @@ public class ImageParserService : IImageParserService, IDisposable
             await imageStream.ReadAsync(header, 0, header.Length, cancellationToken);
             imageStream.Position = 0;
 
-            bool isWebP = header.Length >= WebPHeaderSize &&
+            var isWebP = header.Length >= WebPHeaderSize &&
                          header[0] == RIFFByte1 && header[1] == RIFFByte2 && header[2] == RIFFByte3 && header[3] == RIFFByte4 && // RIFF
                          header[8] == WEBPByte1 && header[9] == WEBPByte2 && header[10] == WEBPByte3 && header[11] == WEBPByte4; // WEBP
 
@@ -313,19 +307,6 @@ public class ImageParserService : IImageParserService, IDisposable
         }
     }
 
-    /// <summary>
-    /// Checks if Tesseract language data file exists for the specified language
-    /// </summary>
-    /// <param name="languageCode">ISO 639-2 (3-letter) language code</param>
-    /// <returns>True if language data file exists</returns>
-    private bool IsLanguageDataAvailable(string languageCode)
-    {
-        if (string.IsNullOrEmpty(OcrEngineDataPath))
-            return false;
-
-        var trainedDataFile = Path.Combine(OcrEngineDataPath, $"{languageCode}.traineddata");
-        return File.Exists(trainedDataFile);
-    }
 
     /// <summary>
     /// Normalizes language parameter to Tesseract language code (ISO 639-2/T)
@@ -351,7 +332,7 @@ public class ImageParserService : IImageParserService, IDisposable
     /// Gets available Tesseract language (downloads if missing, falls back to English if download fails)
     /// Returns null if no language data is available at all
     /// </summary>
-    private async Task<string> GetAvailableTesseractLanguageAsync(string requestedLanguage, CancellationToken cancellationToken = default)
+    private async Task<string?> GetAvailableTesseractLanguageAsync(string requestedLanguage, CancellationToken cancellationToken = default)
     {
         var tessdataPath = string.IsNullOrEmpty(OcrEngineDataPath) ? "." : OcrEngineDataPath;
 
@@ -420,7 +401,7 @@ public class ImageParserService : IImageParserService, IDisposable
 
             _logger.LogDebug("Downloading Tesseract data from: {Url}", downloadUrl);
 
-            using var httpClient = new System.Net.Http.HttpClient();
+            using var httpClient = new HttpClient();
             httpClient.Timeout = TimeSpan.FromSeconds(60);
 
             var response = await httpClient.GetAsync(downloadUrl, cancellationToken);
@@ -437,7 +418,7 @@ public class ImageParserService : IImageParserService, IDisposable
             _logger.LogDebug("Downloaded Tesseract data: {File} ({Size} bytes)", fileName, content.Length);
             return true;
         }
-        catch (System.Net.Http.HttpRequestException ex)
+        catch (HttpRequestException ex)
         {
             _logger.LogWarning(ex, "Network error while downloading Tesseract data. OCR will use fallback.");
             return false;
@@ -496,7 +477,7 @@ public class ImageParserService : IImageParserService, IDisposable
                 var confidence = page.GetMeanConfidence();
 
                 var correctedText = CorrectCommonOcrMistakes(text, _logger);
-                return (correctedText?.Trim() ?? string.Empty, confidence);
+                return (correctedText.Trim(), confidence);
             }
             catch (Exception ex)
             {
@@ -513,20 +494,19 @@ public class ImageParserService : IImageParserService, IDisposable
     private static string ExtractTableAwareText(Page page)
     {
         var words = new List<(string Text, int X, int Y, int Width)>();
-        
+
         // Extract all words with their bounding boxes
         using (var iterator = page.GetIterator())
         {
             iterator.Begin();
             do
             {
-                if (iterator.TryGetBoundingBox(PageIteratorLevel.Word, out var rect))
+                if (!iterator.TryGetBoundingBox(PageIteratorLevel.Word, out var rect))
+                    continue;
+                var wordText = iterator.GetText(PageIteratorLevel.Word);
+                if (!string.IsNullOrWhiteSpace(wordText))
                 {
-                    var wordText = iterator.GetText(PageIteratorLevel.Word);
-                    if (!string.IsNullOrWhiteSpace(wordText))
-                    {
-                        words.Add((wordText.Trim(), rect.X1, rect.Y1, rect.Width));
-                    }
+                    words.Add((wordText.Trim(), rect.X1, rect.Y1, rect.Width));
                 }
             } while (iterator.Next(PageIteratorLevel.Word));
         }
@@ -539,12 +519,12 @@ public class ImageParserService : IImageParserService, IDisposable
         // Group words by rows (Y-coordinate with tolerance for same-line detection)
         const int rowTolerance = 15; // Pixels tolerance for same row
         var rows = new List<List<(string Text, int X, int Y, int Width)>>();
-        
+
         foreach (var word in words.OrderBy(w => w.Y))
         {
-            var matchingRow = rows.FirstOrDefault(r => 
+            var matchingRow = rows.FirstOrDefault(r =>
                 Math.Abs(r[0].Y - word.Y) <= rowTolerance);
-            
+
             if (matchingRow != null)
             {
                 matchingRow.Add(word);
@@ -557,16 +537,10 @@ public class ImageParserService : IImageParserService, IDisposable
 
         // Detect if this is a multi-column layout (table/menu structure)
         var hasMultipleColumns = DetectMultiColumnLayout(rows);
-        
-        if (hasMultipleColumns)
-        {
-            return ReconstructTableText(rows);
-        }
-        else
-        {
+
+        return hasMultipleColumns ? ReconstructTableText(rows) :
             // Single column - use normal text extraction
-            return page.GetText();
-        }
+            page.GetText();
     }
 
     /// <summary>
@@ -578,31 +552,30 @@ public class ImageParserService : IImageParserService, IDisposable
 
         // Check if rows have consistent column structure
         // Look for rows with multiple words spaced apart (indicating columns)
-        int multiColumnRows = 0;
-        
+        var multiColumnRows = 0;
+
         foreach (var row in rows)
         {
-            if (row.Count >= 2)
+            if (row.Count < 2)
+                continue;
+            var sortedByX = row.OrderBy(w => w.X).ToList();
+            var gaps = new List<int>();
+
+            for (var i = 1; i < sortedByX.Count; i++)
             {
-                var sortedByX = row.OrderBy(w => w.X).ToList();
-                var gaps = new List<int>();
-                
-                for (int i = 1; i < sortedByX.Count; i++)
-                {
-                    var gap = sortedByX[i].X - (sortedByX[i - 1].X + sortedByX[i - 1].Width);
-                    gaps.Add(gap);
-                }
-                
-                // If there's a significant gap (> 50 pixels), it's likely a multi-column row
-                if (gaps.Any(g => g > 50))
-                {
-                    multiColumnRows++;
-                }
+                var gap = sortedByX[i].X - (sortedByX[i - 1].X + sortedByX[i - 1].Width);
+                gaps.Add(gap);
+            }
+
+            // If there's a significant gap (> 50 pixels), it's likely a multi-column row
+            if (gaps.Any(g => g > 50))
+            {
+                multiColumnRows++;
             }
         }
-        
+
         // If more than 30% of rows have multiple columns, treat as table
-        return multiColumnRows > (rows.Count * 0.3);
+        return multiColumnRows > rows.Count * 0.3;
     }
 
     /// <summary>
@@ -611,51 +584,55 @@ public class ImageParserService : IImageParserService, IDisposable
     /// </summary>
     private static string ReconstructTableText(List<List<(string Text, int X, int Y, int Width)>> rows)
     {
-        var result = new System.Text.StringBuilder();
-        
+        var result = new StringBuilder();
+
         foreach (var row in rows)
         {
             // Sort words in this row by X-coordinate (left to right)
             var sortedWords = row.OrderBy(w => w.X).ToList();
-            
-            if (sortedWords.Count == 0) continue;
-            
-            // Detect column boundaries
-            if (sortedWords.Count >= 2)
+
+            switch (sortedWords.Count)
             {
-                // Check if this row has a clear left-right split (2 columns)
-                var midPoint = (sortedWords[0].X + sortedWords[sortedWords.Count - 1].X) / 2;
-                var leftColumn = sortedWords.Where(w => w.X < midPoint).ToList();
-                var rightColumn = sortedWords.Where(w => w.X >= midPoint).ToList();
-                
-                if (leftColumn.Any() && rightColumn.Any())
+                case 0:
+                    continue;
+                // Detect column boundaries
+                case >= 2:
                 {
-                    // Table structure detected: pair left and right columns
-                    result.Append(string.Join(" ", leftColumn.Select(w => w.Text)));
-                    result.Append(" ");
-                    result.Append(string.Join(" ", rightColumn.Select(w => w.Text)));
-                    result.AppendLine();
+                    // Check if this row has a clear left-right split (2 columns)
+                    var midPoint = (sortedWords[0].X + sortedWords[^1].X) / 2;
+                    var leftColumn = sortedWords.Where(w => w.X < midPoint).ToList();
+                    var rightColumn = sortedWords.Where(w => w.X >= midPoint).ToList();
+
+                    if (leftColumn.Any() && rightColumn.Any())
+                    {
+                        // Table structure detected: pair left and right columns
+                        result.Append(string.Join(" ", leftColumn.Select(w => w.Text)));
+                        result.Append(" ");
+                        result.Append(string.Join(" ", rightColumn.Select(w => w.Text)));
+                        result.AppendLine();
+                    }
+                    else
+                    {
+                        // Single column or complex layout - output as-is
+                        result.AppendLine(string.Join(" ", sortedWords.Select(w => w.Text)));
+                    }
+
+                    break;
                 }
-                else
-                {
-                    // Single column or complex layout - output as-is
-                    result.AppendLine(string.Join(" ", sortedWords.Select(w => w.Text)));
-                }
-            }
-            else
-            {
-                // Single word row
-                result.AppendLine(sortedWords[0].Text);
+                default:
+                    // Single word row
+                    result.AppendLine(sortedWords[0].Text);
+                    break;
             }
         }
-        
+
         return result.ToString();
     }
 
     /// <summary>
     /// Finds the OCR engine data path
     /// </summary>
-    private static string FindOcrEngineDataPath(ILogger _logger)
+    private static string FindOcrEngineDataPath(ILogger logger)
     {
         var possiblePaths = new[]
         {
@@ -669,13 +646,12 @@ public class ImageParserService : IImageParserService, IDisposable
 
         foreach (var path in possiblePaths)
         {
-            if (Directory.Exists(path))
+            if (!Directory.Exists(path))
+                continue;
+            var engTrainedDataPath = Path.Combine(path, "eng.traineddata");
+            if (File.Exists(engTrainedDataPath))
             {
-                var engTrainedDataPath = Path.Combine(path, "eng.traineddata");
-                if (File.Exists(engTrainedDataPath))
-                {
-                    return path;
-                }
+                return path;
             }
         }
 
@@ -693,17 +669,16 @@ public class ImageParserService : IImageParserService, IDisposable
 
         foreach (var dir in commonTessdataPaths)
         {
-            if (Directory.Exists(dir))
+            if (!Directory.Exists(dir))
+                continue;
+            var engTrainedDataPath = Path.Combine(dir, "eng.traineddata");
+            if (File.Exists(engTrainedDataPath))
             {
-                var engTrainedDataPath = Path.Combine(dir, "eng.traineddata");
-                if (File.Exists(engTrainedDataPath))
-                {
-                    return dir;
-                }
+                return dir;
             }
         }
 
-        ServiceLogMessages.LogOcrDataPathNotFound(_logger, "No tessdata with eng.traineddata found, using current directory", null);
+        ServiceLogMessages.LogOcrDataPathNotFound(logger, "No tessdata with eng.traineddata found, using current directory", null);
         return ".";
     }
 
@@ -722,10 +697,7 @@ public class ImageParserService : IImageParserService, IDisposable
     /// </summary>
     private static int CountWords(string text)
     {
-        if (string.IsNullOrWhiteSpace(text))
-            return 0;
-
-        return text.Split(new char[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Length;
+        return string.IsNullOrWhiteSpace(text) ? 0 : text.Split(new[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Length;
     }
 
     /// <summary>
@@ -734,7 +706,7 @@ public class ImageParserService : IImageParserService, IDisposable
     /// <param name="text">OCR extracted text</param>
     /// <param name="logger">Logger instance for logging currency detection</param>
     /// <returns>Corrected text</returns>
-    private static string CorrectCommonOcrMistakes(string text, ILogger logger = null)
+    private static string CorrectCommonOcrMistakes(string text, ILogger? logger = null)
     {
         if (string.IsNullOrWhiteSpace(text))
             return text;
@@ -760,7 +732,7 @@ public class ImageParserService : IImageParserService, IDisposable
     private static string CorrectPipeCharacterMisreads(string text)
     {
         text = Regex.Replace(text, @"(\d)\|(\d)", "$1$2");
-        
+
         return text;
     }
 
@@ -771,7 +743,7 @@ public class ImageParserService : IImageParserService, IDisposable
     private static string CorrectCurrencySymbolMisplacements(string text)
     {
         text = Regex.Replace(text, @"(\d)([\$€£¥₺₽¢₹₩])(\d)", "$1 $3");
-        
+
         return text;
     }
 
@@ -782,7 +754,7 @@ public class ImageParserService : IImageParserService, IDisposable
     {
         text = Regex.Replace(text, @"[ \t]+", " ");
         text = Regex.Replace(text, @"\s+([.,;:!?])", "$1");
-        
+
         return text;
     }
 
@@ -791,7 +763,7 @@ public class ImageParserService : IImageParserService, IDisposable
     /// </summary>
     /// <param name="logger">Logger instance for logging currency detection</param>
     /// <returns>Currency symbol or null if not determinable</returns>
-    private static string GetCurrencySymbolFromSystemLocale(ILogger logger = null)
+    private static string? GetCurrencySymbolFromSystemLocale(ILogger? logger = null)
     {
         try
         {
@@ -825,12 +797,7 @@ public class ImageParserService : IImageParserService, IDisposable
 
         var currencySymbol = GetCurrencySymbolFromSystemLocale(_logger);
 
-        if (!string.IsNullOrEmpty(currencySymbol))
-        {
-            return CorrectCurrencySymbolMisreads(text, currencySymbol);
-        }
-
-        return text;
+        return !string.IsNullOrEmpty(currencySymbol) ? CorrectCurrencySymbolMisreads(text, currencySymbol) : text;
     }
 
     /// <summary>
@@ -938,10 +905,6 @@ public class ImageParserService : IImageParserService, IDisposable
     {
         if (!_disposed)
         {
-            if (disposing)
-            {
-            }
-
             _disposed = true;
         }
     }

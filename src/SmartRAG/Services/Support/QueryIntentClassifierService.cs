@@ -44,7 +44,7 @@ public class QueryIntentClassifierService : IQueryIntentClassifierService
     /// <param name="conversationHistory">Optional conversation history for context</param>
     /// <param name="cancellationToken">Token to cancel the operation</param>
     /// <returns>Analysis result containing conversation flag and normalized tokens for non-conversational queries</returns>
-    public async Task<QueryIntentAnalysisResult> AnalyzeQueryAsync(string query, string? conversationHistory = null, System.Threading.CancellationToken cancellationToken = default)
+    public async Task<QueryIntentAnalysisResult> AnalyzeQueryAsync(string query, string? conversationHistory = null, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(query))
         {
@@ -185,7 +185,7 @@ IMPORTANT:
                         MaxTokenCountForInformation);
 
                     cancellationToken.ThrowIfCancellationRequested();
-                    var classification = await _aiService.GenerateResponseAsync(classificationPrompt, Array.Empty<string>()).ConfigureAwait(false);
+                    var classification = await _aiService.GenerateResponseAsync(classificationPrompt, Array.Empty<string>(), cancellationToken).ConfigureAwait(false);
 
                     if (string.IsNullOrWhiteSpace(classification))
                     {
@@ -198,12 +198,7 @@ IMPORTANT:
                         using var document = JsonDocument.Parse(cleanedClassification);
                         var root = document.RootElement;
 
-                        if (root.ValueKind != JsonValueKind.Object)
-                        {
-                            return FallbackFromPlainClassification(classification, normalizedForMatching);
-                        }
-
-                        if (!root.TryGetProperty("type", out var typeElement) || typeElement.ValueKind != JsonValueKind.String)
+                        if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty("type", out var typeElement) || typeElement.ValueKind != JsonValueKind.String)
                         {
                             return FallbackFromPlainClassification(classification, normalizedForMatching);
                         }
@@ -229,17 +224,17 @@ IMPORTANT:
                                     answer = null;
                                 }
                             }
-                            
+
                             return new QueryIntentAnalysisResult(true, Array.Empty<string>(), answer);
                         }
 
                         if (string.Equals(typeValue, "INFORMATION", StringComparison.Ordinal))
                         {
-                            string[] tokens = Array.Empty<string>();
+                            var tokens = Array.Empty<string>();
                             if (root.TryGetProperty("tokens", out var tokensElement) && tokensElement.ValueKind == JsonValueKind.Array)
                             {
                                 tokens = ExtractTokensFromJsonArray(tokensElement);
-                        
+
                                 if (tokens.Length < MinTokenCountForInformation)
                                 {
                                     _logger.LogWarning("AI returned only {Count} tokens, expected at least {MinCount}. Response may be incomplete.", tokens.Length, MinTokenCountForInformation);
@@ -259,68 +254,68 @@ IMPORTANT:
                     }
                     catch (JsonException ex)
                     {
-                        _logger.LogWarning(ex, "Failed to parse AI response as JSON. Response: {Response}", classification?.Substring(0, Math.Min(200, classification?.Length ?? 0)));
-                
+                        _logger.LogWarning(ex, "Failed to parse AI response as JSON. Response: {Response}", classification[..Math.Min(200, classification?.Length ?? 0)]);
+
                         var cleanedJson = TryExtractJsonFromResponse(classification);
-                        if (!string.IsNullOrWhiteSpace(cleanedJson))
+                        if (string.IsNullOrWhiteSpace(cleanedJson))
+                            return FallbackFromPlainClassification(classification, normalizedForMatching);
+
+                        try
                         {
-                            try
+                            using var document = JsonDocument.Parse(cleanedJson);
+                            var root = document.RootElement;
+
+                            if (root.ValueKind == JsonValueKind.Object)
                             {
-                                using var document = JsonDocument.Parse(cleanedJson);
-                                var root = document.RootElement;
-                        
-                                if (root.ValueKind == JsonValueKind.Object)
+                                if (root.TryGetProperty("type", out var typeElement) && typeElement.ValueKind == JsonValueKind.String)
                                 {
-                                    if (root.TryGetProperty("type", out var typeElement) && typeElement.ValueKind == JsonValueKind.String)
+                                    var typeValue = typeElement.GetString()?.Trim().ToUpperInvariant();
+                                    if (string.Equals(typeValue, "CONVERSATION", StringComparison.Ordinal))
                                     {
-                                        var typeValue = typeElement.GetString()?.Trim().ToUpperInvariant();
-                                        if (string.Equals(typeValue, "CONVERSATION", StringComparison.Ordinal))
+                                        if (HasQuestionPunctuation(trimmedQuery) && trimmedQuery.Length > 40 &&
+                                            Tokenize(trimmedQuery).Length >= 6)
                                         {
-                                            if (HasQuestionPunctuation(trimmedQuery) && trimmedQuery.Length > 40 &&
-                                                Tokenize(trimmedQuery).Length >= 6)
-                                            {
-                                                var overrideTokens = _options.Features.EnableDocumentSearch
-                                                    ? TokenizeForSearch(normalizedForMatching)
-                                                    : Array.Empty<string>();
-                                                return new QueryIntentAnalysisResult(false, overrideTokens);
-                                            }
-                                            string? answer = null;
-                                            if (root.TryGetProperty("answer", out var answerElement) && answerElement.ValueKind == JsonValueKind.String)
-                                            {
-                                                answer = answerElement.GetString();
-                                                if (string.IsNullOrWhiteSpace(answer))
-                                                {
-                                                    answer = null;
-                                                }
-                                            }
-                                            
-                                            return new QueryIntentAnalysisResult(true, Array.Empty<string>(), answer);
+                                            var overrideTokens = _options.Features.EnableDocumentSearch
+                                                ? TokenizeForSearch(normalizedForMatching)
+                                                : Array.Empty<string>();
+                                            return new QueryIntentAnalysisResult(false, overrideTokens);
                                         }
-                                
-                                        if (string.Equals(typeValue, "INFORMATION", StringComparison.Ordinal))
+
+                                        if (!root.TryGetProperty("answer", out var answerElement) ||
+                                            answerElement.ValueKind != JsonValueKind.String)
+                                            return new QueryIntentAnalysisResult(true, Array.Empty<string>());
+                                        var answer = answerElement.GetString();
+                                        if (string.IsNullOrWhiteSpace(answer))
                                         {
-                                            string[] tokens = Array.Empty<string>();
-                                            if (root.TryGetProperty("tokens", out var tokensElement) && tokensElement.ValueKind == JsonValueKind.Array)
-                                            {
-                                                tokens = ExtractTokensFromJsonArray(tokensElement);
-                                            }
-                                    
-                                            if (tokens.Length == 0 && _options.Features.EnableDocumentSearch)
-                                            {
-                                                tokens = TokenizeForSearch(normalizedForMatching);
-                                            }
-                                    
-                                            return new QueryIntentAnalysisResult(false, tokens);
+                                            answer = null;
                                         }
+
+                                        return new QueryIntentAnalysisResult(true, Array.Empty<string>(), answer);
+                                    }
+
+                                    if (string.Equals(typeValue, "INFORMATION", StringComparison.Ordinal))
+                                    {
+                                        var tokens = Array.Empty<string>();
+                                        if (root.TryGetProperty("tokens", out var tokensElement) && tokensElement.ValueKind == JsonValueKind.Array)
+                                        {
+                                            tokens = ExtractTokensFromJsonArray(tokensElement);
+                                        }
+
+                                        if (tokens.Length == 0 && _options.Features.EnableDocumentSearch)
+                                        {
+                                            tokens = TokenizeForSearch(normalizedForMatching);
+                                        }
+
+                                        return new QueryIntentAnalysisResult(false, tokens);
                                     }
                                 }
                             }
-                            catch (JsonException)
-                            {
-                                _logger.LogWarning("Failed to parse cleaned JSON, falling back to plain classification");
-                            }
                         }
-                
+                        catch (JsonException)
+                        {
+                            _logger.LogWarning("Failed to parse cleaned JSON, falling back to plain classification");
+                        }
+
                         return FallbackFromPlainClassification(classification, normalizedForMatching);
                     }
                 }
@@ -348,11 +343,11 @@ IMPORTANT:
         var trimmed = input.Trim();
         var lowerTrimmed = trimmed.ToLowerInvariant();
 
-        if (lowerTrimmed == "/new" || 
-            lowerTrimmed == "/reset" || 
+        if (lowerTrimmed == "/new" ||
+            lowerTrimmed == "/reset" ||
             lowerTrimmed == "/clear" ||
-            lowerTrimmed.StartsWith("/new ") || 
-            lowerTrimmed.StartsWith("/reset ") || 
+            lowerTrimmed.StartsWith("/new ") ||
+            lowerTrimmed.StartsWith("/reset ") ||
             lowerTrimmed.StartsWith("/clear "))
         {
             commandType = QueryCommandType.NewConversation;
@@ -363,14 +358,14 @@ IMPORTANT:
             return true;
         }
 
-        if (!trimmed.StartsWith("/chat", StringComparison.OrdinalIgnoreCase) && 
+        if (!trimmed.StartsWith("/chat", StringComparison.OrdinalIgnoreCase) &&
             !trimmed.StartsWith("/talk", StringComparison.OrdinalIgnoreCase) &&
-            !trimmed.StartsWith("/conversation", StringComparison.OrdinalIgnoreCase)) 
+            !trimmed.StartsWith("/conversation", StringComparison.OrdinalIgnoreCase))
             return false;
-        
+
         commandType = QueryCommandType.ForceConversation;
         payload = trimmed.Length > 5 ? trimmed[5..].TrimStart() : string.Empty;
-        
+
         return true;
 
     }
@@ -408,12 +403,7 @@ IMPORTANT:
             return HeuristicDecision.Conversation;
         }
 
-        if (score >= 3)
-        {
-            return HeuristicDecision.Information;
-        }
-
-        return HeuristicDecision.Unknown;
+        return score >= 3 ? HeuristicDecision.Information : HeuristicDecision.Unknown;
     }
 
     private static string[] Tokenize(string input) =>
@@ -429,7 +419,7 @@ IMPORTANT:
 
     private static bool HasMultipleNumericGroups(string input)
     {
-        var matches = System.Text.RegularExpressions.Regex.Matches(input, @"\p{Nd}+");
+        var matches = Regex.Matches(input, @"\p{Nd}+");
         return matches.Count >= 2;
     }
 
@@ -443,17 +433,17 @@ IMPORTANT:
         input.IndexOf('₺') >= 0;
 
     private static bool HasDateOrTimePattern(string input) =>
-        System.Text.RegularExpressions.Regex.IsMatch(input, @"\b\d{4}[-/\.]\d{1,2}[-/\.]\d{1,2}\b") ||
-        System.Text.RegularExpressions.Regex.IsMatch(input, @"\b\d{1,2}:\d{2}(:\d{2})?\b");
+        Regex.IsMatch(input, @"\b\d{4}[-/\.]\d{1,2}[-/\.]\d{1,2}\b") ||
+        Regex.IsMatch(input, @"\b\d{1,2}:\d{2}(:\d{2})?\b");
 
     private static bool HasNumericRangeOrList(string input) =>
-        System.Text.RegularExpressions.Regex.IsMatch(input, @"\b\d+\s*[-–—]\s*\d+\b") ||
-        System.Text.RegularExpressions.Regex.IsMatch(input, @"\b\d+\s*,\s*\d+(\s*,\s*\d+)+\b");
+        Regex.IsMatch(input, @"\b\d+\s*[-–—]\s*\d+\b") ||
+        Regex.IsMatch(input, @"\b\d+\s*,\s*\d+(\s*,\s*\d+)+\b");
 
     private static bool HasIdLikeToken(string[] tokens) =>
-        tokens.Any(t => System.Text.RegularExpressions.Regex.IsMatch(t, @"\p{L}*\p{Nd}+\w*"));
+        tokens.Any(t => Regex.IsMatch(t, @"\p{L}*\p{Nd}+\w*"));
 
-    private string[] TokenizeForSearch(string input)
+    private static string[] TokenizeForSearch(string input)
     {
         var basicTokens = Tokenize(input);
 
@@ -478,7 +468,7 @@ IMPORTANT:
 
         if (tokens.Length < MinTokenCountForInformation)
         {
-            _logger.LogWarning("AI returned only {Count} tokens, expected at least {MinCount}. Tokens: {Tokens}", 
+            _logger.LogWarning("AI returned only {Count} tokens, expected at least {MinCount}. Tokens: {Tokens}",
                 tokens.Length, MinTokenCountForInformation, string.Join(", ", tokens));
         }
 
@@ -491,8 +481,8 @@ IMPORTANT:
             return null;
 
         var trimmed = response.Trim();
-        
-        if (trimmed.StartsWith("```json", StringComparison.OrdinalIgnoreCase) || 
+
+        if (trimmed.StartsWith("```json", StringComparison.OrdinalIgnoreCase) ||
             trimmed.StartsWith("```", StringComparison.OrdinalIgnoreCase))
         {
             var codeBlockStart = trimmed.IndexOf("```", StringComparison.OrdinalIgnoreCase);
@@ -500,31 +490,21 @@ IMPORTANT:
             {
                 var afterStart = trimmed.Substring(codeBlockStart + 3);
                 var codeBlockEnd = afterStart.IndexOf("```", StringComparison.OrdinalIgnoreCase);
-                if (codeBlockEnd >= 0)
-                {
-                    trimmed = afterStart.Substring(0, codeBlockEnd).Trim();
-                }
-                else
-                {
-                    trimmed = afterStart.Trim();
-                }
+                trimmed = codeBlockEnd >= 0 ? afterStart.Substring(0, codeBlockEnd).Trim() : afterStart.Trim();
             }
         }
-        
+
         if (trimmed.StartsWith("json", StringComparison.OrdinalIgnoreCase))
         {
             trimmed = trimmed.Substring(4).Trim();
         }
-        
+
         var startIndex = trimmed.IndexOf('{');
         if (startIndex < 0)
             return null;
 
         var endIndex = trimmed.LastIndexOf('}');
-        if (endIndex < startIndex)
-            return null;
-
-        return trimmed.Substring(startIndex, endIndex - startIndex + 1);
+        return endIndex < startIndex ? null : trimmed.Substring(startIndex, endIndex - startIndex + 1);
     }
 
     private QueryIntentAnalysisResult FallbackFromPlainClassification(string? classification, string normalizedQuery)
@@ -536,20 +516,16 @@ IMPORTANT:
 
         var normalizedResult = classification.Trim().ToUpperInvariant();
 
-        if (normalizedResult.Contains("CONVERSATION", StringComparison.Ordinal))
+        if (normalizedResult.Contains("CONVERSATION", StringComparison.Ordinal) || !normalizedResult.Contains("INFORMATION", StringComparison.Ordinal))
         {
             return new QueryIntentAnalysisResult(true, Array.Empty<string>());
         }
 
-        if (normalizedResult.Contains("INFORMATION", StringComparison.Ordinal))
-        {
-            var tokens = _options.Features.EnableDocumentSearch
-                ? TokenizeForSearch(normalizedQuery)
-                : Array.Empty<string>();
-            return new QueryIntentAnalysisResult(false, tokens);
-        }
+        var tokens = _options.Features.EnableDocumentSearch
+            ? TokenizeForSearch(normalizedQuery)
+            : Array.Empty<string>();
+        return new QueryIntentAnalysisResult(false, tokens);
 
-        return new QueryIntentAnalysisResult(true, Array.Empty<string>());
     }
 }
 

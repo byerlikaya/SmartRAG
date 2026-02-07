@@ -16,38 +16,29 @@ public class QueryStrategyOrchestratorService : IQueryStrategyOrchestratorServic
     /// </summary>
     public QueryStrategy DetermineQueryStrategy(double confidence, bool hasDatabaseQueries, bool hasDocumentMatches)
     {
-        // High confidence: AI is very sure about query intent
-        if (confidence >= HighConfidenceThreshold)
+        switch (confidence)
         {
-            if (hasDatabaseQueries && hasDocumentMatches)
+            // High confidence: AI is very sure about query intent
+            case >= HighConfidenceThreshold when hasDatabaseQueries && hasDocumentMatches:
                 return QueryStrategy.Hybrid;
-
-            if (hasDatabaseQueries)
+            case >= HighConfidenceThreshold:
+                return hasDatabaseQueries ? QueryStrategy.DatabaseOnly : QueryStrategy.DocumentOnly;
+            // Medium confidence: Check both sources when possible
+            case >= MediumConfidenceMin and <= MediumConfidenceMax when hasDatabaseQueries && hasDocumentMatches:
+                return QueryStrategy.Hybrid;
+            case >= MediumConfidenceMin and <= MediumConfidenceMax when hasDatabaseQueries:
                 return QueryStrategy.DatabaseOnly;
-
-            return QueryStrategy.DocumentOnly;
+            case >= MediumConfidenceMin and <= MediumConfidenceMax:
+                return hasDocumentMatches ? QueryStrategy.DocumentOnly : QueryStrategy.DatabaseOnly;
         }
 
-        // Medium confidence: Check both sources when possible
-        if (confidence >= MediumConfidenceMin && confidence <= MediumConfidenceMax)
+        return hasDatabaseQueries switch
         {
-            if (hasDatabaseQueries && hasDocumentMatches)
-                return QueryStrategy.Hybrid;
-
-            if (hasDatabaseQueries)
-                return QueryStrategy.DatabaseOnly;
-
-            return hasDocumentMatches ? QueryStrategy.DocumentOnly : QueryStrategy.DatabaseOnly;
-        }
-
-        // Low confidence: Still check database if queries are available
-        if (hasDatabaseQueries && hasDocumentMatches)
-            return QueryStrategy.Hybrid;
-
-        if (hasDatabaseQueries)
-            return QueryStrategy.DatabaseOnly;
-
-        return QueryStrategy.DocumentOnly;
+            // Low confidence: Still check database if queries are available
+            true when hasDocumentMatches => QueryStrategy.Hybrid,
+            true => QueryStrategy.DatabaseOnly,
+            _ => QueryStrategy.DocumentOnly
+        };
     }
 }
 

@@ -10,9 +10,9 @@ public class McpClient : IMcpClient
     private const int DefaultTimeoutSeconds = 30;
     private readonly ILogger<McpClient> _logger;
     private readonly IHttpClientFactory _httpClientFactory;
-    private readonly Dictionary<string, HttpClient> _connections = new Dictionary<string, HttpClient>();
-    private readonly Dictionary<string, McpServerConfig> _serverConfigs = new Dictionary<string, McpServerConfig>();
-    private bool _disposed = false;
+    private readonly Dictionary<string, HttpClient> _connections = new();
+    private readonly Dictionary<string, McpServerConfig> _serverConfigs = new();
+    private bool _disposed;
 
     public McpClient(
         ILogger<McpClient> logger,
@@ -42,12 +42,9 @@ public class McpClient : IMcpClient
             var client = _httpClientFactory.CreateClient();
             client.Timeout = TimeSpan.FromSeconds(config.TimeoutSeconds > 0 ? config.TimeoutSeconds : DefaultTimeoutSeconds);
 
-            if (config.Headers != null)
+            foreach (var header in config.Headers)
             {
-                foreach (var header in config.Headers)
-                {
-                    client.DefaultRequestHeaders.TryAddWithoutValidation(header.Key, header.Value);
-                }
+                client.DefaultRequestHeaders.TryAddWithoutValidation(header.Key, header.Value);
             }
 
             _connections[config.ServerId] = client;
@@ -87,7 +84,7 @@ public class McpClient : IMcpClient
 
             if (!response.IsSuccess)
             {
-                _logger.LogError("Failed to discover tools: {Error}", response.Error?.Message);
+                _logger.LogError("Failed to discover tools: {Error}", response.Error.Message);
                 return new List<McpTool>();
             }
 
@@ -149,7 +146,7 @@ public class McpClient : IMcpClient
                 Params = new Dictionary<string, object>
                 {
                     { "name", toolName },
-                    { "arguments", parameters ?? new Dictionary<string, object>() }
+                    { "arguments", parameters }
                 }
             };
 
@@ -237,16 +234,15 @@ public class McpClient : IMcpClient
 
     protected virtual void Dispose(bool disposing)
     {
-        if (!_disposed && disposing)
+        if (_disposed || !disposing)
+            return;
+        foreach (var client in _connections.Values)
         {
-            foreach (var client in _connections.Values)
-            {
-                client?.Dispose();
-            }
-            _connections.Clear();
-            _serverConfigs.Clear();
-            _disposed = true;
+            client?.Dispose();
         }
+        _connections.Clear();
+        _serverConfigs.Clear();
+        _disposed = true;
     }
 }
 

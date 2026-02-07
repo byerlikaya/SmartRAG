@@ -26,7 +26,7 @@ public class McpConnectionManager : IMcpConnectionManager
     /// </summary>
     public async Task ConnectAllAsync()
     {
-        if (_options.McpServers == null || _options.McpServers.Count == 0)
+        if (_options.McpServers.Count == 0)
         {
             _logger.LogInformation("No MCP servers configured");
             return;
@@ -56,7 +56,7 @@ public class McpConnectionManager : IMcpConnectionManager
                     _logger.LogWarning("Failed to connect to MCP server");
                 }
             }
-            catch (System.Exception ex)
+            catch (Exception ex)
             {
                 _logger.LogError(ex, "Error connecting to MCP server");
             }

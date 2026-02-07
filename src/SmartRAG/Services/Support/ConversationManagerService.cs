@@ -15,7 +15,7 @@ public class ConversationManagerService : IConversationManagerService
     private readonly IAIService? _aiService;
     private readonly IPromptBuilderService? _promptBuilder;
 
-    private readonly ConcurrentDictionary<string, string> _conversationCache = new ConcurrentDictionary<string, string>();
+    private readonly ConcurrentDictionary<string, string> _conversationCache = new();
 
     /// <summary>
     /// Initializes a new instance of the ConversationManagerService
@@ -58,7 +58,7 @@ public class ConversationManagerService : IConversationManagerService
                     {
                         var conversationHistory = await _conversationRepository.GetConversationHistoryAsync(sessionId, cancellationToken);
 
-                        _conversationCache.TryAdd(sessionId, conversationHistory ?? string.Empty);
+                        _conversationCache.TryAdd(sessionId, conversationHistory);
                         return sessionId;
                     }
                 }
@@ -112,7 +112,7 @@ public class ConversationManagerService : IConversationManagerService
         {
             var history = await GetConversationFromStorageAsync(sessionId, cancellationToken);
 
-            _conversationCache.AddOrUpdate(sessionId, history, (key, oldValue) => history);
+            _conversationCache.AddOrUpdate(sessionId, history, (_, _) => history);
 
             return history;
         }
@@ -147,7 +147,7 @@ public class ConversationManagerService : IConversationManagerService
 
             await StoreConversationToStorageAsync(sessionId, newEntry, cancellationToken);
 
-            _conversationCache.AddOrUpdate(sessionId, newEntry, (key, oldValue) => newEntry);
+            _conversationCache.AddOrUpdate(sessionId, newEntry, (_, _) => newEntry);
         }
         catch (Exception ex)
         {
@@ -158,17 +158,13 @@ public class ConversationManagerService : IConversationManagerService
     /// <inheritdoc />
     public Task AddSourcesForLastTurnAsync(string sessionId, string sourcesJson, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(sessionId))
-            return Task.CompletedTask;
-        return _conversationRepository.AppendSourcesForTurnAsync(sessionId, sourcesJson, cancellationToken);
+        return string.IsNullOrWhiteSpace(sessionId) ? Task.CompletedTask : _conversationRepository.AppendSourcesForTurnAsync(sessionId, sourcesJson, cancellationToken);
     }
 
     /// <inheritdoc />
     public Task<string> GetSourcesForSessionAsync(string sessionId, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(sessionId))
-            return Task.FromResult(string.Empty);
-        return _conversationRepository.GetSourcesForSessionAsync(sessionId, cancellationToken);
+        return string.IsNullOrWhiteSpace(sessionId) ? Task.FromResult(string.Empty) : _conversationRepository.GetSourcesForSessionAsync(sessionId, cancellationToken);
     }
 
     /// <summary>
@@ -182,7 +178,7 @@ public class ConversationManagerService : IConversationManagerService
         }
 
         var lines = history.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-        var turns = new System.Collections.Generic.List<string>();
+        var turns = new List<string>();
         var currentTurn = new StringBuilder();
 
         foreach (var line in lines)
@@ -210,12 +206,7 @@ public class ConversationManagerService : IConversationManagerService
 
         var recentTurns = turns.TakeLast(maxTurns).ToList();
 
-        if (recentTurns.Count == 0)
-        {
-            return string.Empty;
-        }
-
-        return string.Join("\n", recentTurns);
+        return recentTurns.Count == 0 ? string.Empty : string.Join("\n", recentTurns);
     }
 
     /// <summary>
@@ -307,7 +298,7 @@ public class ConversationManagerService : IConversationManagerService
         try
         {
             var history = await _conversationRepository.GetConversationHistoryAsync(sessionId, cancellationToken);
-            return history ?? string.Empty;
+            return history;
         }
         catch (Exception ex)
         {

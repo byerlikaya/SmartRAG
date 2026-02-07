@@ -8,8 +8,8 @@ namespace SmartRAG.Services.Mcp;
 public class McpIntegrationService : IMcpIntegrationService
 {
     private const int MaxToolResults = 10;
-    private static readonly string[] QueryParameterNames = new[] { "query", "libraryName", "text", "input", "prompt", "question", "search" };
-    private static readonly SemaphoreSlim ConnectLock = new SemaphoreSlim(1, 1);
+    private static readonly string[] QueryParameterNames = { "query", "libraryName", "text", "input", "prompt", "question", "search" };
+    private static readonly SemaphoreSlim ConnectLock = new(1, 1);
 
     private readonly ILogger<McpIntegrationService> _logger;
     private readonly IMcpClient _mcpClient;
@@ -82,7 +82,7 @@ public class McpIntegrationService : IMcpIntegrationService
                                 ServerId = serverId,
                                 ToolName = tool.Name,
                                 IsSuccess = false,
-                                ErrorMessage = response.Error?.Message ?? "Unknown error"
+                                ErrorMessage = response.Error?.Message
                             });
                         }
                     }
@@ -128,7 +128,7 @@ public class McpIntegrationService : IMcpIntegrationService
     {
         var parameters = new Dictionary<string, object>();
 
-        if (tool.InputSchema != null && tool.InputSchema.Count > 0)
+        if (tool.InputSchema.Count > 0)
         {
             try
             {
@@ -157,23 +157,19 @@ public class McpIntegrationService : IMcpIntegrationService
                         var propName = prop.Name;
                         var propSchema = prop.Value;
 
-                        if (propSchema.ValueKind == JsonValueKind.Object)
-                        {
-                            var propType = propSchema.TryGetProperty("type", out var typeElement)
-                                ? typeElement.GetString()
-                                : "string";
+                        if (propSchema.ValueKind != JsonValueKind.Object)
+                            continue;
 
-                            if (propType == "string")
-                            {
-                                if (IsQueryParameter(propName))
-                                {
-                                    parameters[propName] = query;
-                                }
-                                else if (requiredProperties.Contains(propName))
-                                {
-                                    parameters[propName] = query;
-                                }
-                            }
+                        var propType = propSchema.TryGetProperty("type", out var typeElement)
+                            ? typeElement.GetString()
+                            : "string";
+
+                        if (propType != "string")
+                            continue;
+
+                        if (IsQueryParameter(propName) || requiredProperties.Contains(propName))
+                        {
+                            parameters[propName] = query;
                         }
                     }
                 }
@@ -223,13 +219,11 @@ public class McpIntegrationService : IMcpIntegrationService
             }
         }
 
-        if (mentionedTopics.Count > 0 && !mentionedTopics.Contains(query, StringComparer.OrdinalIgnoreCase))
-        {
-            var topics = string.Join(", ", mentionedTopics.Take(3));
-            return $"{query} (about: {topics})";
-        }
+        if (mentionedTopics.Count <= 0 || mentionedTopics.Contains(query, StringComparer.OrdinalIgnoreCase))
+            return query;
+        var topics = string.Join(", ", mentionedTopics.Take(3));
+        return $"{query} (about: {topics})";
 
-        return query;
     }
 
     private static void ExtractKeywords(string text, HashSet<string> keywords)
@@ -243,7 +237,7 @@ public class McpIntegrationService : IMcpIntegrationService
         foreach (var word in words)
         {
             var trimmed = word.Trim();
-            if (trimmed.Length >= 2 && trimmed.Length <= 20 &&
+            if (trimmed.Length is >= 2 and <= 20 &&
                 char.IsLetter(trimmed[0]) &&
                 !IsCommonWord(trimmed))
             {
@@ -311,29 +305,26 @@ public class McpIntegrationService : IMcpIntegrationService
 
         try
         {
-            var response = await _mcpClient.CallToolAsync(serverId, toolName, parameters ?? new Dictionary<string, object>());
+            var response = await _mcpClient.CallToolAsync(serverId, toolName, parameters);
 
-            if (response.IsSuccess)
-            {
-                var content = ExtractContentFromResponse(response);
-                return new McpToolResult
-                {
-                    ServerId = serverId,
-                    ToolName = toolName,
-                    Content = content,
-                    IsSuccess = true
-                };
-            }
-            else
-            {
+            if (!response.IsSuccess)
                 return new McpToolResult
                 {
                     ServerId = serverId,
                     ToolName = toolName,
                     IsSuccess = false,
-                    ErrorMessage = response.Error?.Message ?? "Unknown error"
+                    ErrorMessage = response.Error.Message
                 };
-            }
+
+            var content = ExtractContentFromResponse(response);
+            return new McpToolResult
+            {
+                ServerId = serverId,
+                ToolName = toolName,
+                Content = content,
+                IsSuccess = true
+            };
+
         }
         catch (Exception ex)
         {
@@ -364,38 +355,43 @@ public class McpIntegrationService : IMcpIntegrationService
 
     private string ExtractContentFromResponse(McpResponse response)
     {
-        if (response.Result == null)
-            return string.Empty;
-
-        if (response.Result is string str)
-            return str;
-
-        if (response.Result is JsonElement jsonElement)
+        switch (response.Result)
         {
-            if (jsonElement.TryGetProperty("content", out var contentElement))
+            case string str:
+                return str;
+            case JsonElement jsonElement:
             {
-                if (contentElement.ValueKind == JsonValueKind.Array)
+                if (!jsonElement.TryGetProperty("content", out var contentElement))
+                    return jsonElement.GetRawText();
+
+                switch (contentElement.ValueKind)
                 {
-                    var contents = new List<string>();
-                    foreach (var item in contentElement.EnumerateArray())
+                    case JsonValueKind.Array:
                     {
-                        if (item.ValueKind == JsonValueKind.String)
-                            contents.Add(item.GetString() ?? string.Empty);
-                        else if (item.ValueKind == JsonValueKind.Object && item.TryGetProperty("text", out var textElement))
-                            contents.Add(textElement.GetString() ?? string.Empty);
+                        var contents = new List<string>();
+                        foreach (var item in contentElement.EnumerateArray())
+                        {
+                            switch (item.ValueKind)
+                            {
+                                case JsonValueKind.String:
+                                    contents.Add(item.GetString() ?? string.Empty);
+                                    break;
+                                case JsonValueKind.Object when item.TryGetProperty("text", out var textElement):
+                                    contents.Add(textElement.GetString() ?? string.Empty);
+                                    break;
+                            }
+                        }
+                        return string.Join("\n", contents);
                     }
-                    return string.Join("\n", contents);
+                    case JsonValueKind.String:
+                        return contentElement.GetString() ?? string.Empty;
                 }
-                else if (contentElement.ValueKind == JsonValueKind.String)
-                {
-                    return contentElement.GetString() ?? string.Empty;
-                }
+
+                return jsonElement.GetRawText();
             }
-
-            return jsonElement.GetRawText();
+            default:
+                return response.Result.ToString() ?? string.Empty;
         }
-
-        return response.Result.ToString() ?? string.Empty;
     }
 }
 

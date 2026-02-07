@@ -47,7 +47,7 @@ public class SmartRagStartupService : IHostedService
             _logger.LogInformation("MCP client is disabled in configuration");
         }
 
-        if (_options.Features.EnableFileWatcher && _options.WatchedFolders != null)
+        if (_options.Features.EnableFileWatcher)
         {
             var fileWatcherService = _serviceProvider.GetService<IFileWatcherService>();
             if (fileWatcherService != null)
@@ -67,7 +67,7 @@ public class SmartRagStartupService : IHostedService
             }
         }
 
-        if (_options.DatabaseConnections != null && _options.DatabaseConnections.Count > 0)
+        if (_options.DatabaseConnections.Count > 0)
         {
             using var dbScope = _serviceProvider.CreateScope();
             var databaseConnectionManager = dbScope.ServiceProvider.GetService<IDatabaseConnectionManager>();

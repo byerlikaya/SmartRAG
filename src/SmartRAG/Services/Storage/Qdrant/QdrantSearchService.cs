@@ -7,13 +7,12 @@ namespace SmartRAG.Services.Storage.Qdrant;
 /// <summary>
 /// Service for performing searches in Qdrant vector database
 /// </summary>
-public class QdrantSearchService : IQdrantSearchService, IDisposable
+public class QdrantSearchService : IQdrantSearchService
 {
     private const double DefaultTextSearchScore = 70.0;
     private const double TextSearchScorePerMatch = 8.0;
 
     private readonly QdrantClient _client;
-    private readonly QdrantConfig _config;
     private readonly string _collectionName;
     private readonly ILogger<QdrantSearchService> _logger;
     private bool _isDisposed;
@@ -27,8 +26,8 @@ public class QdrantSearchService : IQdrantSearchService, IDisposable
         IOptions<QdrantConfig> config,
         ILogger<QdrantSearchService> logger)
     {
-        _config = config.Value;
-        _collectionName = _config.CollectionName;
+        var config1 = config.Value;
+        _collectionName = config1.CollectionName;
         _logger = logger;
 
         string host;
@@ -100,46 +99,46 @@ public class QdrantSearchService : IQdrantSearchService, IDisposable
                     {
                         var payload = result.Payload;
 
-                        if (payload != null)
+                        if (payload == null)
+                            continue;
+                        var content = GetPayloadString(payload, "content");
+                        var docId = GetPayloadString(payload, "documentId");
+                        var chunkIndex = GetPayloadString(payload, "chunkIndex");
+                        var documentType = GetPayloadString(payload, "documentType");
+                        var chunkIdStr = GetPayloadString(payload, "chunkId");
+                        var fileName = GetPayloadString(payload, "fileName");
+
+                        if (string.IsNullOrEmpty(content) || string.IsNullOrEmpty(docId) ||
+                            string.IsNullOrEmpty(chunkIndex))
+                            continue;
+
+                        if (string.IsNullOrWhiteSpace(documentType))
+                            documentType = "Document";
+
+                        // Use chunkId from payload if available to ensure consistency with GetByIdAsync
+                        Guid chunkId;
+                        if (!string.IsNullOrWhiteSpace(chunkIdStr) && Guid.TryParse(chunkIdStr, out var parsedChunkId))
                         {
-                            var content = GetPayloadString(payload, "content");
-                            var docId = GetPayloadString(payload, "documentId");
-                            var chunkIndex = GetPayloadString(payload, "chunkIndex");
-                            var documentType = GetPayloadString(payload, "documentType");
-                            var chunkIdStr = GetPayloadString(payload, "chunkId");
-                            var fileName = GetPayloadString(payload, "fileName");
-
-                            if (!string.IsNullOrEmpty(content) && !string.IsNullOrEmpty(docId) && !string.IsNullOrEmpty(chunkIndex))
-                            {
-                                if (string.IsNullOrWhiteSpace(documentType))
-                                    documentType = "Document";
-
-                                // Use chunkId from payload if available to ensure consistency with GetByIdAsync
-                                Guid chunkId;
-                                if (!string.IsNullOrWhiteSpace(chunkIdStr) && Guid.TryParse(chunkIdStr, out var parsedChunkId))
-                                {
-                                    chunkId = parsedChunkId;
-                                }
-                                else
-                                {
-                                    chunkId = Guid.NewGuid();
-                                }
-
-                                var chunk = new DocumentChunk
-                                {
-                                    Id = chunkId, // Use original chunk ID from payload
-                                    DocumentId = Guid.Parse(docId),
-                                    FileName = fileName ?? string.Empty,
-                                    Content = content,
-                                    ChunkIndex = int.Parse(chunkIndex, CultureInfo.InvariantCulture),
-                                    RelevanceScore = result.Score,
-                                    StartPosition = 0,
-                                    EndPosition = content.Length,
-                                    DocumentType = documentType
-                                };
-                                allChunks.Add(chunk);
-                            }
+                            chunkId = parsedChunkId;
                         }
+                        else
+                        {
+                            chunkId = Guid.NewGuid();
+                        }
+
+                        var chunk = new DocumentChunk
+                        {
+                            Id = chunkId, // Use original chunk ID from payload
+                            DocumentId = Guid.Parse(docId),
+                            FileName = fileName,
+                            Content = content,
+                            ChunkIndex = int.Parse(chunkIndex, CultureInfo.InvariantCulture),
+                            RelevanceScore = result.Score,
+                            StartPosition = 0,
+                            EndPosition = content.Length,
+                            DocumentType = documentType
+                        };
+                        allChunks.Add(chunk);
                     }
                 }
                 catch (Exception ex)
@@ -215,60 +214,54 @@ public class QdrantSearchService : IQdrantSearchService, IDisposable
                                 var chunkIdStr = GetPayloadString(payload, "chunkId");
                                 var fileName = GetPayloadString(payload, "fileName");
 
-                                if (!string.IsNullOrEmpty(content) && !string.IsNullOrEmpty(docId) && !string.IsNullOrEmpty(chunkIndex))
+                                if (string.IsNullOrEmpty(content) || string.IsNullOrEmpty(docId) ||
+                                    string.IsNullOrEmpty(chunkIndex))
+                                    continue;
+                                if (string.IsNullOrWhiteSpace(documentType))
+                                    documentType = "Document";
+
+                                var searchableNormalized = string.Concat(content, " ", fileName ?? string.Empty).NormalizeForOcrTolerantMatch();
+                                var fileNameLower = (fileName ?? string.Empty).ToLowerInvariant();
+                                var matchCount = searchTerms.Count(term =>
                                 {
-                                    if (string.IsNullOrWhiteSpace(documentType))
-                                        documentType = "Document";
-
-                                    var searchableNormalized = string.Concat(content, " ", fileName ?? string.Empty).NormalizeForOcrTolerantMatch();
-                                    var fileNameLower = (fileName ?? string.Empty).ToLowerInvariant();
-                                    var matchCount = searchTerms.Count(term =>
-                                    {
-                                        var normalizedTerm = term.NormalizeForOcrTolerantMatch();
-                                        if (string.IsNullOrEmpty(normalizedTerm))
-                                            return false;
-                                        if (searchableNormalized.IndexOf(normalizedTerm, StringComparison.Ordinal) >= 0)
-                                            return true;
-                                        foreach (var variant in normalizedTerm.GetSearchTermVariants(4))
-                                        {
-                                            if (searchableNormalized.IndexOf(variant, StringComparison.Ordinal) >= 0)
-                                                return true;
-                                        }
+                                    var normalizedTerm = term.NormalizeForOcrTolerantMatch();
+                                    if (string.IsNullOrEmpty(normalizedTerm))
                                         return false;
-                                    });
-                                    var hasFileNamePhraseMatch = fileNamePhrases.Count > 0 && fileNamePhrases.Any(p => fileNameLower.Contains(p));
+                                    return searchableNormalized.IndexOf(normalizedTerm, StringComparison.Ordinal) >= 0 ||
+                                           normalizedTerm.GetSearchTermVariants().Any(variant => searchableNormalized.IndexOf(variant, StringComparison.Ordinal) >= 0);
+                                });
+                                var hasFileNamePhraseMatch = fileNamePhrases.Count > 0 && fileNamePhrases.Any(p => fileNameLower.Contains(p));
 
-                                    if (matchCount >= minMatchCount || hasFileNamePhraseMatch)
-                                    {
-                                        Guid chunkId;
-                                        if (!string.IsNullOrWhiteSpace(chunkIdStr) && Guid.TryParse(chunkIdStr, out var parsedChunkId))
-                                        {
-                                            chunkId = parsedChunkId;
-                                        }
-                                        else
-                                        {
-                                            chunkId = Guid.NewGuid();
-                                        }
+                                if (matchCount < minMatchCount && !hasFileNamePhraseMatch)
+                                    continue;
 
-                                        var score = DefaultTextSearchScore + (matchCount * TextSearchScorePerMatch);
-                                        var chunk = new DocumentChunk
-                                        {
-                                            Id = chunkId,
-                                            DocumentId = Guid.Parse(docId),
-                                            FileName = fileName ?? string.Empty,
-                                            Content = content,
-                                            ChunkIndex = int.Parse(chunkIndex, CultureInfo.InvariantCulture),
-                                            RelevanceScore = score,
-                                            StartPosition = 0,
-                                            EndPosition = content.Length,
-                                            DocumentType = documentType
-                                        };
-                                        relevantChunks.Add(chunk);
-                                    }
+                                Guid chunkId;
+                                if (!string.IsNullOrWhiteSpace(chunkIdStr) && Guid.TryParse(chunkIdStr, out var parsedChunkId))
+                                {
+                                    chunkId = parsedChunkId;
                                 }
+                                else
+                                {
+                                    chunkId = Guid.NewGuid();
+                                }
+
+                                var score = DefaultTextSearchScore + (matchCount * TextSearchScorePerMatch);
+                                var chunk = new DocumentChunk
+                                {
+                                    Id = chunkId,
+                                    DocumentId = Guid.Parse(docId),
+                                    FileName = fileName ?? string.Empty,
+                                    Content = content,
+                                    ChunkIndex = int.Parse(chunkIndex, CultureInfo.InvariantCulture),
+                                    RelevanceScore = score,
+                                    StartPosition = 0,
+                                    EndPosition = content.Length,
+                                    DocumentType = documentType
+                                };
+                                relevantChunks.Add(chunk);
                             }
                         }
-                        
+
                         nextOffset = scrollResult.NextPageOffset;
                     } while (nextOffset != null);
                 }
@@ -300,32 +293,29 @@ public class QdrantSearchService : IQdrantSearchService, IDisposable
         GC.SuppressFinalize(this);
     }
 
-    private static string GetPayloadString(Google.Protobuf.Collections.MapField<string, global::Qdrant.Client.Grpc.Value> payload, string key)
+    private static string GetPayloadString(Google.Protobuf.Collections.MapField<string, Value> payload, string key)
     {
-        if (payload == null) return string.Empty;
-
-        if (!payload.TryGetValue(key, out global::Qdrant.Client.Grpc.Value value) || value == null)
+        if (!payload.TryGetValue(key, out var value))
             return string.Empty;
 
-        string result;
         switch (value.KindCase)
         {
-            case global::Qdrant.Client.Grpc.Value.KindOneofCase.StringValue:
-                result = value.StringValue ?? string.Empty;
+            case Value.KindOneofCase.StringValue:
+                var result = value.StringValue ?? string.Empty;
                 if (!string.IsNullOrEmpty(result))
                 {
-                    result = result.Normalize(System.Text.NormalizationForm.FormC);
+                    result = result.Normalize(NormalizationForm.FormC);
                 }
                 return result;
-            case global::Qdrant.Client.Grpc.Value.KindOneofCase.DoubleValue:
+            case Value.KindOneofCase.DoubleValue:
                 return value.DoubleValue.ToString(CultureInfo.InvariantCulture);
-            case global::Qdrant.Client.Grpc.Value.KindOneofCase.IntegerValue:
+            case Value.KindOneofCase.IntegerValue:
                 return value.IntegerValue.ToString(CultureInfo.InvariantCulture);
-            case global::Qdrant.Client.Grpc.Value.KindOneofCase.BoolValue:
+            case Value.KindOneofCase.BoolValue:
                 return value.BoolValue.ToString();
-            case global::Qdrant.Client.Grpc.Value.KindOneofCase.StructValue:
+            case Value.KindOneofCase.StructValue:
                 return value.StructValue.ToString();
-            case global::Qdrant.Client.Grpc.Value.KindOneofCase.ListValue:
+            case Value.KindOneofCase.ListValue:
                 return string.Join(",", value.ListValue.Values.Select(v => v.ToString()));
             default:
                 return value.ToString();
@@ -334,11 +324,10 @@ public class QdrantSearchService : IQdrantSearchService, IDisposable
 
     private void Dispose(bool disposing)
     {
-        if (!_isDisposed && disposing)
-        {
-            _client?.Dispose();
-            _isDisposed = true;
-        }
+        if (_isDisposed || !disposing)
+            return;
+        _client.Dispose();
+        _isDisposed = true;
     }
 }
 

@@ -56,7 +56,7 @@ public class RagConfiguration
     /// <summary>
     /// Model name used for text generation
     /// </summary>
-    public string Model { get; set; } = string.Empty;
+    public string? Model { get; set; } = string.Empty;
 }
 
 /// <summary>

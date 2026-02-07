@@ -12,11 +12,10 @@ public class FileWatcherService : IFileWatcherService
 
     private readonly ILogger<FileWatcherService> _logger;
     private readonly IServiceScopeFactory _serviceScopeFactory;
-    private readonly SmartRagOptions _options;
-    private readonly Dictionary<string, System.IO.FileSystemWatcher> _watchers = new Dictionary<string, System.IO.FileSystemWatcher>();
-    private readonly Dictionary<string, WatchedFolderConfig> _configs = new Dictionary<string, WatchedFolderConfig>();
+    private readonly Dictionary<string, FileSystemWatcher> _watchers = new();
+    private readonly Dictionary<string, WatchedFolderConfig> _configs = new();
     private readonly Lazy<HashSet<string>> _supportedExtensions;
-    private static readonly Dictionary<string, string> ContentTypeMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+    private static readonly Dictionary<string, string> ContentTypeMap = new(StringComparer.OrdinalIgnoreCase)
     {
         { ".txt", "text/plain" },
         { ".md", "text/markdown" },
@@ -38,19 +37,17 @@ public class FileWatcherService : IFileWatcherService
         { ".m4a", "audio/mp4" },
         { ".db", "application/x-sqlite3" }
     };
-    private bool _disposed = false;
+    private bool _disposed;
 
     public FileWatcherService(
         ILogger<FileWatcherService> logger,
-        IServiceScopeFactory serviceScopeFactory,
-        IOptions<SmartRagOptions> options)
+        IServiceScopeFactory serviceScopeFactory)
     {
         _logger = logger;
         _serviceScopeFactory = serviceScopeFactory;
-        _options = options.Value;
 
         // Lazy-load supported file types to avoid creating scope in constructor
-        _supportedExtensions = new Lazy<HashSet<string>>(() => LoadSupportedExtensions(), System.Threading.LazyThreadSafetyMode.ExecutionAndPublication);
+        _supportedExtensions = new Lazy<HashSet<string>>(LoadSupportedExtensions, LazyThreadSafetyMode.ExecutionAndPublication);
     }
 
     /// <summary>
@@ -89,16 +86,16 @@ public class FileWatcherService : IFileWatcherService
             return Task.CompletedTask;
         }
 
-        var watcher = new System.IO.FileSystemWatcher(sanitizedPath)
+        var watcher = new FileSystemWatcher(sanitizedPath)
         {
             IncludeSubdirectories = config.IncludeSubdirectories,
-            NotifyFilter = System.IO.NotifyFilters.FileName | System.IO.NotifyFilters.LastWrite | System.IO.NotifyFilters.CreationTime,
+            NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.CreationTime,
             Filter = "*.*" // Watch all files, filtering will be done in IsFileAllowed
         };
 
-        watcher.Created += async (sender, e) => await OnFileCreatedAsync(e);
-        watcher.Changed += async (sender, e) => await OnFileChangedAsync(e);
-        watcher.Deleted += async (sender, e) => await OnFileDeletedAsync(e);
+        watcher.Created += async (_, e) => await OnFileCreatedAsync(e);
+        watcher.Changed += async (_, e) => await OnFileChangedAsync(e);
+        watcher.Deleted += async (_, e) => await OnFileDeletedAsync(e);
         watcher.Error += OnError;
 
         watcher.EnableRaisingEvents = true;
@@ -115,7 +112,7 @@ public class FileWatcherService : IFileWatcherService
 
         return Task.CompletedTask;
     }
-   
+
 
     private Task StopAllWatchingAsync()
     {
@@ -129,9 +126,9 @@ public class FileWatcherService : IFileWatcherService
         _logger.LogInformation("Stopped watching all folders");
         return Task.CompletedTask;
     }
-  
 
-    private async Task OnFileCreatedAsync(System.IO.FileSystemEventArgs e)
+
+    private async Task OnFileCreatedAsync(FileSystemEventArgs e)
     {
         try
         {
@@ -142,7 +139,7 @@ public class FileWatcherService : IFileWatcherService
                 return;
             }
 
-            if (await GetConfigForPath(e.FullPath) is WatchedFolderConfig config && config.AutoUpload)
+            if (GetConfigForPathSync(e.FullPath) is { AutoUpload: true } config)
             {
                 _logger.LogInformation("Auto-uploading file: {FilePath}", e.FullPath);
                 await UploadFileAsync(e.FullPath, config);
@@ -154,14 +151,14 @@ public class FileWatcherService : IFileWatcherService
         }
     }
 
-    private async Task OnFileChangedAsync(System.IO.FileSystemEventArgs e)
+    private async Task OnFileChangedAsync(FileSystemEventArgs e)
     {
         try
         {
             if (!IsFileAllowed(e.FullPath))
                 return;
 
-            if (await GetConfigForPath(e.FullPath) is WatchedFolderConfig config && config.AutoUpload)
+            if (GetConfigForPathSync(e.FullPath) is { AutoUpload: true } config)
             {
                 await Task.Delay(500);
                 await UploadFileAsync(e.FullPath, config);
@@ -173,7 +170,7 @@ public class FileWatcherService : IFileWatcherService
         }
     }
 
-    private async Task OnFileDeletedAsync(System.IO.FileSystemEventArgs e)
+    private async Task OnFileDeletedAsync(FileSystemEventArgs e)
     {
         try
         {
@@ -185,7 +182,7 @@ public class FileWatcherService : IFileWatcherService
         }
     }
 
-    private void OnError(object sender, System.IO.ErrorEventArgs e)
+    private void OnError(object sender, ErrorEventArgs e)
     {
         _logger.LogError(e.GetException(), "File watcher error occurred");
     }
@@ -215,21 +212,15 @@ public class FileWatcherService : IFileWatcherService
         }
 
         var config = GetConfigForPathSync(filePath);
-        if (config == null)
-        {
-            return false;
-        }
 
-        if (config.AllowedExtensions != null && config.AllowedExtensions.Count > 0)
-        {
-            var isAllowed = config.AllowedExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase);
-            return isAllowed;
-        }
+        if (config!.AllowedExtensions.Count <= 0)
+            return true;
+        var isAllowed = config.AllowedExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase);
+        return isAllowed;
 
-        return true;
     }
 
-    private WatchedFolderConfig GetConfigForPathSync(string filePath)
+    private WatchedFolderConfig? GetConfigForPathSync(string filePath)
     {
         var fullPath = Path.GetFullPath(filePath);
         var directory = Path.GetDirectoryName(fullPath);
@@ -239,7 +230,7 @@ public class FileWatcherService : IFileWatcherService
             var watchedPath = Path.GetFullPath(kvp.Key);
             if (kvp.Value.IncludeSubdirectories)
             {
-                if (directory.StartsWith(watchedPath, StringComparison.OrdinalIgnoreCase))
+                if (directory!.StartsWith(watchedPath, StringComparison.OrdinalIgnoreCase))
                     return kvp.Value;
             }
             else
@@ -252,15 +243,9 @@ public class FileWatcherService : IFileWatcherService
         return null;
     }
 
-    private async Task<WatchedFolderConfig> GetConfigForPath(string filePath)
-    {
-        return await Task.FromResult(GetConfigForPathSync(filePath));
-    }
-
     private async Task UploadFileAsync(string filePath, WatchedFolderConfig config)
     {
-        var retryCount = 0;
-        while (retryCount < MaxRetryAttempts)
+        for (var attempt = 0; attempt < MaxRetryAttempts; attempt++)
         {
             using var scope = _serviceScopeFactory.CreateScope();
             var documentService = scope.ServiceProvider.GetRequiredService<IDocumentService>();
@@ -282,27 +267,25 @@ public class FileWatcherService : IFileWatcherService
 
                 foreach (var doc in existingDocuments)
                 {
-                    object existingHash = null;
-                    var hasFileHash = doc.Metadata?.TryGetValue("FileHash", out existingHash) == true;
+                    var hasFileHash = doc.Metadata.TryGetValue("FileHash", out var existingHash);
                     var existingHashStr = existingHash?.ToString() ?? "null";
 
-                    if (hasFileHash && existingHashStr == fileHash)
-                    {
-                        _logger.LogInformation("Skipping duplicate file: {FileName} (size: {Size} bytes, hash: {Hash}) - Found duplicate with ID: {DuplicateId}",
-                            fileName, fileInfo.Length, fileHash, doc.Id);
-                        return;
-                    }
+                    if (!hasFileHash || existingHashStr != fileHash)
+                        continue;
+                    _logger.LogInformation("Skipping duplicate file: {FileName} (size: {Size} bytes, hash: {Hash}) - Found duplicate with ID: {DuplicateId}",
+                        fileName, fileInfo.Length, fileHash, doc.Id);
+                    return;
                 }
 
-                using var fileStream = File.OpenRead(filePath);
+                await using var fileStream = File.OpenRead(filePath);
                 var additionalMetadata = new Dictionary<string, object>
                 {
                     ["FileHash"] = fileHash,
                     ["FilePath"] = filePath
                 };
 
-                var languageToUse = config.Language ?? _options.DefaultLanguage;
-                var uploadRequest = new Models.RequestResponse.UploadDocumentRequest
+                var languageToUse = config.Language;
+                var uploadRequest = new UploadDocumentRequest
                 {
                     FileStream = fileStream,
                     FileName = fileName,
@@ -312,27 +295,26 @@ public class FileWatcherService : IFileWatcherService
                     FileSize = fileInfo.Length,
                     AdditionalMetadata = additionalMetadata
                 };
-                var document = await documentService.UploadDocumentAsync(uploadRequest);
+                await documentService.UploadDocumentAsync(uploadRequest);
 
                 _logger.LogInformation("Auto-uploaded file: {FilePath} (size: {Size} bytes, hash: {Hash})", filePath, fileInfo.Length, fileHash);
                 return;
             }
-            catch (SmartRAG.Exceptions.DocumentSkippedException ex)
+            catch (Exceptions.DocumentSkippedException ex)
             {
                 _logger.LogInformation("Skipping file (no content to index): {FilePath}. {Message}", filePath, ex.Message);
                 return;
             }
             catch (Exception ex)
             {
-                retryCount++;
-                if (retryCount >= MaxRetryAttempts)
+                if (attempt == MaxRetryAttempts - 1)
                 {
                     _logger.LogError(ex, "Failed to upload file after {RetryCount} attempts: {FilePath}", MaxRetryAttempts, filePath);
                     throw;
                 }
 
-                _logger.LogWarning(ex, "Error uploading file (attempt {RetryCount}/{MaxRetries}): {FilePath}", retryCount, MaxRetryAttempts, filePath);
-                await Task.Delay(RetryDelayMs * retryCount);
+                _logger.LogWarning(ex, "Error uploading file (attempt {RetryCount}/{MaxRetries}): {FilePath}", attempt + 1, MaxRetryAttempts, filePath);
+                await Task.Delay(RetryDelayMs * (attempt + 1));
             }
         }
     }
@@ -349,7 +331,7 @@ public class FileWatcherService : IFileWatcherService
 
             foreach (var doc in existingDocuments)
             {
-                if (doc.Metadata != null && doc.Metadata.TryGetValue("FileHash", out var hash) && hash != null && !string.IsNullOrEmpty(hash.ToString()))
+                if (doc.Metadata.TryGetValue("FileHash", out var hash) && hash != null && !string.IsNullOrEmpty(hash.ToString()))
                 {
                     existingHashSet.Add(hash.ToString());
                 }
@@ -408,10 +390,7 @@ public class FileWatcherService : IFileWatcherService
         if (string.IsNullOrEmpty(extension))
             return "application/octet-stream";
 
-        if (ContentTypeMap.TryGetValue(extension, out var contentType))
-            return contentType;
-
-        return "application/octet-stream";
+        return ContentTypeMap.TryGetValue(extension, out var contentType) ? contentType : "application/octet-stream";
     }
 
     private HashSet<string> LoadSupportedExtensions()
@@ -428,7 +407,7 @@ public class FileWatcherService : IFileWatcherService
         {
             cancellationToken.ThrowIfCancellationRequested();
             using var md5 = MD5.Create();
-            using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, useAsync: true);
+            await using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, useAsync: true);
             var buffer = new byte[4096];
             int bytesRead;
             while ((bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length, cancellationToken)) > 0)
@@ -437,7 +416,7 @@ public class FileWatcherService : IFileWatcherService
             }
             md5.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
             var hash = md5.Hash;
-            return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+            return BitConverter.ToString(hash!).Replace("-", "").ToLowerInvariant();
         }
         catch
         {
@@ -453,13 +432,12 @@ public class FileWatcherService : IFileWatcherService
 
     protected virtual void Dispose(bool disposing)
     {
-        if (!_disposed && disposing)
-        {
-            // Use ConfigureAwait(false) to avoid deadlock in Dispose pattern
-            // This is safe because Dispose is called synchronously and there's no SynchronizationContext
-            StopAllWatchingAsync().ConfigureAwait(false).GetAwaiter().GetResult();
-            _disposed = true;
-        }
+        if (_disposed || !disposing)
+            return;
+        // Use ConfigureAwait(false) to avoid deadlock in Dispose pattern
+        // This is safe because Dispose is called synchronously and there's no SynchronizationContext
+        StopAllWatchingAsync().ConfigureAwait(false).GetAwaiter().GetResult();
+        _disposed = true;
     }
 }
 

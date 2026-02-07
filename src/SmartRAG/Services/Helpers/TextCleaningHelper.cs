@@ -26,12 +26,7 @@ public static class TextCleaningHelper
         cleaned = RemoveExcessiveLineBreaks(cleaned);
         cleaned = cleaned.Trim();
 
-        if (!IsContentValid(cleaned))
-        {
-            return string.Empty;
-        }
-
-        return cleaned;
+        return !IsContentValid(cleaned) ? string.Empty : cleaned;
     }
 
     /// <summary>
@@ -50,7 +45,7 @@ public static class TextCleaningHelper
         // CRITICAL: Preserve line breaks to maintain list structure (e.g., numbered lists)
         // Split by newlines, clean each line individually, then rejoin
         var lines = content.Split('\n');
-        for (int i = 0; i < lines.Length; i++)
+        for (var i = 0; i < lines.Length; i++)
         {
             // Only collapse horizontal whitespace (spaces and tabs) on same line
             lines[i] = Regex.Replace(lines[i], @"[ \t]+", " ").Trim();
@@ -81,7 +76,7 @@ public static class TextCleaningHelper
             return true;
         }
 
-        var meaningfulTextRatio = content.Count(c => char.IsLetterOrDigit(c)) / (double)content.Length;
+        var meaningfulTextRatio = content.Count(char.IsLetterOrDigit) / (double)content.Length;
         return meaningfulTextRatio >= MinMeaningfulTextRatio;
     }
 
@@ -126,7 +121,7 @@ public static class TextCleaningHelper
         corrected = Regex.Replace(corrected, pattern, match =>
         {
             var number = match.Groups[1].Value;
-            var after = match.Value.Substring(3);
+            var after = match.Value[3..];
             return $"%{number}" + after;
         }, RegexOptions.IgnoreCase);
 

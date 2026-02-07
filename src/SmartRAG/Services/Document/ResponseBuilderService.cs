@@ -9,7 +9,6 @@ public class ResponseBuilderService : IResponseBuilderService
 {
     private readonly SmartRagOptions _options;
     private readonly IConfiguration _configuration;
-    private readonly ILogger<ResponseBuilderService> _logger;
     private readonly IAIService _aiService;
     private readonly IPromptBuilderService _promptBuilder;
 
@@ -18,19 +17,16 @@ public class ResponseBuilderService : IResponseBuilderService
     /// </summary>
     /// <param name="options">SmartRAG configuration options</param>
     /// <param name="configuration">Application configuration</param>
-    /// <param name="logger">Logger instance</param>
     /// <param name="aiService">AI service for merging responses</param>
     /// <param name="promptBuilder">Prompt builder service for merging responses</param>
     public ResponseBuilderService(
         IOptions<SmartRagOptions> options,
         IConfiguration configuration,
-        ILogger<ResponseBuilderService> logger,
         IAIService aiService,
         IPromptBuilderService promptBuilder)
     {
-        _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
+        _options = options.Value;
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _aiService = aiService ?? throw new ArgumentNullException(nameof(aiService));
         _promptBuilder = promptBuilder ?? throw new ArgumentNullException(nameof(promptBuilder));
     }
@@ -45,21 +41,19 @@ public class ResponseBuilderService : IResponseBuilderService
     /// <returns>RAG response</returns>
     public RagResponse CreateRagResponse(string query, string answer, List<SearchSource> sources, SearchMetadata? searchMetadata = null)
     {
-        var validatedAnswer = ValidateAnswerAgainstQuery(query, answer, sources);
-
-        if (!validatedAnswer.Contains("[NO_ANSWER_FOUND]"))
+        if (!answer.Contains("[NO_ANSWER_FOUND]"))
         {
-            if (ShouldAddMissingDataToken(validatedAnswer, query, sources))
+            if (ShouldAddMissingDataToken(answer, query, sources))
             {
-                validatedAnswer += " [NO_ANSWER_FOUND]";
+                answer += " [NO_ANSWER_FOUND]";
             }
         }
-        
-        var cleanedAnswer = StripNoAnswerFoundTokenAndMetaCommentary(validatedAnswer);
+
+        var cleanedAnswer = StripNoAnswerFoundTokenAndMetaCommentary(answer);
 
         if (string.IsNullOrWhiteSpace(cleanedAnswer) && !string.IsNullOrWhiteSpace(query))
         {
-            cleanedAnswer = SmartRAG.Helpers.RagMessages.NoDocumentContext;
+            cleanedAnswer = RagMessages.NoDocumentContext;
         }
 
         return new RagResponse
@@ -72,7 +66,7 @@ public class ResponseBuilderService : IResponseBuilderService
             SearchMetadata = searchMetadata ?? new SearchMetadata()
         };
     }
-    
+
     private bool ShouldAddMissingDataToken(string answer, string query, List<SearchSource> sources)
     {
         if (string.IsNullOrWhiteSpace(answer) || string.IsNullOrWhiteSpace(query))
@@ -83,48 +77,42 @@ public class ResponseBuilderService : IResponseBuilderService
             return true;
 
         var specificTerms = ExtractSpecificTermsFromQuery(query);
-        if (specificTerms.Count > 0)
+        if (specificTerms.Count <= 0)
+            return false;
+        var answerLower = answer.ToLowerInvariant();
+        var allSourceContent = string.Join(" ", sources
+            .Where(s => !string.IsNullOrWhiteSpace(s.RelevantContent))
+            .Select(s => s.RelevantContent));
+
+        if (string.IsNullOrWhiteSpace(allSourceContent))
         {
-            var answerLower = answer.ToLowerInvariant();
-            var allSourceContent = string.Join(" ", sources
-                .Where(s => !string.IsNullOrWhiteSpace(s.RelevantContent))
-                .Select(s => s.RelevantContent));
-
-            if (string.IsNullOrWhiteSpace(allSourceContent))
+            foreach (var term in specificTerms)
             {
-                foreach (var term in specificTerms)
+                var termLower = term.ToLowerInvariant();
+                if (answerLower.Contains(termLower) && answer.Length < 150)
                 {
-                    var termLower = term.ToLowerInvariant();
-                    if (answerLower.Contains(termLower) && answer.Length < 150)
-                    {
-                        return true;
-                    }
-                }
-            }
-            else
-            {
-                var sourceContentLower = allSourceContent.ToLowerInvariant();
-                
-                foreach (var term in specificTerms)
-                {
-                    var termLower = term.ToLowerInvariant();
-                    var termInAnswer = answerLower.Contains(termLower);
-                    var termInSources = sourceContentLower.Contains(termLower);
-
-                    if (termInAnswer && !termInSources && answer.Length < 150)
-                    {
-                        return true;
-                    }
+                    return true;
                 }
             }
         }
-        
-        return false;
-    }
+        else
+        {
+            var sourceContentLower = allSourceContent.ToLowerInvariant();
 
-    private string ValidateAnswerAgainstQuery(string query, string answer, List<SearchSource> sources)
-    {
-        return answer;
+            foreach (var term in specificTerms)
+            {
+                var termLower = term.ToLowerInvariant();
+                var termInAnswer = answerLower.Contains(termLower);
+                var termInSources = sourceContentLower.Contains(termLower);
+
+                if (termInAnswer && !termInSources && answer.Length < 150)
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -138,25 +126,24 @@ public class ResponseBuilderService : IResponseBuilderService
         if (string.IsNullOrWhiteSpace(query))
             return terms;
 
-        const int MinTermLength = 4;
-        const int MaxQuestionWordLength = 3;
+        const int minTermLength = 4;
 
         var words = query.Split(new[] { ' ', '\t', '\n', '\r', '.', ',', '?', '!', ';', ':' }, StringSplitOptions.RemoveEmptyEntries);
-        
-        for (int i = 0; i < words.Length; i++)
+
+        for (var i = 0; i < words.Length; i++)
         {
             var word = words[i].Trim();
-            
+
             if (string.IsNullOrWhiteSpace(word))
                 continue;
 
             if (i + 1 < words.Length)
             {
                 var nextWord = words[i + 1].Trim();
-                var isShortEntityPrefix = word.Length >= 1 && word.Length <= 2 && char.IsUpper(word[0]) &&
-                    nextWord.Length >= MinTermLength && char.IsUpper(nextWord[0]);
-                var isLongEntityPair = word.Length >= MinTermLength && char.IsUpper(word[0]) &&
-                    nextWord.Length >= MinTermLength && char.IsUpper(nextWord[0]);
+                var isShortEntityPrefix = word.Length is >= 1 and <= 2 && char.IsUpper(word[0]) &&
+                                          nextWord.Length >= minTermLength && char.IsUpper(nextWord[0]);
+                var isLongEntityPair = word.Length >= minTermLength && char.IsUpper(word[0]) &&
+                    nextWord.Length >= minTermLength && char.IsUpper(nextWord[0]);
 
                 if (isShortEntityPrefix || isLongEntityPair)
                 {
@@ -169,13 +156,9 @@ public class ResponseBuilderService : IResponseBuilderService
             if (word.Length < 2)
                 continue;
 
-            if (char.IsUpper(word[0]) && word.Length >= MinTermLength)
+            if (char.IsUpper(word[0]) && word.Length >= minTermLength)
             {
                 terms.Add(word);
-            }
-            else if (char.IsUpper(word[0]) && word.Length <= MaxQuestionWordLength)
-            {
-                continue;
             }
         }
 
@@ -206,28 +189,28 @@ public class ResponseBuilderService : IResponseBuilderService
             return false;
         }
 
-        if (response.Sources?.Any(s =>
-            s.SourceType?.Equals("System", StringComparison.OrdinalIgnoreCase) == true &&
-            (s.RelevantContent?.Contains("Error", StringComparison.OrdinalIgnoreCase) == true ||
-             s.FileName?.Contains("Error", StringComparison.OrdinalIgnoreCase) == true)) == true)
+        if (response.Sources.Any(s =>
+                s.SourceType.Equals("System", StringComparison.OrdinalIgnoreCase) &&
+                (s.RelevantContent.Contains("Error", StringComparison.OrdinalIgnoreCase) ||
+                 s.FileName.Contains("Error", StringComparison.OrdinalIgnoreCase))))
         {
             return false;
         }
 
-        var databaseSources = response.Sources?.Where(s => 
-            s.SourceType?.Equals("Database", StringComparison.OrdinalIgnoreCase) == true).ToList();
-        
-        if (databaseSources != null && databaseSources.Any())
+        var databaseSources = response.Sources.Where(s =>
+            s.SourceType.Equals("Database", StringComparison.OrdinalIgnoreCase)).ToList();
+
+        if (databaseSources.Any())
         {
             var totalRows = 0;
             var hasMeaningfulData = false;
-            
+
             foreach (var source in databaseSources)
             {
                 if (!string.IsNullOrWhiteSpace(source.FileName) && source.FileName.Contains("(") && source.FileName.Contains(" rows)"))
                 {
                     var startIndex = source.FileName.IndexOf('(') + 1;
-                    var endIndex = source.FileName.IndexOf(" rows)");
+                    var endIndex = source.FileName.IndexOf(" rows)", StringComparison.Ordinal);
                     if (startIndex > 0 && endIndex > startIndex)
                     {
                         var rowCountStr = source.FileName.Substring(startIndex, endIndex - startIndex).Trim();
@@ -241,18 +224,20 @@ public class ResponseBuilderService : IResponseBuilderService
                         }
                     }
                 }
-                
+
                 if (!string.IsNullOrWhiteSpace(source.RelevantContent) && source.RelevantContent.Length >= 50)
                 {
                     hasMeaningfulData = true;
                 }
             }
-            
-            if (hasMeaningfulData && totalRows > 0)
-                return true;
 
-            if (!hasMeaningfulData)
-                return false;
+            switch (hasMeaningfulData)
+            {
+                case true when totalRows > 0:
+                    return true;
+                case false:
+                    return false;
+            }
         }
 
         if (!string.IsNullOrWhiteSpace(response.Answer) && !IndicatesMissingData(response.Answer))
@@ -260,13 +245,8 @@ public class ResponseBuilderService : IResponseBuilderService
             return true;
         }
 
-        if (response.Sources != null && response.Sources.Any(source =>
-            source.DocumentId != Guid.Empty && !string.IsNullOrWhiteSpace(source.RelevantContent)))
-        {
-            return true;
-        }
-
-        return false;
+        return response.Sources.Any(source =>
+            source.DocumentId != Guid.Empty && !string.IsNullOrWhiteSpace(source.RelevantContent));
     }
 
     /// <summary>
@@ -313,57 +293,44 @@ public class ResponseBuilderService : IResponseBuilderService
 
         var answerIndicatesNotFound = notFoundPatterns.Any(pattern => answerLower.Contains(pattern));
 
-        if (!string.IsNullOrWhiteSpace(query) && sources != null && sources.Count > 0)
+        if (string.IsNullOrWhiteSpace(query) || sources is not { Count: > 0 })
+            return answerIndicatesNotFound;
+
+        var allSourceContent = string.Join(" ", sources
+            .Where(s => !string.IsNullOrWhiteSpace(s.RelevantContent))
+            .Select(s => s.RelevantContent));
+
+        if (string.IsNullOrWhiteSpace(allSourceContent) || allSourceContent.Length < 50)
+            return answerIndicatesNotFound;
+
+        var entityTerms = ExtractSpecificTermsFromQuery(query);
+        var sourceContentLower = allSourceContent.ToLowerInvariant();
+
+        if (entityTerms.Count > 0)
         {
-            var allSourceContent = string.Join(" ", sources
-                .Where(s => !string.IsNullOrWhiteSpace(s.RelevantContent))
-                .Select(s => s.RelevantContent));
-
-            if (!string.IsNullOrWhiteSpace(allSourceContent) && allSourceContent.Length >= 50)
+            var entityTermsInSources = entityTerms.Count(term =>
+                sourceContentLower.Contains(term.ToLowerInvariant()));
+            if (entityTermsInSources > 0)
             {
-                var entityTerms = ExtractSpecificTermsFromQuery(query);
-                var sourceContentLower = allSourceContent.ToLowerInvariant();
-
-                if (entityTerms.Count > 0)
-                {
-                    var entityTermsInSources = entityTerms.Count(term =>
-                        sourceContentLower.Contains(term.ToLowerInvariant()));
-                    if (entityTermsInSources > 0)
-                    {
-                        return false;
-                    }
-                }
-
-                var queryTerms = QueryTokenizer.TokenizeQuery(query);
-                var significantTerms = queryTerms.Where(term => term.Length >= 5).ToList();
-
-                if (significantTerms.Count > 0)
-                {
-                    var termsInSources = significantTerms.Count(term =>
-                        sourceContentLower.Contains(term.ToLowerInvariant()));
-                    var termsInSourcesRatio = termsInSources / (double)significantTerms.Count;
-
-                    if (termsInSourcesRatio >= 0.3)
-                    {
-                        return false;
-                    }
-                }
+                return false;
             }
         }
 
-        if (answerIndicatesNotFound)
-        {
-            return true;
-        }
+        var queryTerms = QueryTokenizer.TokenizeQuery(query);
+        var significantTerms = queryTerms.Where(term => term.Length >= 5).ToList();
 
-        return false;
+        if (significantTerms.Count <= 0)
+            return answerIndicatesNotFound;
+        var termsInSources = significantTerms.Count(term =>
+            sourceContentLower.Contains(term.ToLowerInvariant()));
+        var termsInSourcesRatio = termsInSources / (double)significantTerms.Count;
+
+        return !(termsInSourcesRatio >= 0.3) && answerIndicatesNotFound;
     }
 
-    private bool IsExplicitlyNegative(string answer)
+    private static bool IsExplicitlyNegative(string answer)
     {
-        if (string.IsNullOrWhiteSpace(answer)) return true;
-        
-        return answer.Contains("[NO_ANSWER_FOUND]");
+        return string.IsNullOrWhiteSpace(answer) || answer.Contains("[NO_ANSWER_FOUND]");
     }
 
     private static string StripNoAnswerFoundTokenAndMetaCommentary(string answer)
@@ -387,19 +354,19 @@ public class ResponseBuilderService : IResponseBuilderService
         var databaseContext = !string.IsNullOrEmpty(databaseResponse.Answer)
             ? databaseResponse.Answer
             : null;
-        
-        if (string.IsNullOrEmpty(databaseContext) && databaseResponse.Sources != null && databaseResponse.Sources.Count > 0)
+
+        if (string.IsNullOrEmpty(databaseContext) && databaseResponse.Sources.Count > 0)
         {
             var databaseSourcesContext = string.Join("\n\n", databaseResponse.Sources
                 .Where(s => !string.IsNullOrEmpty(s.RelevantContent))
                 .Select(s => $"Database: {s.FileName}\n{s.RelevantContent}"));
-            
+
             if (!string.IsNullOrEmpty(databaseSourcesContext))
             {
                 databaseContext = databaseSourcesContext;
             }
         }
-        
+
         var documentContext = !string.IsNullOrEmpty(documentResponse.Answer)
             ? documentResponse.Answer
             : null;

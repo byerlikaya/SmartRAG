@@ -23,7 +23,7 @@ public class TextNormalizationService : ITextNormalizationService
         }
 
 
-        var normalized = decoded.Normalize(System.Text.NormalizationForm.FormC);
+        var normalized = decoded.Normalize(NormalizationForm.FormC);
 
         return normalized;
     }
@@ -41,48 +41,41 @@ public class TextNormalizationService : ITextNormalizationService
         {
             if (text[i] == '\\' && i + 1 < text.Length)
             {
-                if (text[i + 1] == 'u' && i + 5 < text.Length)
+                switch (text[i + 1])
                 {
-                    var hexString = text.Substring(i + 2, 4);
-                    if (int.TryParse(hexString, System.Globalization.NumberStyles.HexNumber, null, out int codePoint))
+                    case 'u' when i + 5 < text.Length:
                     {
-                        result.Append((char)codePoint);
-                        i += 6;
-                        continue;
+                        var hexString = text.Substring(i + 2, 4);
+                        if (int.TryParse(hexString, NumberStyles.HexNumber, null, out int codePoint))
+                        {
+                            result.Append((char)codePoint);
+                            i += 6;
+                            continue;
+                        }
+
+                        break;
                     }
+                    case 'n':
+                        result.Append('\n');
+                        i += 2;
+                        continue;
+                    case 't':
+                        result.Append('\t');
+                        i += 2;
+                        continue;
+                    case 'r':
+                        result.Append('\r');
+                        i += 2;
+                        continue;
+                    case '\\':
+                        result.Append('\\');
+                        i += 2;
+                        continue;
                 }
-                else if (text[i + 1] == 'n')
-                {
-                    result.Append('\n');
-                    i += 2;
-                    continue;
-                }
-                else if (text[i + 1] == 't')
-                {
-                    result.Append('\t');
-                    i += 2;
-                    continue;
-                }
-                else if (text[i + 1] == 'r')
-                {
-                    result.Append('\r');
-                    i += 2;
-                    continue;
-                }
-                else if (text[i + 1] == '\\')
-                {
-                    result.Append('\\');
-                    i += 2;
-                    continue;
-                }
-                result.Append(text[i]);
-                i++;
             }
-            else
-            {
-                result.Append(text[i]);
-                i++;
-            }
+
+            result.Append(text[i]);
+            i++;
         }
 
         return result.ToString();
@@ -117,8 +110,8 @@ public class TextNormalizationService : ITextNormalizationService
         if (normalizedContent.ToLowerInvariant().Contains(normalizedSearchName.ToLowerInvariant()))
             return true;
 
-        var searchWords = normalizedSearchName.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-        var contentWords = normalizedContent.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+        var searchWords = normalizedSearchName.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+        var contentWords = normalizedContent.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
 
         return searchWords.All(searchWord =>
             contentWords.Any(contentWord =>

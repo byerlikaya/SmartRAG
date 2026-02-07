@@ -10,13 +10,14 @@ namespace SmartRAG.Services.Parser;
 /// </summary>
 public class WhisperAudioParserService : IAudioParserService
 {
-    private static readonly SemaphoreSlim DownloadLock = new SemaphoreSlim(1, 1);
-    private static readonly SemaphoreSlim TranscriptionLock = new SemaphoreSlim(1, 1);
+    private static readonly SemaphoreSlim DownloadLock = new(1, 1);
+    private static readonly SemaphoreSlim TranscriptionLock = new(1, 1);
+    private static readonly SemaphoreSlim FactoryInitLock = new(1, 1);
 
     private readonly ILogger<WhisperAudioParserService> _logger;
     private readonly WhisperConfig _config;
     private readonly AudioConversionService _audioConversionService;
-    private WhisperFactory _whisperFactory = null;
+    private WhisperFactory _whisperFactory;
     private bool _disposed;
     private bool _whisperUnavailable;
     private bool _whisperUnavailableLogged;
@@ -24,7 +25,7 @@ public class WhisperAudioParserService : IAudioParserService
     public WhisperAudioParserService(ILogger<WhisperAudioParserService> logger, IOptions<SmartRagOptions> options, AudioConversionService audioConversionService)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _config = options?.Value?.WhisperConfig ?? throw new ArgumentNullException(nameof(options));
+        _config = options.Value.WhisperConfig;
         _audioConversionService = audioConversionService ?? throw new ArgumentNullException(nameof(audioConversionService));
     }
 
@@ -41,11 +42,16 @@ public class WhisperAudioParserService : IAudioParserService
 
         if (_whisperUnavailable)
         {
-            if (!_whisperUnavailableLogged)
-            {
-                _whisperUnavailableLogged = true;
-                _logger.LogWarning("Whisper is unavailable; returning empty transcription for audio files. Check native libraries and model path.");
-            }
+            if (_whisperUnavailableLogged)
+                return new AudioTranscriptionResult
+                {
+                    Language = language ?? _config?.DefaultLanguage,
+                    Confidence = 0.0,
+                    Text = string.Empty,
+                    Metadata = new Dictionary<string, object> { ["TranscriptionService"] = "Whisper.net (unavailable)" }
+                };
+            _whisperUnavailableLogged = true;
+            _logger.LogWarning("Whisper is unavailable; returning empty transcription for audio files. Check native libraries and model path.");
             return new AudioTranscriptionResult
             {
                 Language = language ?? _config?.DefaultLanguage,
@@ -84,9 +90,7 @@ public class WhisperAudioParserService : IAudioParserService
     /// </summary>
     private static string ResolveModelPath(string modelPath)
     {
-        if (string.IsNullOrWhiteSpace(modelPath))
-            return modelPath;
-        if (Path.IsPathRooted(modelPath))
+        if (string.IsNullOrWhiteSpace(modelPath) || Path.IsPathRooted(modelPath))
             return modelPath;
         var baseDir = AppContext.BaseDirectory ?? ".";
         return Path.GetFullPath(Path.Combine(baseDir, modelPath));
@@ -100,42 +104,46 @@ public class WhisperAudioParserService : IAudioParserService
         if (_whisperFactory != null)
             return;
 
-        Services.Startup.WhisperNativeBootstrap.EnsureMacOsWhisperNativeLibraries();
-
-        var resolvedPath = ResolveModelPath(_config.ModelPath);
-        _logger.LogInformation("Initializing Whisper factory with model: {ModelPath}", resolvedPath);
-
-        await EnsureModelExistsAsync(resolvedPath);
-
-        var modelType = DetermineModelType(resolvedPath);
-        var fileInfo = new FileInfo(resolvedPath);
-        var minSize = GetMinimumModelSizeBytes(modelType);
-        if (fileInfo.Length < minSize)
-        {
-            var minMb = minSize / (1024.0 * 1024);
-            var actualMb = fileInfo.Length / (1024.0 * 1024);
-            throw new InvalidOperationException(
-                $"Whisper model file is too small for {modelType}. File size: {fileInfo.Length} bytes ({actualMb:F1} MB). " +
-                $"Expected at least {minSize} bytes (~{minMb:F0} MB). The file may be truncated or corrupted. " +
-                "Re-download the model or use a smaller model (e.g. ggml-base.bin or ggml-tiny.bin).");
-        }
-
-        var useGpu = _config.UseGpu;
-        var factoryOptions = new WhisperFactoryOptions { UseGpu = useGpu };
-        if (useGpu)
-        {
-            _logger.LogInformation("Whisper GPU acceleration enabled. Ensure the host app references the matching runtime (CUDA on Windows/Linux, CoreML on macOS).");
-        }
-        else
-        {
-            _logger.LogDebug("Whisper using CPU. Set WhisperConfig.UseGpu to true and add the GPU runtime package for acceleration.");
-        }
-
-        const long twoGb = 2L * 1024 * 1024 * 1024;
-        var usePathOnMac = RuntimeInformation.IsOSPlatform(OSPlatform.OSX) && fileInfo.Length >= twoGb;
-
+        await FactoryInitLock.WaitAsync();
         try
         {
+            if (_whisperFactory != null)
+                return;
+
+            Services.Startup.WhisperNativeBootstrap.EnsureMacOsWhisperNativeLibraries();
+
+            var resolvedPath = ResolveModelPath(_config.ModelPath);
+            _logger.LogInformation("Initializing Whisper factory with model: {ModelPath}", resolvedPath);
+
+            await EnsureModelExistsAsync(resolvedPath);
+
+            var modelType = DetermineModelType(resolvedPath);
+            var fileInfo = new FileInfo(resolvedPath);
+            var minSize = GetMinimumModelSizeBytes(modelType);
+            if (fileInfo.Length < minSize)
+            {
+                var minMb = minSize / (1024.0 * 1024);
+                var actualMb = fileInfo.Length / (1024.0 * 1024);
+                throw new InvalidOperationException(
+                    $"Whisper model file is too small for {modelType}. File size: {fileInfo.Length} bytes ({actualMb:F1} MB). " +
+                    $"Expected at least {minSize} bytes (~{minMb:F0} MB). The file may be truncated or corrupted. " +
+                    "Re-download the model or use a smaller model (e.g. ggml-base.bin or ggml-tiny.bin).");
+            }
+
+            var useGpu = _config.UseGpu;
+            var factoryOptions = new WhisperFactoryOptions { UseGpu = useGpu };
+            if (useGpu)
+            {
+                _logger.LogInformation("Whisper GPU acceleration enabled. Ensure the host app references the matching runtime (CUDA on Windows/Linux, CoreML on macOS).");
+            }
+            else
+            {
+                _logger.LogDebug("Whisper using CPU. Set WhisperConfig.UseGpu to true and add the GPU runtime package for acceleration.");
+            }
+
+            const long twoGb = 2L * 1024 * 1024 * 1024;
+            var usePathOnMac = RuntimeInformation.IsOSPlatform(OSPlatform.OSX) && fileInfo.Length >= twoGb;
+
             if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX) && !usePathOnMac)
             {
                 var modelBytes = await File.ReadAllBytesAsync(resolvedPath).ConfigureAwait(false);
@@ -150,10 +158,15 @@ public class WhisperAudioParserService : IAudioParserService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to load Whisper model from {ModelPath}. Ensure the file exists and Whisper native libraries (e.g. ggml) are available.", resolvedPath);
+            var path = ResolveModelPath(_config.ModelPath);
+            _logger.LogError(ex, "Failed to load Whisper model from {ModelPath}. Ensure the file exists and Whisper native libraries (e.g. ggml) are available.", path);
             throw new InvalidOperationException(
-                $"Failed to load the Whisper model at '{resolvedPath}'. Check that the file exists and that Whisper native runtime libraries are installed and loadable.",
+                $"Failed to load the Whisper model at '{path}'. Check that the file exists and that Whisper native runtime libraries are installed and loadable.",
                 ex);
+        }
+        finally
+        {
+            FactoryInitLock.Release();
         }
     }
 
@@ -207,15 +220,23 @@ public class WhisperAudioParserService : IAudioParserService
 
                 _logger.LogInformation("Downloading Whisper model: {ModelType} to {ModelPath}", modelType, resolvedPath);
 
-                using (var modelStream = await WhisperGgmlDownloader.Default.GetGgmlModelAsync(modelType).ConfigureAwait(false))
-                using (var fileWriter = File.Create(tempPath))
+                await using (var modelStream = await WhisperGgmlDownloader.Default.GetGgmlModelAsync(modelType).ConfigureAwait(false))
+                await using (var fileWriter = File.Create(tempPath))
                 {
                     await modelStream.CopyToAsync(fileWriter).ConfigureAwait(false);
                 }
 
                 if (new FileInfo(tempPath).Length < minSize)
                 {
-                    try { File.Delete(tempPath); } catch { }
+                    try
+                    {
+                        File.Delete(tempPath);
+                    }
+                    catch
+                    {
+                        // ignored
+                    }
+
                     throw new InvalidOperationException(
                         $"Downloaded Whisper model is too small (expected at least {minSize} bytes). Source may be unavailable or rate-limited.");
                 }
@@ -253,8 +274,7 @@ public class WhisperAudioParserService : IAudioParserService
         if (fileName.Contains("medium")) return GgmlType.Medium;
         if (fileName.Contains("large-v1")) return GgmlType.LargeV1;
         if (fileName.Contains("large-v2")) return GgmlType.LargeV2;
-        if (fileName.Contains("large-v3")) return GgmlType.LargeV3;
-        if (fileName.Contains("large")) return GgmlType.LargeV3;
+        if (fileName.Contains("large-v3") || fileName.Contains("large")) return GgmlType.LargeV3;
 
         return GgmlType.Base;
     }
@@ -284,11 +304,9 @@ public class WhisperAudioParserService : IAudioParserService
     /// </summary>
     private async Task<AudioTranscriptionResult> PerformTranscriptionAsync(Stream audioStream, string fileName, string language)
     {
-        var originalLanguage = language ?? _config.DefaultLanguage;
-
         var result = new AudioTranscriptionResult
         {
-            Language = originalLanguage,
+            Language = language,
             Confidence = 0.0,
             Text = string.Empty,
             Metadata = new Dictionary<string, object>
@@ -309,7 +327,7 @@ public class WhisperAudioParserService : IAudioParserService
                 ? _config.MaxThreads
                 : Math.Max(1, Environment.ProcessorCount - 1);
 
-            var languageToUse = GetLanguageForWhisper(language ?? _config.DefaultLanguage);
+            var languageToUse = GetLanguageForWhisper(language);
             _logger.LogDebug("WhisperAudioParserService: Processing with Whisper");
 
             WhisperProcessorBuilder builder;
@@ -327,7 +345,7 @@ public class WhisperAudioParserService : IAudioParserService
                     modelFileSize);
                 return new AudioTranscriptionResult
                 {
-                    Language = originalLanguage,
+                    Language = language,
                     Confidence = 0.0,
                     Text = string.Empty,
                     Metadata = new Dictionary<string, object>
@@ -352,7 +370,7 @@ public class WhisperAudioParserService : IAudioParserService
                 builderWithOptions = builderWithOptions.WithPrompt(_config.PromptHint);
             }
 
-            using var processor = builderWithOptions.Build();
+            await using var processor = builderWithOptions.Build();
             Stream waveStream = null;
             var needsConversion = AudioConversionService.RequiresConversion(fileName);
 
@@ -392,66 +410,66 @@ public class WhisperAudioParserService : IAudioParserService
                         while (await enumerator.MoveNextAsync().ConfigureAwait(false))
                         {
                             var segment = enumerator.Current;
-                            var segmentText = segment.Text?.Trim() ?? string.Empty;
+                            var segmentText = segment.Text.Trim();
 
                             if (segmentCount == 0)
                                 _logger.LogInformation("Whisper first segment received, inference progressing.");
 
                             if (segment.Probability < _config.MinConfidenceThreshold)
-                        {
-                            _logger.LogDebug("Skipping low-confidence segment (P={Probability}): '{Text}'",
-                                segment.Probability, segmentText);
-                            skippedLowConfidence++;
-                            continue;
-                        }
-
-                        if (segmentText == lastSegmentText)
-                        {
-                            duplicateCount++;
-                            if (duplicateCount > 2)
                             {
-                                _logger.LogDebug("Skipping duplicate segment (#{Count}): '{Text}'",
-                                    duplicateCount, segmentText);
-                                skippedDuplicates++;
+                                _logger.LogDebug("Skipping low-confidence segment (P={Probability}): '{Text}'",
+                                    segment.Probability, segmentText);
+                                skippedLowConfidence++;
                                 continue;
                             }
-                        }
-                        else
-                        {
-                            duplicateCount = 0;
-                            lastSegmentText = segmentText;
-                        }
 
-                        _logger.LogDebug("Whisper segment: Start={Start}, End={End}, Text='{Text}', Probability={Probability}",
-                            segment.Start, segment.End, segment.Text, segment.Probability);
+                            if (segmentText == lastSegmentText)
+                            {
+                                duplicateCount++;
+                                if (duplicateCount > 2)
+                                {
+                                    _logger.LogDebug("Skipping duplicate segment (#{Count}): '{Text}'",
+                                        duplicateCount, segmentText);
+                                    skippedDuplicates++;
+                                    continue;
+                                }
+                            }
+                            else
+                            {
+                                duplicateCount = 0;
+                                lastSegmentText = segmentText;
+                            }
 
-                        transcriptionText += segment.Text + " ";
-                        totalConfidence += segment.Probability;
-                        segmentCount++;
+                            _logger.LogDebug("Whisper segment: Start={Start}, End={End}, Text='{Text}', Probability={Probability}",
+                                segment.Start, segment.End, segment.Text, segment.Probability);
 
-                        List<AudioSegmentMetadata> typedSegments;
-                        if (result.Metadata.TryGetValue("Segments", out var segmentsMetadata))
-                        {
-                            typedSegments = segmentsMetadata as List<AudioSegmentMetadata>;
-                            if (typedSegments == null)
+                            transcriptionText += segment.Text + " ";
+                            totalConfidence += segment.Probability;
+                            segmentCount++;
+
+                            List<AudioSegmentMetadata> typedSegments;
+                            if (result.Metadata.TryGetValue("Segments", out var segmentsMetadata))
+                            {
+                                typedSegments = segmentsMetadata as List<AudioSegmentMetadata>;
+                                if (typedSegments == null)
+                                {
+                                    typedSegments = new List<AudioSegmentMetadata>();
+                                    result.Metadata["Segments"] = typedSegments;
+                                }
+                            }
+                            else
                             {
                                 typedSegments = new List<AudioSegmentMetadata>();
                                 result.Metadata["Segments"] = typedSegments;
                             }
-                        }
-                        else
-                        {
-                            typedSegments = new List<AudioSegmentMetadata>();
-                            result.Metadata["Segments"] = typedSegments;
-                        }
 
-                        typedSegments.Add(new AudioSegmentMetadata
-                        {
-                            Start = segment.Start.TotalSeconds,
-                            End = segment.End.TotalSeconds,
-                            Text = segmentText,
-                            Probability = segment.Probability
-                        });
+                            typedSegments.Add(new AudioSegmentMetadata
+                            {
+                                Start = segment.Start.TotalSeconds,
+                                End = segment.End.TotalSeconds,
+                                Text = segmentText,
+                                Probability = segment.Probability
+                            });
 
                             if (segmentCount > 0 && segmentCount % 10 == 0)
                                 _logger.LogInformation("Whisper progress: {SegmentCount} segments so far.", segmentCount);
@@ -473,13 +491,12 @@ public class WhisperAudioParserService : IAudioParserService
                 result.Text = transcriptionText.Trim();
                 result.Confidence = segmentCount > 0 ? totalConfidence / segmentCount : 0.0;
 
-                if (result.Confidence < _config.MinConfidenceThreshold)
-                {
-                    _logger.LogWarning("Transcription confidence {Confidence} below threshold {Threshold}",
-                        result.Confidence, _config.MinConfidenceThreshold);
-                    result.Text = string.Empty;
-                    result.Confidence = 0.0;
-                }
+                if (!(result.Confidence < _config.MinConfidenceThreshold))
+                    return result;
+                _logger.LogWarning("Transcription confidence {Confidence} below threshold {Threshold}",
+                    result.Confidence, _config.MinConfidenceThreshold);
+                result.Text = string.Empty;
+                result.Confidence = 0.0;
 
                 return result;
             }
@@ -487,7 +504,7 @@ public class WhisperAudioParserService : IAudioParserService
             {
                 if (needsConversion && waveStream != null && waveStream != audioStream)
                 {
-                    waveStream.Dispose();
+                    await waveStream.DisposeAsync();
                 }
             }
         }
@@ -528,17 +545,14 @@ public class WhisperAudioParserService : IAudioParserService
     /// </summary>
     private static string SanitizeFileName(string fileName)
     {
-        if (string.IsNullOrEmpty(fileName))
-            return "unknown";
-
-        return fileName.Replace("\n", "").Replace("\r", "").Replace("\t", "").Trim();
+        return string.IsNullOrEmpty(fileName) ? "unknown" : fileName.Replace("\n", "").Replace("\r", "").Replace("\t", "").Trim();
     }
 
     public void Dispose()
     {
         if (_disposed)
             return;
-        _whisperFactory?.Dispose();
+        _whisperFactory.Dispose();
         _whisperFactory = null;
 
         _disposed = true;

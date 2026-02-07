@@ -7,14 +7,13 @@ namespace SmartRAG.Services.Document;
 /// </summary>
 public class QueryPatternAnalyzerService : IQueryPatternAnalyzerService
 {
-    private static readonly Regex NumberedListPattern1 = new Regex(@"\b\d+\.\s", RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
-    private static readonly Regex NumberedListPattern2 = new Regex(@"\b\d+\)\s", RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
-    private static readonly Regex NumberedListPattern3 = new Regex(@"\b\d+-\s", RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
-    private static readonly Regex NumberedListPattern4 = new Regex(@"\b\d+\s+[A-Z]", RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
-    private static readonly Regex NumberedListPattern5 = new Regex(@"^\d+\.\s", RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
+    private static readonly Regex NumberedListPattern1 = new(@"\b\d+\.\s", RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
+    private static readonly Regex NumberedListPattern2 = new (@"\b\d+\)\s", RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
+    private static readonly Regex NumberedListPattern3 = new (@"\b\d+-\s", RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
+    private static readonly Regex NumberedListPattern4 = new (@"\b\d+\s+[A-Z]", RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
+    private static readonly Regex NumberedListPattern5 = new (@"^\d+\.\s", RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
 
-    private static readonly Regex[] NumberedListPatterns = new[]
-    {
+    private static readonly Regex[] NumberedListPatterns = {
         NumberedListPattern1,
         NumberedListPattern2,
         NumberedListPattern3,
@@ -22,21 +21,16 @@ public class QueryPatternAnalyzerService : IQueryPatternAnalyzerService
         NumberedListPattern5
     };
 
-    private static readonly Regex NumericPattern = new Regex(@"\p{Nd}+", RegexOptions.Compiled);
-    private static readonly Regex ListIndicatorPattern = new Regex(@"\d+[\.\)]\s", RegexOptions.Compiled);
-    
+    private static readonly Regex NumericPattern = new (@"\p{Nd}+", RegexOptions.Compiled);
+    private static readonly Regex ListIndicatorPattern = new (@"\d+[\.\)]\s", RegexOptions.Compiled);
+
 
     /// <summary>
     /// Detects if content contains numbered lists
     /// </summary>
     public bool DetectNumberedLists(string content)
     {
-        if (string.IsNullOrWhiteSpace(content))
-        {
-            return false;
-        }
-
-        return NumberedListPatterns.Any(pattern => pattern.IsMatch(content));
+        return !string.IsNullOrWhiteSpace(content) && NumberedListPatterns.Any(pattern => pattern.IsMatch(content));
     }
 
     /// <summary>
@@ -44,12 +38,7 @@ public class QueryPatternAnalyzerService : IQueryPatternAnalyzerService
     /// </summary>
     public int CountNumberedListItems(string content)
     {
-        if (string.IsNullOrWhiteSpace(content))
-        {
-            return 0;
-        }
-
-        return NumberedListPatterns.Sum(pattern => pattern.Matches(content).Count);
+        return string.IsNullOrWhiteSpace(content) ? 0 : NumberedListPatterns.Sum(pattern => pattern.Matches(content).Count);
     }
 
     /// <summary>
@@ -64,11 +53,6 @@ public class QueryPatternAnalyzerService : IQueryPatternAnalyzerService
         if (chunks == null)
         {
             throw new ArgumentNullException(nameof(chunks));
-        }
-
-        if (queryWords == null)
-        {
-            queryWords = new List<string>();
         }
 
         return chunks.Select(chunk =>
@@ -127,16 +111,16 @@ public class QueryPatternAnalyzerService : IQueryPatternAnalyzerService
         return false;
     }
 
-    private bool HasQuestionPunctuation(string input)
+    private static bool HasQuestionPunctuation(string input)
     {
         return input.IndexOf('?', StringComparison.Ordinal) >= 0 ||
                input.IndexOf('¿', StringComparison.Ordinal) >= 0 ||
                input.IndexOf('؟', StringComparison.Ordinal) >= 0;
     }
 
-    private bool HasNumericPattern(string input)
+    private static bool HasNumericPattern(string input)
     {
-        if (input.Any(c => char.GetUnicodeCategory(c) == System.Globalization.UnicodeCategory.DecimalDigitNumber))
+        if (input.Any(c => char.GetUnicodeCategory(c) == UnicodeCategory.DecimalDigitNumber))
         {
             return true;
         }
@@ -145,20 +129,15 @@ public class QueryPatternAnalyzerService : IQueryPatternAnalyzerService
         return numericMatches.Count >= 2;
     }
 
-    private bool HasListIndicators(string input)
+    private static bool HasListIndicators(string input)
     {
         if (ListIndicatorPattern.IsMatch(input))
         {
             return true;
         }
 
-        var questionCount = input.Count(c => c == '?' || c == '¿' || c == '؟');
-        if (questionCount >= 2)
-        {
-            return true;
-        }
-
-        return false;
+        var questionCount = input.Count(c => c is '?' or '¿' or '؟');
+        return questionCount >= 2;
     }
 }
 

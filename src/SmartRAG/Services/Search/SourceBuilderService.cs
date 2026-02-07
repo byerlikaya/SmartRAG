@@ -10,19 +10,15 @@ namespace SmartRAG.Services.Search;
 public class SourceBuilderService : ISourceBuilderService
 {
     private readonly ITextNormalizationService _textNormalizationService;
-    private readonly ILogger<SourceBuilderService> _logger;
 
     /// <summary>
     /// Initializes a new instance of the SourceBuilderService
     /// </summary>
     /// <param name="textNormalizationService">Service for text normalization operations</param>
-    /// <param name="logger">Logger instance for this service</param>
     public SourceBuilderService(
-        ITextNormalizationService textNormalizationService,
-        ILogger<SourceBuilderService> logger)
+        ITextNormalizationService textNormalizationService)
     {
         _textNormalizationService = textNormalizationService;
-        _logger = logger;
     }
 
     /// <summary>
@@ -89,29 +85,16 @@ public class SourceBuilderService : ISourceBuilderService
             return "Audio";
         }
 
-        var extension = Path.GetExtension(document.FileName)?.ToLowerInvariant();
-        if (!string.IsNullOrWhiteSpace(extension))
-        {
-            switch (extension)
-            {
-                case ".wav":
-                case ".mp3":
-                case ".m4a":
-                case ".flac":
-                case ".ogg":
-                    return "Audio";
-                case ".jpg":
-                case ".jpeg":
-                case ".png":
-                case ".gif":
-                case ".bmp":
-                case ".tiff":
-                case ".webp":
-                    return "Image";
-            }
-        }
+        var extension = Path.GetExtension(document.FileName).ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(extension))
+            return "Document";
 
-        return "Document";
+        return extension switch
+        {
+            ".wav" or ".mp3" or ".m4a" or ".flac" or ".ogg" => "Audio",
+            ".jpg" or ".jpeg" or ".png" or ".gif" or ".bmp" or ".tiff" or ".webp" => "Image",
+            _ => "Document"
+        };
     }
 
     private (double? Start, double? End) CalculateAudioTimestampRange(DocumentEntity? document, DocumentChunk chunk)
@@ -167,41 +150,31 @@ public class SourceBuilderService : ISourceBuilderService
 
     private static List<AudioSegmentMetadata> ExtractAudioSegments(DocumentEntity? document)
     {
-        if (document?.Metadata == null)
+        if (document?.Metadata == null || !document.Metadata.TryGetValue("Segments", out var segmentsObj))
         {
             return new List<AudioSegmentMetadata>();
         }
 
-        if (!document.Metadata.TryGetValue("Segments", out var segmentsObj))
+        switch (segmentsObj)
         {
-            return new List<AudioSegmentMetadata>();
-        }
-
-        if (segmentsObj is List<AudioSegmentMetadata> typedList)
-        {
-            return typedList;
-        }
-
-        if (segmentsObj is AudioSegmentMetadata[] typedArray)
-        {
-            return new List<AudioSegmentMetadata>(typedArray);
-        }
-
-        if (segmentsObj is JsonElement jsonElement && jsonElement.ValueKind == JsonValueKind.Array)
-        {
-            try
-            {
-                var json = jsonElement.GetRawText();
-                var deserialized = JsonSerializer.Deserialize<List<AudioSegmentMetadata>>(json);
-                return deserialized ?? new List<AudioSegmentMetadata>();
-            }
-            catch
-            {
+            case List<AudioSegmentMetadata> typedList:
+                return typedList;
+            case AudioSegmentMetadata[] typedArray:
+                return new List<AudioSegmentMetadata>(typedArray);
+            case JsonElement { ValueKind: JsonValueKind.Array } jsonElement:
+                try
+                {
+                    var json = jsonElement.GetRawText();
+                    var deserialized = JsonSerializer.Deserialize<List<AudioSegmentMetadata>>(json);
+                    return deserialized ?? new List<AudioSegmentMetadata>();
+                }
+                catch
+                {
+                    return new List<AudioSegmentMetadata>();
+                }
+            default:
                 return new List<AudioSegmentMetadata>();
-            }
         }
-
-        return new List<AudioSegmentMetadata>();
     }
 
     private static string BuildDocumentLocationDescription(DocumentChunk chunk, DocumentEntity? document, double? startTimeSeconds, double? endTimeSeconds)
@@ -236,12 +209,7 @@ public class SourceBuilderService : ISourceBuilderService
             return $"{FormatSeconds(startSeconds.Value)} - {FormatSeconds(endSeconds.Value)}";
         }
 
-        if (startSeconds.HasValue)
-        {
-            return $"{FormatSeconds(startSeconds.Value)} →";
-        }
-
-        return $"← {FormatSeconds(endSeconds!.Value)}";
+        return startSeconds.HasValue ? $"{FormatSeconds(startSeconds.Value)} →" : $"← {FormatSeconds(endSeconds!.Value)}";
     }
 
     private static string FormatSeconds(double seconds)
@@ -253,12 +221,7 @@ public class SourceBuilderService : ISourceBuilderService
 
         var timeSpan = TimeSpan.FromSeconds(seconds);
 
-        if (timeSpan.TotalHours >= 1)
-        {
-            return string.Format(CultureInfo.InvariantCulture, "{0:D2}:{1:D2}:{2:D2}", (int)timeSpan.TotalHours, timeSpan.Minutes, timeSpan.Seconds);
-        }
-
-        return string.Format(CultureInfo.InvariantCulture, "{0:D2}:{1:D2}", timeSpan.Minutes, timeSpan.Seconds);
+        return timeSpan.TotalHours >= 1 ? string.Format(CultureInfo.InvariantCulture, "{0:D2}:{1:D2}:{2:D2}", (int)timeSpan.TotalHours, timeSpan.Minutes, timeSpan.Seconds) : string.Format(CultureInfo.InvariantCulture, "{0:D2}:{1:D2}", timeSpan.Minutes, timeSpan.Seconds);
     }
 }
 

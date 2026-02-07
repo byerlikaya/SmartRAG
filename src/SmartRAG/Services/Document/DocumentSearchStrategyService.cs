@@ -40,8 +40,8 @@ public class DocumentSearchStrategyService : IDocumentSearchStrategyService
         _documentRepository = documentRepository ?? throw new ArgumentNullException(nameof(documentRepository));
         _documentService = documentService ?? throw new ArgumentNullException(nameof(documentService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        
-        var smartRagOptions = options?.Value ?? throw new ArgumentNullException(nameof(options));
+
+        var smartRagOptions = options.Value;
         _defaultSearchOptions = SearchOptions.FromConfig(smartRagOptions);
     }
 
@@ -57,7 +57,7 @@ public class DocumentSearchStrategyService : IDocumentSearchStrategyService
     public async Task<List<DocumentChunk>> SearchDocumentsAsync(string query, int maxResults, SearchOptions? options = null, List<string>? queryTokens = null, CancellationToken cancellationToken = default)
     {
         var searchOptions = options ?? _defaultSearchOptions;
-        
+
         var requiresNumericContext = RequiresNumericContext(query);
         var potentialNames = QueryTokenizer.ExtractPotentialNames(query);
         var hasNameQuery = potentialNames.Count >= 2;
@@ -87,21 +87,21 @@ public class DocumentSearchStrategyService : IDocumentSearchStrategyService
                 {
                     var score = chunk.RelevanceScore ?? 0.0;
                     // If score is <= 1.0, it's likely Qdrant (0-1 scale), normalize to 0-100
-                    if (score <= 1.0 && score > 0)
+                    if (score is <= 1.0 and > 0)
                     {
                         chunk.RelevanceScore = score * 100.0;
                     }
                     return chunk;
                 }).ToList();
-                
+
                 // Determine search type based on top score (vector vs text search)
                 var topScore = normalizedResults.FirstOrDefault()?.RelevanceScore ?? 0.0;
                 var isTextSearch = topScore > 300.0; // Text search uses 300+ scale
-                
+
                 // Filter chunks by document type first
                 var typeFilteredResults = normalizedResults.Where(chunk =>
                 {
-                    var documentType = chunk.DocumentType ?? "Document";
+                    var documentType = chunk.DocumentType;
                     if (documentType.Equals("Schema", StringComparison.OrdinalIgnoreCase))
                         return searchOptions.EnableDatabaseSearch;
                     if (documentType.Equals("Audio", StringComparison.OrdinalIgnoreCase))
@@ -110,12 +110,12 @@ public class DocumentSearchStrategyService : IDocumentSearchStrategyService
                         return searchOptions.EnableImageSearch;
                     return searchOptions.EnableDocumentSearch;
                 }).ToList();
-                
+
                 if (typeFilteredResults.Count == 0)
                 {
                     return new List<DocumentChunk>();
                 }
-                
+
                 var minRelevanceThreshold = isTextSearch ? MinTextSearchRelevanceThreshold : PreferredVectorSearchThreshold;
 
                 var filteredResults = typeFilteredResults.Where(chunk =>
@@ -135,7 +135,7 @@ public class DocumentSearchStrategyService : IDocumentSearchStrategyService
                     }).ToList();
                 }
 
-                if (filteredResults.Count > 0 && filteredResults.Count < MinChunksForSufficientResults &&
+                if (filteredResults.Count is > 0 and < MinChunksForSufficientResults &&
                     typeFilteredResults.Count >= 10 && !isTextSearch)
                 {
                     var fallbackFiltered = typeFilteredResults.Where(chunk =>
@@ -165,93 +165,89 @@ public class DocumentSearchStrategyService : IDocumentSearchStrategyService
                     .Take(maxResults)
                     .ToList();
 
-                var highestScore = finalResults.FirstOrDefault()?.RelevanceScore ?? 0.0;
-                
+                List<DocumentChunk> keywordResults;
+                List<DocumentChunk> combinedResults;
                 if (finalResults.Count > 0)
                 {
-                    var topChunkContent = finalResults.FirstOrDefault()?.Content?.ToLowerInvariant() ?? string.Empty;
+                    var topChunkContent = finalResults.FirstOrDefault()?.Content.ToLowerInvariant() ?? string.Empty;
                     var significantQueryWords = queryWordsLower.Where(w => w.Length >= 4).ToList();
-                    
+
                     var shouldTriggerKeywordFallback = false;
-                    var reason = string.Empty;
-                    
+
                     if (criticalPhrases.Count > 0)
                     {
                         var criticalPhrasesInTopChunk = criticalPhrases.Count(phrase => topChunkContent.Contains(phrase));
                         var criticalPhraseMatchRatio = (double)criticalPhrasesInTopChunk / criticalPhrases.Count;
-                        
+
                         if (criticalPhraseMatchRatio < 0.5)
                         {
                             shouldTriggerKeywordFallback = true;
-                            reason = $"only {criticalPhrasesInTopChunk}/{criticalPhrases.Count} critical phrases";
+                            _ = $"only {criticalPhrasesInTopChunk}/{criticalPhrases.Count} critical phrases";
                         }
                     }
                     else if (significantQueryWords.Count > 0)
                     {
                         var significantWordsInTopChunk = significantQueryWords.Count(word => topChunkContent.Contains(word));
                         var significantWordMatchRatio = (double)significantWordsInTopChunk / significantQueryWords.Count;
-                        
+
                         if (significantWordMatchRatio < 0.5)
                         {
                             shouldTriggerKeywordFallback = true;
-                            reason = $"only {significantWordsInTopChunk}/{significantQueryWords.Count} significant query words ({significantWordMatchRatio:P0})";
+                            _ = $"only {significantWordsInTopChunk}/{significantQueryWords.Count} significant query words ({significantWordMatchRatio:P0})";
                         }
                     }
                     else
                     {
                         var hasQueryWordsInTopChunk = queryWordsLower.Any(word => topChunkContent.Contains(word));
-                        
+
                         if (!hasQueryWordsInTopChunk)
                         {
                             shouldTriggerKeywordFallback = true;
-                            reason = "no query words";
                         }
                     }
-                    
+
                     if (shouldTriggerKeywordFallback)
                     {
-                        var keywordResults = await PerformKeywordFallbackAsync(query, maxResults, searchOptions, queryTokens, cancellationToken);
+                        keywordResults = await PerformKeywordFallbackAsync(query, maxResults, searchOptions, queryTokens, cancellationToken);
                         if (keywordResults.Count > 0)
                         {
-                            var combinedResults = CombineSearchResultsWithRRF(finalResults, keywordResults, maxResults);
+                            combinedResults = CombineSearchResultsWithRRF(finalResults, keywordResults, maxResults);
                             return combinedResults;
                         }
                     }
                 }
-                
+
                 if (hasNameQuery && finalResults.Count > 0)
                 {
-                    var keywordResults = await PerformKeywordFallbackAsync(query, maxResults, searchOptions, queryTokens, cancellationToken);
+                    keywordResults = await PerformKeywordFallbackAsync(query, maxResults, searchOptions, queryTokens, cancellationToken);
                     if (keywordResults.Count > 0)
                     {
-                        var combinedResults = CombineSearchResultsWithRRF(finalResults, keywordResults, maxResults);
-                        return combinedResults;
-                    }
-                }
-                
-                var significantWordCount = queryWordsLower.Count(w => w.Length >= 4);
-                var runKeywordFallback = requiresNumericContext || significantWordCount >= 3;
-                if (runKeywordFallback && finalResults.Count >= 0)
-                {
-                    var keywordResults = await PerformKeywordFallbackAsync(query, maxResults, searchOptions, queryTokens, cancellationToken);
-                    if (keywordResults.Count > 0)
-                    {
-                        var combinedResults = CombineSearchResultsWithRRF(finalResults, keywordResults, maxResults);
-                        return combinedResults;
-                    }
-                }
-                
-                if (isVagueQuery && finalResults.Count > 0)
-                {
-                    var keywordResults = await PerformKeywordFallbackAsync(query, maxResults, searchOptions, queryTokens, cancellationToken);
-                    if (keywordResults.Count > 0)
-                    {
-                        var combinedResults = CombineSearchResultsWithRRF(finalResults, keywordResults, maxResults);
+                        combinedResults = CombineSearchResultsWithRRF(finalResults, keywordResults, maxResults);
                         return combinedResults;
                     }
                 }
 
-                return finalResults;
+                var significantWordCount = queryWordsLower.Count(w => w.Length >= 4);
+                var runKeywordFallback = requiresNumericContext || significantWordCount >= 3;
+                if (runKeywordFallback && finalResults.Count >= 0)
+                {
+                    keywordResults = await PerformKeywordFallbackAsync(query, maxResults, searchOptions, queryTokens, cancellationToken);
+                    if (keywordResults.Count > 0)
+                    {
+                        combinedResults = CombineSearchResultsWithRRF(finalResults, keywordResults, maxResults);
+                        return combinedResults;
+                    }
+                }
+
+                if (!isVagueQuery || finalResults.Count <= 0)
+                    return finalResults;
+
+                keywordResults = await PerformKeywordFallbackAsync(query, maxResults, searchOptions, queryTokens, cancellationToken);
+                if (keywordResults.Count <= 0)
+                    return finalResults;
+                combinedResults = CombineSearchResultsWithRRF(finalResults, keywordResults, maxResults);
+                return combinedResults;
+
             }
         }
         catch (Exception ex)
@@ -269,12 +265,10 @@ public class DocumentSearchStrategyService : IDocumentSearchStrategyService
 
         var entityRelevantDocuments = allDocuments.Where(d =>
         {
-            var fileNameLower = (d.FileName ?? string.Empty).ToLowerInvariant();
+            var fileNameLower = d.FileName.ToLowerInvariant();
             if (criticalPhrases.Count > 0 && criticalPhrases.Any(p => fileNameLower.Contains(p)))
                 return true;
-            if (!string.IsNullOrEmpty(fullNameLower) && fileNameLower.Contains(fullNameLower))
-                return true;
-            return false;
+            return !string.IsNullOrEmpty(fullNameLower) && fileNameLower.Contains(fullNameLower);
         }).ToList();
 
         var documentsToLoad = entityRelevantDocuments.Count > 0
@@ -286,30 +280,29 @@ public class DocumentSearchStrategyService : IDocumentSearchStrategyService
         {
             cancellationToken.ThrowIfCancellationRequested();
             var fullDocument = await _documentService.GetDocumentAsync(document.Id, cancellationToken);
-            if (fullDocument != null && fullDocument.Chunks != null)
+            if (fullDocument is { Chunks: not null })
             {
                 chunksWithContent.AddRange(fullDocument.Chunks);
             }
         }
-        var allChunks = chunksWithContent;
 
         var potentialNamesLower = potentialNames.Select(n => n.ToLowerInvariant()).ToList();
         var fileNamePhrases = GetTwoWordPhrasesFromQuery(queryWordsLower, phraseWords);
 
-        const int MinPrefixLengthForFileName = 4;
-        var matchingChunks = allChunks.Where(chunk =>
+        const int minPrefixLengthForFileName = 4;
+        var matchingChunks = chunksWithContent.Where(chunk =>
         {
-            var searchableText = string.Concat(chunk.Content ?? string.Empty, " ", chunk.FileName ?? string.Empty).ToLowerInvariant();
-            var fileNameLower = (chunk.FileName ?? string.Empty).ToLowerInvariant();
+            var searchableText = string.Concat(chunk.Content, " ", chunk.FileName).ToLowerInvariant();
+            var fileNameLower = chunk.FileName.ToLowerInvariant();
 
             var hasFileNamePhraseMatch = fileNamePhrases.Count > 0 && fileNamePhrases.Any(p => fileNameLower.Contains(p));
             if (hasFileNamePhraseMatch)
                 return true;
 
             var hasFileNamePrefixMatch = queryWordsLower.Any(word =>
-                word.Length >= MinPrefixLengthForFileName &&
+                word.Length >= minPrefixLengthForFileName &&
                 (fileNameLower.Contains(word) ||
-                 Enumerable.Range(MinPrefixLengthForFileName, Math.Max(0, word.Length - MinPrefixLengthForFileName))
+                 Enumerable.Range(minPrefixLengthForFileName, Math.Max(0, word.Length - minPrefixLengthForFileName))
                      .Any(len => fileNameLower.Contains(word.Substring(0, len)))));
             if (hasFileNamePrefixMatch)
                 return true;
@@ -320,14 +313,8 @@ public class DocumentSearchStrategyService : IDocumentSearchStrategyService
                 if (string.IsNullOrEmpty(normalized))
                     return false;
                 var searchableNormalized = searchableText.NormalizeForOcrTolerantMatch();
-                if (searchableNormalized.IndexOf(normalized, StringComparison.Ordinal) >= 0)
-                    return true;
-                foreach (var variant in normalized.GetSearchTermVariants(4))
-                {
-                    if (searchableNormalized.IndexOf(variant, StringComparison.Ordinal) >= 0)
-                        return true;
-                }
-                return false;
+                return searchableNormalized.IndexOf(normalized, StringComparison.Ordinal) >= 0 ||
+                       normalized.GetSearchTermVariants().Any(variant => searchableNormalized.IndexOf(variant, StringComparison.Ordinal) >= 0);
             });
 
             if (potentialNamesLower.Count >= 2)
@@ -345,12 +332,10 @@ public class DocumentSearchStrategyService : IDocumentSearchStrategyService
             if (criticalPhrases.Count > 0 && criticalPhrases.Any(p => searchableText.Contains(p)))
                 return true;
 
-            if (requiresNumericContext)
-            {
-                var hasNumericValue = searchableText.Any(char.IsDigit);
-                return matchCount >= 1 && hasNumericValue;
-            }
-            return matchCount >= Math.Max(1, queryWordsLower.Count / 4);
+            if (!requiresNumericContext)
+                return matchCount >= Math.Max(1, queryWordsLower.Count / 4);
+            var hasNumericValue = searchableText.Any(char.IsDigit);
+            return matchCount >= 1 && hasNumericValue;
         }).ToList();
 
         if (matchingChunks.Count == 0)
@@ -370,12 +355,7 @@ public class DocumentSearchStrategyService : IDocumentSearchStrategyService
                     return false;
                 if (searchableNormalized.IndexOf(normalized, StringComparison.Ordinal) >= 0)
                     return true;
-                foreach (var variant in normalized.GetSearchTermVariants(4))
-                {
-                    if (searchableNormalized.IndexOf(variant, StringComparison.Ordinal) >= 0)
-                        return true;
-                }
-                return false;
+                return normalized.GetSearchTermVariants().Any(variant => searchableNormalized.IndexOf(variant, StringComparison.Ordinal) >= 0);
             });
             var score = matchCount * 10.0;
 
@@ -383,9 +363,9 @@ public class DocumentSearchStrategyService : IDocumentSearchStrategyService
                 score += 60.0;
 
             var hasFileNamePrefixMatch = queryWordsLower.Any(word =>
-                word.Length >= MinPrefixLengthForFileName &&
+                word.Length >= minPrefixLengthForFileName &&
                 (fileNameLower.Contains(word) ||
-                 Enumerable.Range(MinPrefixLengthForFileName, Math.Max(0, word.Length - MinPrefixLengthForFileName))
+                 Enumerable.Range(minPrefixLengthForFileName, Math.Max(0, word.Length - minPrefixLengthForFileName))
                      .Any(len => fileNameLower.Contains(word.Substring(0, len)))));
             if (hasFileNamePrefixMatch)
                 score += 55.0;
@@ -402,7 +382,7 @@ public class DocumentSearchStrategyService : IDocumentSearchStrategyService
                     score += 25.0;
                 }
             }
-            
+
             if (matchCount == queryWordsLower.Count)
             {
                 score += 20.0;
@@ -453,27 +433,27 @@ public class DocumentSearchStrategyService : IDocumentSearchStrategyService
         {
             cancellationToken.ThrowIfCancellationRequested();
             var fullDocument = await _documentService.GetDocumentAsync(document.Id, cancellationToken);
-            if (fullDocument != null && fullDocument.Chunks != null)
+            if (fullDocument.Chunks != null)
                 chunksWithContent.AddRange(fullDocument.Chunks);
         }
 
-        const int MinPrefixLen = 4;
+        const int minPrefixLen = 4;
         var matchingChunks = chunksWithContent.Where(chunk =>
         {
-            var searchableText = string.Concat(chunk.Content ?? string.Empty, " ", chunk.FileName ?? string.Empty).NormalizeForOcrTolerantMatch();
+            var searchableText = string.Concat(chunk.Content, " ", chunk.FileName).NormalizeForOcrTolerantMatch();
             if (string.IsNullOrWhiteSpace(searchableText.Trim()))
                 return false;
 
-            var fileNameNormalized = (chunk.FileName ?? string.Empty).NormalizeForOcrTolerantMatch();
+            var fileNameNormalized = chunk.FileName.NormalizeForOcrTolerantMatch();
             var hasFileNamePhraseMatch = fileNamePhrases.Count > 0 && fileNamePhrases.Any(p => fileNameNormalized.IndexOf(p, StringComparison.Ordinal) >= 0);
             if (hasFileNamePhraseMatch)
                 return true;
 
             var hasFileNamePrefixMatch = queryWordsNormalized.Any(word =>
-                word.Length >= MinPrefixLen &&
+                word.Length >= minPrefixLen &&
                 (fileNameNormalized.IndexOf(word, StringComparison.Ordinal) >= 0 ||
-                 Enumerable.Range(MinPrefixLen, Math.Max(0, word.Length - MinPrefixLen))
-                     .Any(len => fileNameNormalized.IndexOf(word.Substring(0, len), StringComparison.Ordinal) >= 0)));
+                 Enumerable.Range(minPrefixLen, Math.Max(0, word.Length - minPrefixLen))
+                     .Any(len => fileNameNormalized.IndexOf(word[..len], StringComparison.Ordinal) >= 0)));
             if (hasFileNamePrefixMatch)
                 return true;
 
@@ -483,16 +463,10 @@ public class DocumentSearchStrategyService : IDocumentSearchStrategyService
 
             var matchCount = queryWordsNormalized.Count(word =>
             {
-                if (searchableText.IndexOf(word, StringComparison.Ordinal) >= 0)
-                    return true;
-                foreach (var variant in word.GetSearchTermVariants(4))
-                {
-                    if (searchableText.IndexOf(variant, StringComparison.Ordinal) >= 0)
-                        return true;
-                }
-                return false;
+                return searchableText.IndexOf(word, StringComparison.Ordinal) >= 0 ||
+                       word.GetSearchTermVariants(4).Any(variant => searchableText.IndexOf(variant, StringComparison.Ordinal) >= 0);
             });
-            
+
             var significantWords = queryWordsNormalized.Where(w => w.Length >= 4).ToList();
             if (significantWords.Count > 0)
             {
@@ -502,25 +476,23 @@ public class DocumentSearchStrategyService : IDocumentSearchStrategyService
                     matchCount = Math.Max(matchCount, significantMatchCount * 2);
                 }
             }
-            
+
             if (potentialNamesNormalized.Count >= 2)
             {
                 var fullNameNormalized = string.Join(" ", potentialNamesNormalized);
                 var hasFullName = searchableText.IndexOf(fullNameNormalized, StringComparison.Ordinal) >= 0;
                 var hasPartialName = potentialNamesNormalized.Any(name => searchableText.IndexOf(name, StringComparison.Ordinal) >= 0);
-                
+
                 if (hasFullName || hasPartialName)
                 {
                     matchCount += potentialNamesNormalized.Count;
                 }
             }
-            
-            if (requiresNumericContext)
-            {
-                var hasNumericValue = searchableText.Any(char.IsDigit);
-                return matchCount >= Math.Max(1, queryWordsNormalized.Count / 4) && hasNumericValue;
-            }
-            return matchCount >= Math.Max(1, queryWordsNormalized.Count / 4);
+
+            if (!requiresNumericContext)
+                return matchCount >= Math.Max(1, queryWordsNormalized.Count / 4);
+            var hasNumericValue = searchableText.Any(char.IsDigit);
+            return matchCount >= Math.Max(1, queryWordsNormalized.Count / 4) && hasNumericValue;
         }).ToList();
 
         if (matchingChunks.Count == 0)
@@ -528,8 +500,8 @@ public class DocumentSearchStrategyService : IDocumentSearchStrategyService
 
         var scoredChunks = matchingChunks.Select(chunk =>
         {
-            var searchableText = string.Concat(chunk.Content ?? string.Empty, " ", chunk.FileName ?? string.Empty).NormalizeForOcrTolerantMatch();
-            var fileNameNormalized = (chunk.FileName ?? string.Empty).NormalizeForOcrTolerantMatch();
+            var searchableText = string.Concat(chunk.Content, " ", chunk.FileName).NormalizeForOcrTolerantMatch();
+            var fileNameNormalized = (chunk.FileName).NormalizeForOcrTolerantMatch();
             var score = 0.0;
 
             if (fileNamePhrases.Count > 0 && fileNamePhrases.Any(p => fileNameNormalized.IndexOf(p, StringComparison.Ordinal) >= 0))
@@ -541,23 +513,17 @@ public class DocumentSearchStrategyService : IDocumentSearchStrategyService
 
             var matchCount = queryWordsNormalized.Count(word =>
             {
-                if (searchableText.IndexOf(word, StringComparison.Ordinal) >= 0)
-                    return true;
-                foreach (var variant in word.GetSearchTermVariants(4))
-                {
-                    if (searchableText.IndexOf(variant, StringComparison.Ordinal) >= 0)
-                        return true;
-                }
-                return false;
+                return searchableText.IndexOf(word, StringComparison.Ordinal) >= 0 ||
+                       word.GetSearchTermVariants(4).Any(variant => searchableText.IndexOf(variant, StringComparison.Ordinal) >= 0);
             });
 
             var significantWords = queryWordsNormalized.Where(w => w.Length >= 4).ToList();
-            var significantMatchCount = significantWords.Count > 0 
+            var significantMatchCount = significantWords.Count > 0
                 ? significantWords.Count(word => searchableText.IndexOf(word, StringComparison.Ordinal) >= 0)
                 : 0;
-            
+
             var totalMatchCount = Math.Max(matchCount, significantMatchCount * 2);
-            
+
             // Give base boost to chunks with strong keyword matches (3+ words matched)
             // This ensures keyword fallback chunks compete well with vector search results
             // Only applies to high-quality matches to avoid false positives
@@ -565,14 +531,14 @@ public class DocumentSearchStrategyService : IDocumentSearchStrategyService
             {
                 score += 50.0;
             }
-            
+
             score += totalMatchCount * 10.0;
-            
+
             if (totalMatchCount == queryWordsNormalized.Count)
             {
                 score += 20.0;
             }
-            
+
             if (significantMatchCount == significantWords.Count && significantWords.Count > 0)
             {
                 score += 30.0;
@@ -604,12 +570,12 @@ public class DocumentSearchStrategyService : IDocumentSearchStrategyService
                     score += 10.0;
                 }
             }
-            
+
             if (chunk.ChunkIndex == 0)
             {
                 score += 10.0;
             }
-            
+
             chunk.RelevanceScore = score;
             return chunk;
         }).ToList();
@@ -629,42 +595,37 @@ public class DocumentSearchStrategyService : IDocumentSearchStrategyService
         if (query.Contains('%'))
             return true;
 
-        if (System.Text.RegularExpressions.Regex.IsMatch(query, @"\d+\s*%|\d+\s+[a-z]{2,}"))
+        if (Regex.IsMatch(query, @"\d+\s*%|\d+\s+[a-z]{2,}"))
         {
             var words = query.ToLowerInvariant().Split(new[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
             foreach (var word in words)
             {
-                if (word.Length >= 4 && word.Length <= 12 && 
-                    word.Any(char.IsLetter) && 
-                    (word.Any(char.IsDigit) || System.Text.RegularExpressions.Regex.IsMatch(word, @"^[a-z]{4,}$")))
-                {
-                    if (ContainsQuestionIndicators(query))
-                        return true;
-                }
+                if (word.Length is < 4 or > 12 ||
+                    !word.Any(char.IsLetter) ||
+                    (!word.Any(char.IsDigit) &&
+                     !Regex.IsMatch(word, @"^[a-z]{4,}$"))) continue;
+                if (ContainsQuestionIndicators(query))
+                    return true;
             }
         }
 
-        if (ContainsQuestionIndicators(query))
-        {
-            var hasNumericContext = 
-                query.Any(char.IsDigit) ||
-                query.Contains('.') || query.Contains(',') ||
-                query.Contains('+') || query.Contains('-') || query.Contains('×') || query.Contains('*') ||
-                query.Contains('>') || query.Contains('<') || query.Contains('=');
+        if (!ContainsQuestionIndicators(query))
+            return false;
+        var hasNumericContext =
+            query.Any(char.IsDigit) ||
+            query.Contains('.') || query.Contains(',') ||
+            query.Contains('+') || query.Contains('-') || query.Contains('×') || query.Contains('*') ||
+            query.Contains('>') || query.Contains('<') || query.Contains('=');
 
-            if (hasNumericContext)
-                return true;
+        if (hasNumericContext)
+            return true;
 
 
-            var hasNumericQuestionPattern = System.Text.RegularExpressions.Regex.IsMatch(query.ToLowerInvariant(),
-                @"\b\p{L}{2,5}\s+\p{L}{3,}\b",
-                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        var hasNumericQuestionPattern = Regex.IsMatch(query.ToLowerInvariant(),
+            @"\b\p{L}{2,5}\s+\p{L}{3,}\b",
+            RegexOptions.IgnoreCase);
 
-            if (hasNumericQuestionPattern && QueryTokenizer.ContainsNumericIndicators(query))
-                return true;
-        }
-
-        return false;
+        return hasNumericQuestionPattern && QueryTokenizer.ContainsNumericIndicators(query);
     }
 
     private static bool ContainsQuestionIndicators(string query)
@@ -676,23 +637,13 @@ public class DocumentSearchStrategyService : IDocumentSearchStrategyService
             return true;
 
         var trimmedQuery = query.TrimStart();
-        if (trimmedQuery.Length > 0)
-        {
-            var firstWord = trimmedQuery.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
-            if (!string.IsNullOrEmpty(firstWord))
-            {
-                var firstWordLower = firstWord.ToLowerInvariant();
-                if (firstWordLower.Length >= 2 && firstWordLower.Length <= 5)
-                {
-                    if (firstWordLower.All(char.IsLetter))
-                    {
-                        return true;
-                    }
-                }
-            }
-        }
-
-        return false;
+        if (trimmedQuery.Length <= 0)
+            return false;
+        var firstWord = trimmedQuery.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+        if (string.IsNullOrEmpty(firstWord))
+            return false;
+        var firstWordLower = firstWord.ToLowerInvariant();
+        return firstWordLower.Length is >= 2 and <= 5 && firstWordLower.All(char.IsLetter);
     }
 
     private static List<string> ExtractCriticalPhrases(string queryLower, List<string> queryWordsLower, List<string> phraseWords)
@@ -703,7 +654,7 @@ public class DocumentSearchStrategyService : IDocumentSearchStrategyService
         if (wordsForPhrases.Count < 2)
             return criticalPhrases;
 
-        for (int i = 0; i < wordsForPhrases.Count - 1; i++)
+        for (var i = 0; i < wordsForPhrases.Count - 1; i++)
         {
             var word1 = wordsForPhrases[i];
             var word2 = wordsForPhrases[i + 1];
@@ -719,11 +670,10 @@ public class DocumentSearchStrategyService : IDocumentSearchStrategyService
                 criticalPhrases.Add(phrase);
         }
 
-        if (criticalPhrases.Count == 0)
-        {
-            var significantWords = queryWordsLower.Where(w => w.Length >= 5).ToList();
-            criticalPhrases.AddRange(significantWords);
-        }
+        if (criticalPhrases.Count != 0)
+            return criticalPhrases.Distinct().Take(5).ToList();
+        var significantWords = queryWordsLower.Where(w => w.Length >= 5).ToList();
+        criticalPhrases.AddRange(significantWords);
 
         return criticalPhrases.Distinct().Take(5).ToList();
     }
@@ -733,7 +683,7 @@ public class DocumentSearchStrategyService : IDocumentSearchStrategyService
         var phrases = new List<string>();
         var wordsForPhrases = phraseWords.Count >= 2 ? phraseWords : queryWordsLower;
 
-        for (int i = 0; i < wordsForPhrases.Count - 1; i++)
+        for (var i = 0; i < wordsForPhrases.Count - 1; i++)
         {
             var word1 = wordsForPhrases[i];
             var word2 = wordsForPhrases[i + 1];
@@ -756,46 +706,43 @@ public class DocumentSearchStrategyService : IDocumentSearchStrategyService
 
         var queryLower = query.ToLowerInvariant();
         var queryWords = queryLower.Split(new[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
-        
+
         if (queryWords.Length < 3 || queryWords.Length > 6)
             return false;
 
-        var hasPossessivePattern = System.Text.RegularExpressions.Regex.IsMatch(queryLower,
+        var hasPossessivePattern = Regex.IsMatch(queryLower,
             @"\b\p{L}{3,}\p{M}?n\s+\p{L}{3,}\b",
-            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            RegexOptions.IgnoreCase);
 
         if (hasPossessivePattern)
             return true;
 
-        var hasPossessiveSuffixPattern = System.Text.RegularExpressions.Regex.IsMatch(queryLower,
+        var hasPossessiveSuffixPattern = Regex.IsMatch(queryLower,
             @"\b\p{L}{3,}(?:\p{M}?n|[''']?\p{M}?n\p{M}?|[''']?\p{M}?n\p{M}?n)\s+\p{L}{3,}\b",
-            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            RegexOptions.IgnoreCase);
 
         if (hasPossessiveSuffixPattern)
             return true;
 
-        var hasGenericQuestionPattern = System.Text.RegularExpressions.Regex.IsMatch(queryLower,
+        var hasGenericQuestionPattern = Regex.IsMatch(queryLower,
             @"\b\p{L}{2,5}\s+\p{L}{3,}\s+\p{L}{3,}\b",
-            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            RegexOptions.IgnoreCase);
 
         if (hasGenericQuestionPattern)
             return true;
 
-        var hasTwoNounsPattern = System.Text.RegularExpressions.Regex.IsMatch(queryLower,
+        var hasTwoNounsPattern = Regex.IsMatch(queryLower,
             @"\b\p{L}{4,}\s+\p{L}{4,}\b",
-            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            RegexOptions.IgnoreCase);
 
         if (hasTwoNounsPattern)
             return true;
 
-        var hasNounWithSuffixPattern = System.Text.RegularExpressions.Regex.IsMatch(queryLower,
+        var hasNounWithSuffixPattern = Regex.IsMatch(queryLower,
             @"\b\p{L}{4,}\p{M}?\s+\p{L}{4,}\p{M}?\b",
-            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            RegexOptions.IgnoreCase);
 
-        if (hasNounWithSuffixPattern)
-            return true;
-
-        return false;
+        return hasNounWithSuffixPattern;
     }
 
     /// <summary>
@@ -804,19 +751,19 @@ public class DocumentSearchStrategyService : IDocumentSearchStrategyService
     /// Preserves original RelevanceScore for keyword results to maintain high scores (e.g., 110.0)
     /// Prioritizes high-scoring keyword chunks to ensure they are included in results
     /// </summary>
-    private List<DocumentChunk> CombineSearchResultsWithRRF(
+    private static List<DocumentChunk> CombineSearchResultsWithRRF(
         List<DocumentChunk> vectorResults,
         List<DocumentChunk> keywordResults,
         int maxResults)
     {
         var chunkScores = new Dictionary<Guid, (double RRFScore, DocumentChunk Chunk, double? OriginalScore)>();
 
-        for (int i = 0; i < vectorResults.Count; i++)
+        for (var i = 0; i < vectorResults.Count; i++)
         {
             var chunk = vectorResults[i];
             var rank = i + 1;
             var rrfScore = VectorSearchWeight / (ReciprocalRankFusionK + rank);
-            
+
             if (chunkScores.TryGetValue(chunk.Id, out var existing))
             {
                 chunkScores[chunk.Id] = (existing.RRFScore + rrfScore, existing.Chunk, existing.OriginalScore);
@@ -827,19 +774,19 @@ public class DocumentSearchStrategyService : IDocumentSearchStrategyService
             }
         }
 
-        for (int i = 0; i < keywordResults.Count; i++)
+        for (var i = 0; i < keywordResults.Count; i++)
         {
             var chunk = keywordResults[i];
             var rank = i + 1;
-            var baseRRFScore = KeywordSearchWeight / (ReciprocalRankFusionK + rank);
-            
+            var baseRrfScore = KeywordSearchWeight / (ReciprocalRankFusionK + rank);
+
             // Give extra boost to high-scoring keyword matches (100+)
             // These are strong matches with 3+ keywords, should compete with vector search
             var keywordScore = chunk.RelevanceScore ?? 0.0;
-            var rrfScore = keywordScore >= 100.0 
-                ? baseRRFScore * 5.0  // Match vector search weight for strong keyword matches
-                : baseRRFScore;
-            
+            var rrfScore = keywordScore >= 100.0
+                ? baseRrfScore * 5.0  // Match vector search weight for strong keyword matches
+                : baseRrfScore;
+
             if (chunkScores.TryGetValue(chunk.Id, out var existing))
             {
                 var existingScore = existing.OriginalScore ?? 0.0;
@@ -852,9 +799,9 @@ public class DocumentSearchStrategyService : IDocumentSearchStrategyService
             }
         }
 
-        var maxRRFScore = chunkScores.Values.Any() ? chunkScores.Values.Max(v => v.RRFScore) : 1.0;
-        var minRRFScore = chunkScores.Values.Any() ? chunkScores.Values.Min(v => v.RRFScore) : 0.0;
-        var rrfScoreRange = maxRRFScore - minRRFScore;
+        var maxRrfScore = chunkScores.Values.Any() ? chunkScores.Values.Max(v => v.RRFScore) : 1.0;
+        var minRrfScore = chunkScores.Values.Any() ? chunkScores.Values.Min(v => v.RRFScore) : 0.0;
+        var rrfScoreRange = maxRrfScore - minRrfScore;
 
         var highScoringKeywordChunks = chunkScores.Values
             .Where(x => x.OriginalScore.HasValue && x.OriginalScore.Value > 4.5)
@@ -876,13 +823,13 @@ public class DocumentSearchStrategyService : IDocumentSearchStrategyService
                 double normalizedScore;
                 if (rrfScoreRange > 0)
                 {
-                    normalizedScore = ((x.RRFScore - minRRFScore) / rrfScoreRange) * 100.0;
+                    normalizedScore = ((x.RRFScore - minRrfScore) / rrfScoreRange) * 100.0;
                 }
                 else
                 {
                     normalizedScore = x.RRFScore * 100.0;
                 }
-                
+
                 x.Chunk.RelevanceScore = normalizedScore;
                 return x.Chunk;
             })
@@ -893,22 +840,20 @@ public class DocumentSearchStrategyService : IDocumentSearchStrategyService
 
         foreach (var chunk in highScoringKeywordChunks)
         {
-            if (!seenIds.Contains(chunk.Id) && result.Count < maxResults)
-            {
-                result.Add(chunk);
-                seenIds.Add(chunk.Id);
-            }
+            if (seenIds.Contains(chunk.Id) || result.Count >= maxResults)
+                continue;
+            result.Add(chunk);
+            seenIds.Add(chunk.Id);
         }
 
         foreach (var chunk in otherChunks)
         {
-            if (!seenIds.Contains(chunk.Id) && result.Count < maxResults)
-            {
-                result.Add(chunk);
-                seenIds.Add(chunk.Id);
-            }
+            if (seenIds.Contains(chunk.Id) || result.Count >= maxResults)
+                continue;
+            result.Add(chunk);
+            seenIds.Add(chunk.Id);
         }
-        
+
         var finalResult = result.Take(maxResults).ToList();
         return finalResult;
     }

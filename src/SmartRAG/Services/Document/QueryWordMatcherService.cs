@@ -60,7 +60,7 @@ public class QueryWordMatcherService : IQueryWordMatcherService
     /// <summary>
     /// Counts query word matches in content
     /// </summary>
-    public (int MatchCount, int TotalOccurrences) CountQueryWordMatches(string content, List<string> queryWords)
+    public (int MatchCount, int TotalOccurrences) CountQueryWordMatches(string content, List<string>? queryWords)
     {
         if (string.IsNullOrEmpty(content) || queryWords == null || queryWords.Count == 0)
         {
@@ -85,28 +85,26 @@ public class QueryWordMatcherService : IQueryWordMatcherService
 
             if (wordLower.Length >= MinWordLengthForSubstringMatching)
             {
-                for (int len = Math.Min(wordLower.Length, MaxSubstringLength); len >= MinWordLengthForSubstringMatching; len--)
+                for (var len = Math.Min(wordLower.Length, MaxSubstringLength); len >= MinWordLengthForSubstringMatching; len--)
                 {
-                    for (int start = 0; start <= wordLower.Length - len; start++)
+                    for (var start = 0; start <= wordLower.Length - len; start++)
                     {
                         var substring = wordLower.Substring(start, len);
                         var substringMatches = (content.Length - content.Replace(substring, "").Length) / substring.Length;
-                        if (substringMatches > 0)
-                        {
-                            wordFound = true;
-                            occurrences += substringMatches;
-                            break;
-                        }
+                        if (substringMatches <= 0)
+                            continue;
+                        wordFound = true;
+                        occurrences += substringMatches;
+                        break;
                     }
                     if (wordFound && exactMatches == 0) break;
                 }
             }
 
-            if (wordFound)
-            {
-                queryWordMatches++;
-                totalQueryWordOccurrences += occurrences;
-            }
+            if (!wordFound)
+                continue;
+            queryWordMatches++;
+            totalQueryWordOccurrences += occurrences;
         }
 
         return (queryWordMatches, totalQueryWordOccurrences);
@@ -117,21 +115,7 @@ public class QueryWordMatcherService : IQueryWordMatcherService
     /// </summary>
     public int FindUniqueKeywords(Dictionary<string, HashSet<Guid>> wordDocumentMap, Guid documentId)
     {
-        if (wordDocumentMap == null)
-        {
-            return 0;
-        }
-
-        var uniqueKeywordCount = 0;
-        foreach (var kvp in wordDocumentMap)
-        {
-            if (kvp.Value.Count == 1 && kvp.Value.Contains(documentId))
-            {
-                uniqueKeywordCount++;
-            }
-        }
-
-        return uniqueKeywordCount;
+        return wordDocumentMap.Count(kvp => kvp.Value.Count == 1 && kvp.Value.Contains(documentId));
     }
 
     private bool IsWordInText(string text, string word)

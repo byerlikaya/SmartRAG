@@ -106,13 +106,13 @@ public static class DocumentValidator
     /// <exception cref="ArgumentException">When embedding is invalid</exception>
     private static void ValidateChunkEmbedding(DocumentChunk chunk, SmartRAG.Entities.Document document)
     {
-        if (chunk.Embedding == null) return;
-
-        if (chunk.Embedding.Count > MaxEmbeddingVectorSize)
-            throw new ArgumentException($"Chunk embedding vector too large ({chunk.Embedding.Count} dimensions, max: {MaxEmbeddingVectorSize}) for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
-
-        if (chunk.Embedding.Count > 0 && chunk.Embedding.Count < MinEmbeddingVectorSize)
-            throw new ArgumentException($"Chunk embedding vector too small ({chunk.Embedding.Count} dimensions, min: {MinEmbeddingVectorSize}) for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
+        switch (chunk.Embedding.Count)
+        {
+            case > MaxEmbeddingVectorSize:
+                throw new ArgumentException($"Chunk embedding vector too large ({chunk.Embedding.Count} dimensions, max: {MaxEmbeddingVectorSize}) for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
+            case > 0 and < MinEmbeddingVectorSize:
+                throw new ArgumentException($"Chunk embedding vector too small ({chunk.Embedding.Count} dimensions, min: {MinEmbeddingVectorSize}) for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
+        }
 
         if (chunk.Embedding.Any(f => float.IsNaN(f) || float.IsInfinity(f)))
             throw new ArgumentException($"Chunk embedding contains invalid values (NaN or Infinity) for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
@@ -120,20 +120,19 @@ public static class DocumentValidator
         if (chunk.Embedding.Any(f => f < MinEmbeddingValue || f > MaxEmbeddingValue))
             throw new ArgumentException($"Chunk embedding contains values outside reasonable range [{MinEmbeddingValue}, {MaxEmbeddingValue}] for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
 
-        if (chunk.Embedding.Count > 0 && chunk.Embedding.All(f => f == 0))
-            throw new ArgumentException($"Chunk embedding vector contains only zeros for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
-
-        if (chunk.Embedding.Count > 0 && chunk.Embedding.All(f => Math.Abs(f) < MinValueThreshold))
-            throw new ArgumentException($"Chunk embedding vector contains only very small values (< {MinValueThreshold}) for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
-
-        if (chunk.Embedding.Count > 0 && chunk.Embedding.Any(f => Math.Abs(f) > MaxAbsoluteValue))
-            throw new ArgumentException($"Chunk embedding vector contains values with absolute value > {MaxAbsoluteValue} for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
-
-        if (chunk.Embedding.Count > 0 && chunk.Embedding.Any(f => f != 0 && Math.Abs(f) < float.Epsilon))
-            throw new ArgumentException($"Chunk embedding vector contains subnormal values for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
-
-        if (chunk.Embedding.Count > 0 && chunk.Embedding.Any(f => float.IsNegativeInfinity(f) || float.IsPositiveInfinity(f)))
-            throw new ArgumentException($"Chunk embedding vector contains infinity values for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
+        switch (chunk.Embedding.Count)
+        {
+            case > 0 when chunk.Embedding.All(f => f == 0):
+                throw new ArgumentException($"Chunk embedding vector contains only zeros for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
+            case > 0 when chunk.Embedding.All(f => Math.Abs(f) < MinValueThreshold):
+                throw new ArgumentException($"Chunk embedding vector contains only very small values (< {MinValueThreshold}) for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
+            case > 0 when chunk.Embedding.Any(f => Math.Abs(f) > MaxAbsoluteValue):
+                throw new ArgumentException($"Chunk embedding vector contains values with absolute value > {MaxAbsoluteValue} for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
+            case > 0 when chunk.Embedding.Any(f => f != 0 && Math.Abs(f) < float.Epsilon):
+                throw new ArgumentException($"Chunk embedding vector contains subnormal values for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
+            case > 0 when chunk.Embedding.Any(f => float.IsNegativeInfinity(f) || float.IsPositiveInfinity(f)):
+                throw new ArgumentException($"Chunk embedding vector contains infinity values for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
+        }
     }
 }
 

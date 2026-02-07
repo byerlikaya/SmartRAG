@@ -40,7 +40,7 @@ public class QdrantEmbeddingService : IQdrantEmbeddingService
             var random = new Random(hash);
             var embedding = new List<float>(vectorDimension);
 
-            for (int i = 0; i < vectorDimension; i++)
+            for (var i = 0; i < vectorDimension; i++)
             {
                 if (i % 64 == 0)
                     cancellationToken.ThrowIfCancellationRequested();
@@ -48,20 +48,15 @@ public class QdrantEmbeddingService : IQdrantEmbeddingService
             }
 
             cancellationToken.ThrowIfCancellationRequested();
-            var sumSquares = 0.0f;
-            for (int i = 0; i < embedding.Count; i++)
-            {
-                sumSquares += embedding[i] * embedding[i];
-            }
+            var sumSquares = embedding.Sum(t => t * t);
 
             var magnitude = (float)Math.Sqrt(sumSquares);
-            if (magnitude > 0.001f) // Avoid division by very small numbers
+            if (!(magnitude > 0.001f))
+                return embedding; // Avoid division by very small numbers
+            var invMagnitude = 1.0f / magnitude;
+            for (var i = 0; i < embedding.Count; i++)
             {
-                var invMagnitude = 1.0f / magnitude;
-                for (int i = 0; i < embedding.Count; i++)
-                {
-                    embedding[i] *= invMagnitude;
-                }
+                embedding[i] *= invMagnitude;
             }
 
             return embedding;
@@ -78,12 +73,7 @@ public class QdrantEmbeddingService : IQdrantEmbeddingService
         cancellationToken.ThrowIfCancellationRequested();
         try
         {
-            if (_config.VectorSize > 0)
-            {
-                return Task.FromResult(_config.VectorSize);
-            }
-
-            return Task.FromResult(DefaultVectorDimension);
+            return Task.FromResult(_config.VectorSize > 0 ? _config.VectorSize : DefaultVectorDimension);
         }
         catch (Exception ex)
         {

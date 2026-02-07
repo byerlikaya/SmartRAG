@@ -42,7 +42,7 @@ public class ContextExpansionService : IContextExpansionService
     /// <param name="chunks">Initial chunks found by search</param>
     /// <param name="contextWindow">Number of adjacent chunks to include before and after each found chunk</param>
     /// <returns>Expanded list of chunks with context</returns>
-    public async Task<List<DocumentChunk>> ExpandContextAsync(List<DocumentChunk> chunks, int contextWindow = DefaultContextWindow)
+    public async Task<List<DocumentChunk>> ExpandContextAsync(List<DocumentChunk>? chunks, int contextWindow = DefaultContextWindow)
     {
         if (chunks == null || chunks.Count == 0)
         {
@@ -63,7 +63,7 @@ public class ContextExpansionService : IContextExpansionService
                 var documentChunks = documentGroup.ToList();
 
                 var document = await _documentRepository.GetByIdAsync(documentId);
-                if (document == null || document.Chunks == null || document.Chunks.Count == 0)
+                if (document.Chunks == null || document.Chunks.Count == 0)
                 {
                     foreach (var chunk in documentChunks)
                     {
@@ -85,10 +85,9 @@ public class ContextExpansionService : IContextExpansionService
                     }
 
                     var adjustedWindow = effectiveWindow;
-                    if (foundChunk.ChunkIndex == 0 && 
-                        foundChunk.DocumentType == "Image" && 
-                        foundChunk.Content != null &&
-                        foundChunk.Content.Length < 500 && 
+                    if (foundChunk.ChunkIndex == 0 &&
+                        foundChunk.DocumentType == "Image" &&
+                        foundChunk.Content.Length < 500 &&
                         !ContainsNumericValues(foundChunk.Content))
                     {
                         adjustedWindow = Math.Min(40, sortedDocumentChunks.Count);
@@ -96,19 +95,15 @@ public class ContextExpansionService : IContextExpansionService
 
                     var startIndex = Math.Max(0, chunkIndex - adjustedWindow);
                     var endIndex = Math.Min(sortedDocumentChunks.Count - 1, chunkIndex + adjustedWindow);
-                    var addedBefore = 0;
-                    var addedAfter = 0;
 
-                    for (int i = startIndex; i < chunkIndex; i++)
+                    for (var i = startIndex; i < chunkIndex; i++)
                     {
                         expandedChunks.Add(sortedDocumentChunks[i]);
-                        addedBefore++;
                     }
 
-                    for (int i = chunkIndex + 1; i <= endIndex; i++)
+                    for (var i = chunkIndex + 1; i <= endIndex; i++)
                     {
                         expandedChunks.Add(sortedDocumentChunks[i]);
-                        addedAfter++;
                     }
                 }
             }
@@ -134,7 +129,7 @@ public class ContextExpansionService : IContextExpansionService
     /// <param name="chunks">List of document chunks</param>
     /// <param name="query">User query</param>
     /// <returns>Context window size (number of adjacent chunks to include)</returns>
-    public int DetermineContextWindow(List<DocumentChunk> chunks, string query)
+    public int DetermineContextWindow(List<DocumentChunk>? chunks, string query)
     {
         if (_queryPatternAnalyzer != null && _queryPatternAnalyzer.RequiresComprehensiveSearch(query))
         {
@@ -146,12 +141,7 @@ public class ContextExpansionService : IContextExpansionService
             return NumericQueryWindow;
         }
 
-        if (chunks != null && chunks.Count <= SmallChunkCountThreshold)
-        {
-            return SmallChunkWindow;
-        }
-
-        return DefaultContextWindow;
+        return chunks is { Count: <= SmallChunkCountThreshold } ? SmallChunkWindow : DefaultContextWindow;
     }
 
     /// <summary>
@@ -169,40 +159,39 @@ public class ContextExpansionService : IContextExpansionService
         if (query.Contains('%'))
             return true;
 
-        if (System.Text.RegularExpressions.Regex.IsMatch(query, @"\d+\s*%|\d+\s+[a-z]{2,}"))
+        if (Regex.IsMatch(query, @"\d+\s*%|\d+\s+[a-z]{2,}"))
         {
             var words = queryLower.Split(new[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
             foreach (var word in words)
             {
-                if (word.Length >= 4 && word.Length <= 12 && 
-                    word.Any(char.IsLetter) && 
-                    (word.Any(char.IsDigit) || System.Text.RegularExpressions.Regex.IsMatch(word, @"^[a-z]{4,}$")))
-                {
-                    if (ContainsQuestionIndicators(query))
-                        return true;
-                }
+                if (word.Length is < 4 or > 12 ||
+                    !word.Any(char.IsLetter) ||
+                    (!word.Any(char.IsDigit) && !Regex.IsMatch(word, @"^[a-z]{4,}$")))
+                    continue;
+
+                if (ContainsQuestionIndicators(query))
+                    return true;
             }
         }
 
-        if (ContainsQuestionIndicators(query))
-        {
-            var hasNumericContext = 
-                query.Any(char.IsDigit) ||
-                query.Contains('.') || query.Contains(',') ||
-                query.Contains('+') || query.Contains('-') || query.Contains('×') || query.Contains('*') ||
-                query.Contains('>') || query.Contains('<') || query.Contains('=');
+        if (!ContainsQuestionIndicators(query))
+            return false;
+        var hasNumericContext =
+            query.Any(char.IsDigit) ||
+            query.Contains('.') || query.Contains(',') ||
+            query.Contains('+') || query.Contains('-') || query.Contains('×') || query.Contains('*') ||
+            query.Contains('>') || query.Contains('<') || query.Contains('=');
 
-            if (hasNumericContext)
-                return true;
+        if (hasNumericContext)
+            return true;
 
 
-            var hasNumericQuestionPattern = System.Text.RegularExpressions.Regex.IsMatch(queryLower,
-                @"\b\p{L}{2,5}\s+\p{L}{3,}\b",
-                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        var hasNumericQuestionPattern = Regex.IsMatch(queryLower,
+            @"\b\p{L}{2,5}\s+\p{L}{3,}\b",
+            RegexOptions.IgnoreCase);
 
-            if (hasNumericQuestionPattern && QueryTokenizer.ContainsNumericIndicators(query))
-                return true;
-        }
+        if (hasNumericQuestionPattern && QueryTokenizer.ContainsNumericIndicators(query))
+            return true;
 
         return false;
     }
@@ -220,23 +209,13 @@ public class ContextExpansionService : IContextExpansionService
             return true;
 
         var trimmedQuery = query.TrimStart();
-        if (trimmedQuery.Length > 0)
-        {
-            var firstWord = trimmedQuery.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
-            if (!string.IsNullOrEmpty(firstWord))
-            {
-                var firstWordLower = firstWord.ToLowerInvariant();
-                if (firstWordLower.Length >= 2 && firstWordLower.Length <= 5)
-                {
-                    if (firstWordLower.All(char.IsLetter))
-                    {
-                        return true;
-                    }
-                }
-            }
-        }
-
-        return false;
+        if (trimmedQuery.Length <= 0)
+            return false;
+        var firstWord = trimmedQuery.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+        if (string.IsNullOrEmpty(firstWord))
+            return false;
+        var firstWordLower = firstWord.ToLowerInvariant();
+        return firstWordLower.Length is >= 2 and <= 5 && firstWordLower.All(char.IsLetter);
     }
 
     /// <summary>
@@ -245,7 +224,7 @@ public class ContextExpansionService : IContextExpansionService
     /// <param name="chunks">List of document chunks to build context from</param>
     /// <param name="maxContextSize">Maximum context size in characters</param>
     /// <returns>Context string built from chunks</returns>
-    public string BuildLimitedContext(List<DocumentChunk> chunks, int maxContextSize)
+    public string BuildLimitedContext(List<DocumentChunk>? chunks, int maxContextSize)
     {
         if (chunks == null || chunks.Count == 0)
         {
@@ -253,24 +232,11 @@ public class ContextExpansionService : IContextExpansionService
         }
 
         var sortedChunks = chunks;
-
-            if (sortedChunks.Count > 0)
-            {
-                var topChunk = sortedChunks[0];
-                var chunk0Included = sortedChunks.Any(c => c.ChunkIndex == 0);
-                var chunk0Position = chunk0Included ? sortedChunks.FindIndex(c => c.ChunkIndex == 0) : -1;
-            }
-
         var contextBuilder = new StringBuilder();
         var totalSize = 0;
 
         foreach (var chunk in sortedChunks)
         {
-            if (chunk?.Content == null)
-            {
-                continue;
-            }
-
             var chunkSize = chunk.Content.Length;
             const int separatorSize = 2;
 
@@ -313,30 +279,27 @@ public class ContextExpansionService : IContextExpansionService
 
         foreach (var c in content)
         {
-            if (char.IsDigit(c))
+            if (!char.IsDigit(c))
+                continue;
+            // Found a digit - check surrounding context for value patterns
+            var index = content.IndexOf(c);
+            if (index > 0)
             {
-                // Found a digit - check surrounding context for value patterns
-                var index = content.IndexOf(c);
-                if (index > 0)
-                {
-                    var prev = content[index - 1];
-                    if (prev == '$' || prev == '€' || prev == '£' || prev == '¥' || prev == '₺' || 
-                        prev == '%' || prev == '.' || prev == ',')
-                        return true;
-                }
-                if (index < content.Length - 1)
-                {
-                    var next = content[index + 1];
-                    if (next == '$' || next == '€' || next == '£' || next == '¥' || next == '₺' || 
-                        next == '%' || next == '.' || next == ',')
-                        return true;
-                }
-                var digitCount = 0;
-                for (int i = index; i < content.Length && char.IsDigit(content[i]); i++)
-                    digitCount++;
-                if (digitCount >= 2)
+                var prev = content[index - 1];
+                if (prev is '$' or '€' or '£' or '¥' or '₺' or '%' or '.' or ',')
                     return true;
             }
+            if (index < content.Length - 1)
+            {
+                var next = content[index + 1];
+                if (next is '$' or '€' or '£' or '¥' or '₺' or '%' or '.' or ',')
+                    return true;
+            }
+            var digitCount = 0;
+            for (var i = index; i < content.Length && char.IsDigit(content[i]); i++)
+                digitCount++;
+            if (digitCount >= 2)
+                return true;
         }
 
         return false;

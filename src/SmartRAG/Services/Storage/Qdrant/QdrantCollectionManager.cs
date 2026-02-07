@@ -7,7 +7,7 @@ namespace SmartRAG.Services.Storage.Qdrant;
 /// <summary>
 /// Service for managing Qdrant collections and document storage
 /// </summary>
-public class QdrantCollectionManager : IQdrantCollectionManager, IDisposable
+public class QdrantCollectionManager : IQdrantCollectionManager
 {
     private const int DefaultGrpcTimeoutMinutes = 5;
     private const int DefaultVectorDimension = 768;
@@ -16,7 +16,7 @@ public class QdrantCollectionManager : IQdrantCollectionManager, IDisposable
     private readonly QdrantConfig _config;
     private readonly string _collectionName;
     private readonly ILogger<QdrantCollectionManager> _logger;
-    private static readonly SemaphoreSlim _collectionInitLock = new SemaphoreSlim(1, 1);
+    private static readonly SemaphoreSlim CollectionInitLock = new(1, 1);
     private bool _collectionReady;
     private bool _isDisposed;
 
@@ -90,8 +90,8 @@ public class QdrantCollectionManager : IQdrantCollectionManager, IDisposable
             _logger.LogInformation("Creating Qdrant collection: {CollectionName} with dimension: {Dimension}",
                 collectionName, vectorDimension);
 
-            await _client.CreateCollectionAsync(collectionName, vectorParams);
-            await _client.CreatePayloadIndexAsync(collectionName, "content", global::Qdrant.Client.Grpc.PayloadSchemaType.Text);
+            await _client.CreateCollectionAsync(collectionName, vectorParams, cancellationToken: cancellationToken);
+            await _client.CreatePayloadIndexAsync(collectionName, "content", PayloadSchemaType.Text, cancellationToken: cancellationToken);
             _logger.LogInformation("Created text index for 'content' field in collection: {CollectionName}", collectionName);
         }
         catch (Exception ex)
@@ -113,16 +113,16 @@ public class QdrantCollectionManager : IQdrantCollectionManager, IDisposable
         {
             if (_collectionReady)
             {
-                var collections = await _client.ListCollectionsAsync();
+                var collections = await _client.ListCollectionsAsync(cancellationToken);
                 if (collections.Contains(collectionName))
                     return;
             }
 
             int vectorDimension;
-            
-            if (document?.Chunks != null && document.Chunks.Count > 0)
+
+            if (document.Chunks is { Count: > 0 })
             {
-                var firstChunkWithEmbedding = document.Chunks.FirstOrDefault(c => c.Embedding != null && c.Embedding.Count > 0);
+                var firstChunkWithEmbedding = document.Chunks.FirstOrDefault(c => c.Embedding.Count > 0);
                 if (firstChunkWithEmbedding != null)
                 {
                     vectorDimension = firstChunkWithEmbedding.Embedding.Count;
@@ -156,7 +156,7 @@ public class QdrantCollectionManager : IQdrantCollectionManager, IDisposable
                 return _config.VectorSize;
             }
 
-            var collections = await _client.ListCollectionsAsync();
+            var collections = await _client.ListCollectionsAsync(cancellationToken);
             var documentCollections = collections.Where(c => c.StartsWith(_collectionName + "_doc_", StringComparison.OrdinalIgnoreCase)).ToList();
 
             if (documentCollections.Count == 0 && collections.Contains(_collectionName))
@@ -164,25 +164,22 @@ public class QdrantCollectionManager : IQdrantCollectionManager, IDisposable
                 documentCollections.Add(_collectionName);
             }
 
-            if (documentCollections.Count > 0)
+            if (documentCollections.Count <= 0)
+                return DefaultVectorDimension;
+            var firstCollection = documentCollections.Count > 0 ? documentCollections.First() : _collectionName;
+            var collectionInfo = await _client.GetCollectionInfoAsync(firstCollection, cancellationToken);
+
+            if (collectionInfo.Config?.Params?.VectorsConfig == null)
+                return DefaultVectorDimension;
+            var config = collectionInfo.Config.Params.VectorsConfig;
+
+            var sizeProperty = config.GetType().GetProperty("Size");
+            if (sizeProperty == null)
+                return DefaultVectorDimension;
+            var sizeValue = sizeProperty.GetValue(config);
+            if (sizeValue is ulong size)
             {
-                var firstCollection = documentCollections.Count > 0 ? documentCollections.First() : _collectionName;
-                var collectionInfo = await _client.GetCollectionInfoAsync(firstCollection);
-
-                if (collectionInfo.Config?.Params?.VectorsConfig != null)
-                {
-                    var config = collectionInfo.Config.Params.VectorsConfig;
-
-                    var sizeProperty = config.GetType().GetProperty("Size");
-                    if (sizeProperty != null)
-                    {
-                        var sizeValue = sizeProperty.GetValue(config);
-                        if (sizeValue is ulong size)
-                        {
-                            return (int)size;
-                        }
-                    }
-                }
+                return (int)size;
             }
 
             return DefaultVectorDimension;
@@ -208,14 +205,14 @@ public class QdrantCollectionManager : IQdrantCollectionManager, IDisposable
         if (_collectionReady)
             return;
 
-        await _collectionInitLock.WaitAsync(cancellationToken);
+        await CollectionInitLock.WaitAsync(cancellationToken);
 
         try
         {
             if (_collectionReady)
                 return;
 
-            var collections = await _client.ListCollectionsAsync();
+            var collections = await _client.ListCollectionsAsync(cancellationToken);
 
             if (!collections.Contains(_collectionName))
             {
@@ -226,22 +223,19 @@ public class QdrantCollectionManager : IQdrantCollectionManager, IDisposable
             {
                 try
                 {
-                    await _client.CreatePayloadIndexAsync(_collectionName, "content", global::Qdrant.Client.Grpc.PayloadSchemaType.Text);
+                    await _client.CreatePayloadIndexAsync(_collectionName, "content", PayloadSchemaType.Text, cancellationToken: cancellationToken);
                 }
                 catch
                 {
+                    // ignored
                 }
             }
 
             _collectionReady = true;
         }
-        catch (Exception)
-        {
-            throw;
-        }
         finally
         {
-            _collectionInitLock.Release();
+            CollectionInitLock.Release();
         }
     }
 
@@ -265,7 +259,7 @@ public class QdrantCollectionManager : IQdrantCollectionManager, IDisposable
         cancellationToken.ThrowIfCancellationRequested();
         try
         {
-            await _client.DeleteCollectionAsync(collectionName);
+            await _client.DeleteCollectionAsync(collectionName, cancellationToken: cancellationToken);
             _logger.LogInformation("Deleted Qdrant collection: {CollectionName}", collectionName);
 
             if (collectionName == _collectionName)
@@ -302,11 +296,10 @@ public class QdrantCollectionManager : IQdrantCollectionManager, IDisposable
 
     private void Dispose(bool disposing)
     {
-        if (!_isDisposed && disposing)
-        {
-            _client?.Dispose();
-            _isDisposed = true;
-        }
+        if (_isDisposed || !disposing)
+            return;
+        _client.Dispose();
+        _isDisposed = true;
     }
 }
 

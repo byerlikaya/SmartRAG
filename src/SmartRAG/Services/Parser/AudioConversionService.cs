@@ -13,8 +13,8 @@ public class AudioConversionService
     private const string FfmpegDownloadUrl = "https://ffmpeg.org/download.html";
 
     private readonly ILogger<AudioConversionService> _logger;
-    private static bool _ffmpegInitialized = false;
-    private static readonly System.Threading.SemaphoreSlim _ffmpegSemaphore = new System.Threading.SemaphoreSlim(1, 1);
+    private static bool _ffmpegInitialized;
+    private static readonly SemaphoreSlim FfmpegSemaphore = new(1, 1);
 
     public AudioConversionService(ILogger<AudioConversionService> logger)
     {
@@ -45,7 +45,7 @@ public class AudioConversionService
 
             await EnsureFfmpegInitializedAsync();
 
-            using (var tempFileStream = File.Create(tempInputFile))
+            await using (var tempFileStream = File.Create(tempInputFile))
             {
                 await audioStream.CopyToAsync(tempFileStream).ConfigureAwait(false);
             }
@@ -63,8 +63,8 @@ public class AudioConversionService
                 new { Codec = "mp3", Args = new[] { "-ac 1", "-b:a 128k" }, Ext = ".mp3", Name = "MP3" }
             };
 
-                bool conversionSuccessful = false;
-                string finalOutputFile = tempOutputFile;
+                var conversionSuccessful = false;
+                var finalOutputFile = tempOutputFile;
 
                 foreach (var strategy in conversionStrategies)
                 {
@@ -89,12 +89,10 @@ public class AudioConversionService
                             conversionSuccessful = true;
                             break;
                         }
-                        else
-                        {
-                            _logger.LogWarning("✗ Conversion failed: {Strategy} - Empty or missing file", strategy.Name);
-                            if (File.Exists(strategyOutputFile))
-                                File.Delete(strategyOutputFile);
-                        }
+
+                        _logger.LogWarning("✗ Conversion failed: {Strategy} - Empty or missing file", strategy.Name);
+                        if (File.Exists(strategyOutputFile))
+                            File.Delete(strategyOutputFile);
                     }
                     catch (Exception ex)
                     {
@@ -120,7 +118,7 @@ public class AudioConversionService
             }
 
             var outputStream = new MemoryStream();
-            using (var wavFileStream = File.OpenRead(tempOutputFile))
+            await using (var wavFileStream = File.OpenRead(tempOutputFile))
             {
                 await wavFileStream.CopyToAsync(outputStream).ConfigureAwait(false);
             }
@@ -148,6 +146,7 @@ public class AudioConversionService
             }
             catch
             {
+                // ignored
             }
         }
     }
@@ -169,7 +168,7 @@ public class AudioConversionService
         if (_ffmpegInitialized)
             return;
 
-        await _ffmpegSemaphore.WaitAsync();
+        await FfmpegSemaphore.WaitAsync();
 
         try
         {
@@ -199,7 +198,7 @@ public class AudioConversionService
         }
         finally
         {
-            _ffmpegSemaphore.Release();
+            FfmpegSemaphore.Release();
         }
     }
 
@@ -208,10 +207,7 @@ public class AudioConversionService
     /// </summary>
     private static string SanitizeFileName(string fileName)
     {
-        if (string.IsNullOrEmpty(fileName))
-            return "unknown";
-
-        return fileName.Replace("\n", "").Replace("\r", "").Replace("\t", "").Trim();
+        return string.IsNullOrEmpty(fileName) ? "unknown" : fileName.Replace("\n", "").Replace("\r", "").Replace("\t", "").Trim();
     }
 }
 

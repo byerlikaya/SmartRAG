@@ -40,7 +40,7 @@ public class DocumentService : IDocumentService
     /// <param name="request">Request containing document upload parameters</param>
     /// <param name="cancellationToken">Token to cancel the operation</param>
     /// <returns>Created document entity</returns>
-    public async Task<SmartRAG.Entities.Document> UploadDocumentAsync(Models.RequestResponse.UploadDocumentRequest request, CancellationToken cancellationToken = default)
+    public async Task<SmartRAG.Entities.Document> UploadDocumentAsync(UploadDocumentRequest request, CancellationToken cancellationToken = default)
     {
         if (request == null)
             throw new ArgumentNullException(nameof(request));
@@ -70,11 +70,11 @@ public class DocumentService : IDocumentService
                 var existingDocs = await _documentRepository.GetAllAsync(cancellationToken);
                 foreach (var existing in existingDocs)
                 {
-                    if (existing.Metadata != null && existing.Metadata.TryGetValue("FileHash", out var existingHash) && existingHash != null && string.Equals(existingHash.ToString(), hashStr, StringComparison.OrdinalIgnoreCase))
-                    {
-                        _logger.LogInformation("Skipping duplicate upload (same file hash): {FileName} - returning existing document Id: {DocumentId}", request.FileName, existing.Id);
-                        return existing;
-                    }
+                    if (!existing.Metadata.TryGetValue("FileHash", out var existingHash) || existingHash == null ||
+                        !string.Equals(existingHash.ToString(), hashStr, StringComparison.OrdinalIgnoreCase))
+                        continue;
+                    _logger.LogInformation("Skipping duplicate upload (same file hash): {FileName} - returning existing document Id: {DocumentId}", request.FileName, existing.Id);
+                    return existing;
                 }
             }
         }
@@ -86,9 +86,8 @@ public class DocumentService : IDocumentService
             document.FileSize = request.FileSize.Value;
         }
 
-        if (request.AdditionalMetadata != null && request.AdditionalMetadata.Count > 0)
+        if (request.AdditionalMetadata is { Count: > 0 })
         {
-            document.Metadata ??= new Dictionary<string, object>();
             foreach (var item in request.AdditionalMetadata)
             {
                 document.Metadata[item.Key] = item.Value;
@@ -96,27 +95,24 @@ public class DocumentService : IDocumentService
         }
 
         var hasContent = !string.IsNullOrWhiteSpace(document.Content)
-            && document.Chunks != null
-            && document.Chunks.Count > 0
-            && document.Chunks.Any(c => !string.IsNullOrWhiteSpace(c.Content));
+                         && document.Chunks is { Count: > 0 }
+                         && document.Chunks.Any(c => !string.IsNullOrWhiteSpace(c.Content));
         if (!hasContent)
         {
-            throw new SmartRAG.Exceptions.DocumentSkippedException(
+            throw new Exceptions.DocumentSkippedException(
                 string.Format(CultureInfo.InvariantCulture, "Document has no content to index (e.g. audio transcription unavailable). Skipping: {0}", request.FileName));
         }
 
         var chunks = document.Chunks!;
         var allChunkContents = chunks.Select(c => c.Content).ToList();
 
-        var successCount = 0;
-
         try
         {
             var allEmbeddings = await _aiService.GenerateEmbeddingsBatchAsync(allChunkContents, cancellationToken);
 
-            if (allEmbeddings != null && allEmbeddings.Count == chunks.Count)
+            if (allEmbeddings.Count == chunks.Count)
             {
-                for (int i = 0; i < chunks.Count; i++)
+                for (var i = 0; i < chunks.Count; i++)
                 {
                     var chunk = chunks[i];
                     chunk.DocumentId = document.Id;
@@ -124,7 +120,6 @@ public class DocumentService : IDocumentService
                     if (allEmbeddings[i] != null && allEmbeddings[i].Count > 0)
                     {
                         chunk.Embedding = allEmbeddings[i];
-                        successCount++;
                     }
                     else
                     {
@@ -224,7 +219,7 @@ public class DocumentService : IDocumentService
             ServiceLogMessages.LogEmbeddingRegenerationStarted(_logger, null);
 
             var allDocuments = await _documentRepository.GetAllAsync(cancellationToken);
-            var totalChunks = allDocuments.Sum(d => d.Chunks.Count);
+            var totalChunks = allDocuments.Sum(d => d.Chunks!.Count);
             var processedChunks = 0;
             var successCount = 0;
 
@@ -233,9 +228,9 @@ public class DocumentService : IDocumentService
 
             foreach (var document in allDocuments)
             {
-                foreach (var chunk in document.Chunks)
+                foreach (var chunk in document.Chunks!)
                 {
-                    if (chunk.Embedding != null && chunk.Embedding.Count > 0)
+                    if (chunk.Embedding.Count > 0)
                     {
                         processedChunks++;
                         continue;
@@ -253,10 +248,10 @@ public class DocumentService : IDocumentService
 
             var totalBatches = (int)Math.Ceiling((double)chunksToProcess.Count / VoyageAIMaxBatchSize);
 
-            for (int batchIndex = 0; batchIndex < totalBatches; batchIndex++)
+            for (var batchIndex = 0; batchIndex < totalBatches; batchIndex++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                
+
                 var startIndex = batchIndex * VoyageAIMaxBatchSize;
                 var endIndex = Math.Min(startIndex + VoyageAIMaxBatchSize, chunksToProcess.Count);
                 var currentBatch = chunksToProcess.Skip(startIndex).Take(endIndex - startIndex).ToList();
@@ -264,14 +259,14 @@ public class DocumentService : IDocumentService
                 var batchContents = currentBatch.Select(c => c.Content).ToList();
                 var batchEmbeddings = await _aiService.GenerateEmbeddingsBatchAsync(batchContents, cancellationToken);
 
-                if (batchEmbeddings != null && batchEmbeddings.Count == currentBatch.Count)
+                if (batchEmbeddings.Count == currentBatch.Count)
                 {
-                    for (int i = 0; i < currentBatch.Count; i++)
+                    for (var i = 0; i < currentBatch.Count; i++)
                     {
                         var chunk = currentBatch[i];
                         var embedding = batchEmbeddings[i];
 
-                        if (embedding != null && embedding.Count > 0)
+                        if (embedding is { Count: > 0 })
                         {
                             chunk.Embedding = embedding;
                             successCount++;
@@ -280,7 +275,7 @@ public class DocumentService : IDocumentService
                         {
 
                             var individualEmbedding = await _aiService.GenerateEmbeddingsAsync(chunk.Content, cancellationToken);
-                            if (individualEmbedding != null && individualEmbedding.Count > 0)
+                            if (individualEmbedding.Count > 0)
                             {
                                 chunk.Embedding = individualEmbedding;
                                 successCount++;
@@ -292,7 +287,7 @@ public class DocumentService : IDocumentService
                 }
                 else
                 {
-                    using var semaphore = new System.Threading.SemaphoreSlim(1); // Max 1 concurrent
+                    using var semaphore = new SemaphoreSlim(1); // Max 1 concurrent
                     var tasks = currentBatch.Select(async chunk =>
                     {
                         await semaphore.WaitAsync(cancellationToken);
@@ -300,18 +295,18 @@ public class DocumentService : IDocumentService
                         {
                             var newEmbedding = await _aiService.GenerateEmbeddingsAsync(chunk.Content, cancellationToken);
 
-                            if (newEmbedding != null && newEmbedding.Count > 0)
+                            if (newEmbedding.Count > 0)
                             {
                                 chunk.Embedding = newEmbedding;
-                                System.Threading.Interlocked.Increment(ref successCount);
+                                Interlocked.Increment(ref successCount);
                             }
 
-                            System.Threading.Interlocked.Increment(ref processedChunks);
+                            Interlocked.Increment(ref processedChunks);
                         }
                         catch (Exception ex)
                         {
                             ServiceLogMessages.LogChunkEmbeddingRegenerationFailed(_logger, chunk.Id, ex);
-                            System.Threading.Interlocked.Increment(ref processedChunks);
+                            Interlocked.Increment(ref processedChunks);
                         }
                         finally
                         {
@@ -357,20 +352,17 @@ public class DocumentService : IDocumentService
             ServiceLogMessages.LogEmbeddingClearingStarted(_logger, null);
 
             var allDocuments = await _documentRepository.GetAllAsync(cancellationToken);
-            var totalChunks = allDocuments.Sum(d => d.Chunks.Count);
             var clearedChunks = 0;
 
             foreach (var document in allDocuments)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                
-                foreach (var chunk in document.Chunks)
+
+                foreach (var chunk in document.Chunks!)
                 {
-                    if (chunk.Embedding != null && chunk.Embedding.Count > 0)
-                    {
-                        chunk.Embedding.Clear();
-                        clearedChunks++;
-                    }
+                    if (chunk.Embedding.Count <= 0) continue;
+                    chunk.Embedding.Clear();
+                    clearedChunks++;
                 }
 
                 await _documentRepository.DeleteAsync(document.Id, cancellationToken);
@@ -398,7 +390,7 @@ public class DocumentService : IDocumentService
 
             var allDocuments = await _documentRepository.GetAllAsync(cancellationToken);
             var totalDocuments = allDocuments.Count;
-            var totalChunks = allDocuments.Sum(d => d.Chunks.Count);
+            var totalChunks = allDocuments.Sum(d => d.Chunks!.Count);
             var success = await _documentRepository.ClearAllAsync(cancellationToken);
 
             if (success)
@@ -415,27 +407,26 @@ public class DocumentService : IDocumentService
         }
     }
 
-    private bool IsAudioDocument(SmartRAG.Entities.Document doc)
+    private static bool IsAudioDocument(SmartRAG.Entities.Document doc)
     {
         return !string.IsNullOrEmpty(doc.ContentType) &&
                doc.ContentType.StartsWith("audio/", StringComparison.OrdinalIgnoreCase);
     }
 
-    private bool IsImageDocument(SmartRAG.Entities.Document doc)
+    private static bool IsImageDocument(SmartRAG.Entities.Document doc)
     {
         return !string.IsNullOrEmpty(doc.ContentType) &&
                doc.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase);
     }
 
-    private bool IsTextDocument(SmartRAG.Entities.Document doc)
+    private static bool IsTextDocument(SmartRAG.Entities.Document doc)
     {
         return !IsAudioDocument(doc) && !IsImageDocument(doc);
     }
 
     private static bool IsSchemaDocument(SmartRAG.Entities.Document doc)
     {
-        return doc.Metadata != null &&
-               doc.Metadata.TryGetValue("documentType", out var dt) &&
+        return doc.Metadata.TryGetValue("documentType", out var dt) &&
                string.Equals(dt?.ToString(), "Schema", StringComparison.OrdinalIgnoreCase);
     }
 }

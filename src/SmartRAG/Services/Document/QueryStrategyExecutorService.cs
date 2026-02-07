@@ -66,8 +66,8 @@ public class QueryStrategyExecutorService : IQueryStrategyExecutorService
 
             var databaseResponse = await _multiDatabaseQueryCoordinator!.QueryMultipleDatabasesAsync(request.Query, request.QueryIntent, request.MaxResults, request.PreferredLanguage ?? _options.DefaultLanguage, cancellationToken);
 
-            
-            
+
+
             if (_responseBuilder.HasMeaningfulData(databaseResponse))
             {
                 return databaseResponse;
@@ -131,7 +131,7 @@ public class QueryStrategyExecutorService : IQueryStrategyExecutorService
                         // Only reject if answer explicitly indicates an error or missing data
                         // Short direct answers (e.g., "Eva De Vries") are VALID and should be accepted
                         var isExplicitError = IsExplicitDatabaseError(candidateDatabaseResponse.Answer, request.Query);
-                        
+
                         if (isExplicitError)
                         {
                             // Database has data but AI explicitly cannot answer (e.g., "no information found")
@@ -155,7 +155,7 @@ public class QueryStrategyExecutorService : IQueryStrategyExecutorService
 
         if (request.CanAnswerFromDocuments == true)
         {
-            var ragRequest = new Models.RequestResponse.GenerateRagAnswerRequest
+            var ragRequest = new GenerateRagAnswerRequest
             {
                 Query = request.Query,
                 MaxResults = request.MaxResults,
@@ -176,10 +176,7 @@ public class QueryStrategyExecutorService : IQueryStrategyExecutorService
         if (databaseResponse != null)
             return databaseResponse;
 
-        if (documentResponse != null)
-            return documentResponse;
-
-        return _responseBuilder.CreateRagResponse(request.Query, SmartRAG.Helpers.RagMessages.NoDocumentContext, new List<SearchSource>());
+        return documentResponse ?? _responseBuilder.CreateRagResponse(request.Query, RagMessages.NoDocumentContext, new List<SearchSource>());
     }
 
     /// <summary>
@@ -193,45 +190,41 @@ public class QueryStrategyExecutorService : IQueryStrategyExecutorService
         if (request == null)
             throw new ArgumentNullException(nameof(request));
 
-        var canAnswer = false;
-        List<DocumentChunk>? results = request.PreCalculatedResults;
+        var results = request.PreCalculatedResults;
 
-        if (request.CanAnswerFromDocuments.HasValue)
-        {
-            canAnswer = request.CanAnswerFromDocuments.Value;
-        }
-        else
+        if (!request.CanAnswerFromDocuments.HasValue)
         {
             var searchOptions = request.Options ?? SearchOptions.FromConfig(_options);
-            var (CanAnswer, Results) = await _ragAnswerGenerator.Value.CanAnswerFromDocumentsAsync(request.Query, searchOptions, request.QueryTokens, cancellationToken);
-            canAnswer = CanAnswer;
+            var (canAnswer, Results) = await _ragAnswerGenerator.Value.CanAnswerFromDocumentsAsync(request.Query,
+                searchOptions, request.QueryTokens, cancellationToken);
             results = Results;
         }
 
         var options = request.Options ?? SearchOptions.FromConfig(_options);
         var documentSearchEnabled = options.EnableDocumentSearch;
 
-        if (documentSearchEnabled)
+        if (!documentSearchEnabled)
+            return _responseBuilder.CreateRagResponse(request.Query, RagMessages.NoDocumentContext,
+                new List<SearchSource>());
+
+        var ragRequest = new GenerateRagAnswerRequest
         {
-            var ragRequest = new Models.RequestResponse.GenerateRagAnswerRequest
-            {
-                Query = request.Query,
-                MaxResults = request.MaxResults,
-                ConversationHistory = request.ConversationHistory,
-                PreferredLanguage = request.PreferredLanguage ?? _options.DefaultLanguage,
-                Options = request.Options,
-                PreCalculatedResults = results ?? new List<DocumentChunk>(),
-                QueryTokens = request.QueryTokens
-            };
-            var ragResponse = await _ragAnswerGenerator.Value.GenerateBasicRagAnswerAsync(ragRequest, cancellationToken);
-            var hasDocumentSources = ragResponse.Sources?.Any(s => SearchSourceHelper.HasContentBearingSource(s) && !string.IsNullOrWhiteSpace(s.RelevantContent)) ?? false;
-            if (hasDocumentSources || !string.IsNullOrWhiteSpace(ragResponse.Answer))
-            {
-                return ragResponse;
-            }
+            Query = request.Query,
+            MaxResults = request.MaxResults,
+            ConversationHistory = request.ConversationHistory,
+            PreferredLanguage = request.PreferredLanguage ?? _options.DefaultLanguage,
+            Options = request.Options,
+            PreCalculatedResults = results ?? new List<DocumentChunk>(),
+            QueryTokens = request.QueryTokens
+        };
+        var ragResponse = await _ragAnswerGenerator.Value.GenerateBasicRagAnswerAsync(ragRequest, cancellationToken);
+        var hasDocumentSources = ragResponse.Sources?.Any(s => SearchSourceHelper.HasContentBearingSource(s) && !string.IsNullOrWhiteSpace(s.RelevantContent)) ?? false;
+        if (hasDocumentSources || !string.IsNullOrWhiteSpace(ragResponse.Answer))
+        {
+            return ragResponse;
         }
 
-        return _responseBuilder.CreateRagResponse(request.Query, SmartRAG.Helpers.RagMessages.NoDocumentContext, new List<SearchSource>());
+        return _responseBuilder.CreateRagResponse(request.Query, RagMessages.NoDocumentContext, new List<SearchSource>());
     }
 
     /// <summary>
@@ -264,29 +257,22 @@ public class QueryStrategyExecutorService : IQueryStrategyExecutorService
             return true;
         }
 
-        if (!string.IsNullOrWhiteSpace(query))
-        {
-            var queryWords = query.ToLowerInvariant()
-                .Split(new[] { ' ', ',', '.', '?', '!', ':', ';' }, StringSplitOptions.RemoveEmptyEntries)
-                .Where(w => w.Length > 3)
-                .ToList();
+        if (string.IsNullOrWhiteSpace(query))
+            return false;
 
-            if (queryWords.Count > 0)
-            {
-                int matchCount = queryWords.Count(w => lowerAnswer.Contains(w));
-                double matchRatio = (double)matchCount / queryWords.Count;
+        var queryWords = query.ToLowerInvariant()
+            .Split(new[] { ' ', ',', '.', '?', '!', ':', ';' }, StringSplitOptions.RemoveEmptyEntries)
+            .Where(w => w.Length > 3)
+            .ToList();
 
-                if (matchRatio >= 0.5 && !answer.Any(char.IsDigit))
-                {
-                    if (answer.Length > 30)
-                    {
-                        return true; 
-                    }
-                }
-            }
-        }
+        if (queryWords.Count <= 0)
+            return false;
+        var matchCount = queryWords.Count(w => lowerAnswer.Contains(w));
+        var matchRatio = (double)matchCount / queryWords.Count;
 
-        return false;
+        if (!(matchRatio >= 0.5) || answer.Any(char.IsDigit))
+            return false;
+        return answer.Length > 30;
     }
 }
 

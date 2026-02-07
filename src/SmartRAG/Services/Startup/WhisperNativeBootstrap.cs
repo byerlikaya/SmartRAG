@@ -16,7 +16,7 @@ internal static class WhisperNativeBootstrap
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
             return;
 
-        var baseDir = AppContext.BaseDirectory ?? ".";
+        var baseDir = AppContext.BaseDirectory;
         var isArm64 = RuntimeInformation.ProcessArchitecture == Architecture.Arm64;
         var candidates = new[]
         {
@@ -24,15 +24,7 @@ internal static class WhisperNativeBootstrap
             Path.Combine(baseDir, "runtimes", isArm64 ? "macos-arm64" : "macos-x64")
         };
 
-        string? nativeDir = null;
-        foreach (var dir in candidates)
-        {
-            if (File.Exists(Path.Combine(dir, "libwhisper.dylib")))
-            {
-                nativeDir = dir;
-                break;
-            }
-        }
+        var nativeDir = candidates.FirstOrDefault(dir => File.Exists(Path.Combine(dir, "libwhisper.dylib")));
 
         if (string.IsNullOrEmpty(nativeDir))
             return;
@@ -77,9 +69,15 @@ internal static class WhisperNativeBootstrap
         foreach (var lib in preloadOrder)
         {
             var path = Path.Combine(nativeDirPath, lib);
-            if (File.Exists(path))
+            if (!File.Exists(path))
+                continue;
+            try
             {
-                try { loadMethod.Invoke(null, new object[] { path }); } catch { }
+                loadMethod.Invoke(null, new object[] { path });
+            }
+            catch
+            {
+                // ignored
             }
         }
 
@@ -92,9 +90,6 @@ internal static class WhisperNativeBootstrap
         {
             return;
         }
-
-        if (whisperAssembly == null)
-            return;
 
         var delegateType = Type.GetType("System.Runtime.InteropServices.DllImportResolver, System.Runtime.InteropServices");
         if (delegateType == null)
@@ -115,11 +110,14 @@ internal static class WhisperNativeBootstrap
                 mi.Invoke(null, new object[] { whisperAssembly, resolverDelegate });
                 break;
             }
-            catch { }
+            catch
+            {
+                // ignored
+            }
         }
     }
 
-    private static IntPtr ResolveDllImport(string name, Assembly assembly, DllImportSearchPath? searchPath)
+    private static IntPtr ResolveDllImport(string name)
     {
         var nativeDir = _nativeDirPath;
         if (string.IsNullOrEmpty(nativeDir))
@@ -147,18 +145,23 @@ internal static class WhisperNativeBootstrap
                 var ptr = loadMethod.Invoke(null, new object[] { fullPath });
                 return ptr is IntPtr p ? p : IntPtr.Zero;
             }
-            catch { }
+            catch
+            {
+                // ignored
+            }
         }
 
         var fallback = Path.Combine(nativeDir, "libwhisper.dylib");
-        if (File.Exists(fallback))
+        if (!File.Exists(fallback))
+            return IntPtr.Zero;
+        try
         {
-            try
-            {
-                var ptr = loadMethod.Invoke(null, new object[] { fallback });
-                return ptr is IntPtr p ? p : IntPtr.Zero;
-            }
-            catch { }
+            var ptr = loadMethod.Invoke(null, new object[] { fallback });
+            return ptr is IntPtr p ? p : IntPtr.Zero;
+        }
+        catch
+        {
+            // ignored
         }
 
         return IntPtr.Zero;
