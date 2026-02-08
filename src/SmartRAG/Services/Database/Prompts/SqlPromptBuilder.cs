@@ -139,6 +139,12 @@ public class SqlPromptBuilder : ISqlPromptBuilder
         sb.AppendLine("Each database has different tables and columns.");
         sb.AppendLine("You MUST understand the relationships between databases using CROSS-DATABASE MAPPINGS below.");
         sb.AppendLine();
+        sb.AppendLine("🚨 COLUMN RULE - USE ONLY COLUMNS FROM SCHEMA:");
+        sb.AppendLine("  → Use ONLY the columns explicitly listed above for each table.");
+        sb.AppendLine("  → Do NOT invent or assume column names that are not in the list.");
+        sb.AppendLine("  → If a table lists ColumnA, ColumnB, ColumnC - do NOT use ColumnD unless it exists.");
+        sb.AppendLine("  → If you need names from another table: return the FK column for cross-database merge.");
+        sb.AppendLine();
 
         sb.AppendLine("═══════════════════════════════════════════════════════════════");
         sb.AppendLine($"🚨🚨🚨 CRITICAL: YOU ARE WRITING SQL FOR {queryIntent.DatabaseQueries.Count} DATABASE(S) 🚨🚨🚨");
@@ -337,18 +343,15 @@ public class SqlPromptBuilder : ISqlPromptBuilder
                 }
                 else
                 {
-                    var importantColumns = table.Columns
-                        .Where(c => c.IsPrimaryKey || c.IsForeignKey ||
-                                    IsNumericColumn(c.DataType) || IsTextColumn(c.DataType))
-                        .Take(12)
-                        .Select(c => {
-                            var markers = new List<string>();
-                            if (c.IsPrimaryKey) markers.Add("PK");
-                            if (c.IsForeignKey) markers.Add("FK");
-                            var markerStr = markers.Any() ? $"[{string.Join(",", markers)}]" : "";
-                            return $"{c.ColumnName}({c.DataType}){markerStr}";
-                        });
-                    sb.AppendLine($"   Columns: {string.Join(", ", importantColumns)}");
+                    var allColumns = table.Columns.Select(c =>
+                    {
+                        var markers = new List<string>();
+                        if (c.IsPrimaryKey) markers.Add("PK");
+                        if (c.IsForeignKey) markers.Add("FK");
+                        var markerStr = markers.Any() ? $"[{string.Join(",", markers)}]" : "";
+                        return $"{c.ColumnName}({c.DataType}){markerStr}";
+                    });
+                    sb.AppendLine($"   Columns: {string.Join(", ", allColumns)}");
                 }
 
                 var relevantMappings = allMappings.Where(m =>
@@ -384,6 +387,7 @@ public class SqlPromptBuilder : ISqlPromptBuilder
         sb.AppendLine("❌❌❌ FORBIDDEN: Do NOT add explanations or notes after SQL!");
         sb.AppendLine("❌❌❌ FORBIDDEN: Do NOT use TEXT placeholders like VALUE1, VALUE2, [values], or (something)!");
         sb.AppendLine("❌❌❌ FORBIDDEN: Do NOT use bracket/parenthesis placeholders like [values from previous database results]!");
+        sb.AppendLine("❌❌❌ FORBIDDEN: Do NOT use query placeholders like 'ABOVE QUERY', 'YOUR QUERY', 'SUBQUERY HERE' - write COMPLETE executable SQL!");
         sb.AppendLine();
         sb.AppendLine("⚠️⚠️⚠️ CRITICAL: All SQL queries must be EXECUTABLE AS-IS! ⚠️⚠️⚠️");
         sb.AppendLine("  → For sequential queries: Use NUMERIC placeholder values (system will replace them)");
