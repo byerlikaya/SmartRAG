@@ -20,6 +20,7 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
     private const double NumberedListBonusPerItem = 100.0;
     private const double NumberedListWordMatchBonus = 10.0;
     private const double SkipEagerDocumentAnswerConfidenceThreshold = 0.85;
+    private const double DatabaseQueryConfidenceThreshold = 0.5;
     private const double StrongDocumentMatchThreshold = 4.8;
     private const int PreviousQuerySearchMaxResults = 15;
     private const double PreviousQueryChunkScoreBoost = 0.5;
@@ -256,7 +257,8 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
         var hasStrongDocumentMatch = topScore > StrongDocumentMatchThreshold;
 
         var hasHighConfidenceForSkip = preAnalyzedQueryIntent?.Confidence > SkipEagerDocumentAnswerConfidenceThreshold;
-        var skipEagerDocumentAnswer = !hasStrongDocumentMatch && hasHighConfidenceForSkip;
+        var hasDatabaseQueriesForSkip = preAnalyzedQueryIntent?.DatabaseQueries.Count > 0 && preAnalyzedQueryIntent?.Confidence > DatabaseQueryConfidenceThreshold;
+        var skipEagerDocumentAnswer = (!hasStrongDocumentMatch && hasHighConfidenceForSkip) || hasDatabaseQueriesForSkip;
 
         RagResponse? earlyDocumentResponse = null;
         if (searchOptions.EnableDocumentSearch && canAnswer && results.Count > 0 && !skipEagerDocumentAnswer)
@@ -375,22 +377,27 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
                 var docRequest = CreateStrategyRequest(new StrategyRequestParams(query, maxResults, conversationHistory, canAnswer, searchOptions, queryTokens, PreCalculatedResults: results));
                 response = await _strategyExecutor.ExecuteDocumentOnlyStrategyAsync(docRequest, cancellationToken);
             }
+            else if (searchOptions.EnableDatabaseSearch)
+            {
+                var queryIntent = await _queryIntentAnalyzer.AnalyzeQueryIntentAsync(query, cancellationToken);
+                var strategyRequest = CreateStrategyRequest(new StrategyRequestParams(query, maxResults, conversationHistory, canAnswer, searchOptions, queryTokens, queryIntent, results, queryIntent.DatabaseQueries.Count > 0));
+                response = await _strategyExecutor.ExecuteDatabaseOnlyStrategyAsync(strategyRequest, cancellationToken);
+                if (response != null)
+                    searchMetadata.DatabaseSearchPerformed = true;
+            }
+            else if (searchOptions.EnableMcpSearch)
+            {
+                response = await ExecuteMcpSearchAsync(query, maxResults, conversationHistory, searchMetadata, existingResponse: null, cancellationToken);
+                if (response != null)
+                {
+                    await _conversationManager.AddToConversationAsync(sessionId, query, response.Answer, cancellationToken);
+                    return response;
+                }
+            }
             else
             {
-                if (searchOptions.EnableMcpSearch)
-                {
-                    response = await ExecuteMcpSearchAsync(query, maxResults, conversationHistory, searchMetadata, existingResponse: null, cancellationToken);
-                    if (response != null)
-                    {
-                        await _conversationManager.AddToConversationAsync(sessionId, query, response.Answer, cancellationToken);
-                        return response;
-                    }
-                }
-                else
-                {
-                    var chatResponse = await _conversationManager.HandleGeneralConversationAsync(query, conversationHistory, cancellationToken);
-                    response = _responseBuilder.CreateRagResponse(query, chatResponse, new List<SearchSource>());
-                }
+                var chatResponse = await _conversationManager.HandleGeneralConversationAsync(query, conversationHistory, cancellationToken);
+                response = _responseBuilder.CreateRagResponse(query, chatResponse, new List<SearchSource>());
             }
         }
 

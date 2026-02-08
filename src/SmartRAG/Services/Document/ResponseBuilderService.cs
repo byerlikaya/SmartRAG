@@ -265,21 +265,9 @@ public class ResponseBuilderService : IResponseBuilderService
 
         var normalized = answer.Trim();
 
-        // Explicit negative token (internal)
         if (IsExplicitlyNegative(normalized))
         {
             return true;
-        }
-
-        // CRITICAL: If we already have substantial document/audio/image context,
-        // we never force "no answer" just because the model used a pessimistic phrase.
-        // Responsibility for missing data lies in retrieval, not in the generated wording.
-        if (sources != null && sources.Any(s =>
-                SearchSourceHelper.HasContentBearingSource(s) &&
-                !string.IsNullOrWhiteSpace(s.RelevantContent) &&
-                s.RelevantContent!.Length >= 50))
-        {
-            return false;
         }
 
         var answerLower = normalized.ToLowerInvariant();
@@ -295,6 +283,13 @@ public class ResponseBuilderService : IResponseBuilderService
 
         if (string.IsNullOrWhiteSpace(query) || sources is not { Count: > 0 })
             return answerIndicatesNotFound;
+
+        if (answerIndicatesNotFound &&
+            normalized.Contains(RagMessages.NoDocumentContext, StringComparison.OrdinalIgnoreCase) &&
+            sources.All(s => string.Equals(s.SourceType, "Document", StringComparison.OrdinalIgnoreCase)))
+        {
+            return true;
+        }
 
         var allSourceContent = string.Join(" ", sources
             .Where(s => !string.IsNullOrWhiteSpace(s.RelevantContent))
@@ -325,7 +320,10 @@ public class ResponseBuilderService : IResponseBuilderService
             sourceContentLower.Contains(term.ToLowerInvariant()));
         var termsInSourcesRatio = termsInSources / (double)significantTerms.Count;
 
-        return !(termsInSourcesRatio >= 0.3) && answerIndicatesNotFound;
+        if (termsInSourcesRatio >= 0.3)
+            return false;
+
+        return answerIndicatesNotFound;
     }
 
     private static bool IsExplicitlyNegative(string answer)

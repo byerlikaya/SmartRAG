@@ -70,15 +70,14 @@ public class SearchOptions
     }
 
     /// <summary>
-    /// Creates search options for database-only search
-    /// Note: EnableDatabaseSearch is only set from baseOptions
-    /// This ensures global feature flag is respected
+    /// Creates search options for database-only search (-db tag)
+    /// Forces EnableDatabaseSearch = true when user explicitly requests database-only
     /// </summary>
     public static SearchOptions CreateDatabaseOnly(SearchOptions baseOptions)
     {
         return new SearchOptions
         {
-            EnableDatabaseSearch = baseOptions.EnableDatabaseSearch,
+            EnableDatabaseSearch = true,
             EnableDocumentSearch = false,
             EnableMcpSearch = false,
             EnableAudioSearch = false,
