@@ -313,7 +313,7 @@ public class McpIntegrationService : IMcpIntegrationService
                     ServerId = serverId,
                     ToolName = toolName,
                     IsSuccess = false,
-                    ErrorMessage = response.Error.Message
+                    ErrorMessage = response.Error?.Message ?? "Unknown error"
                 };
 
             var content = ExtractContentFromResponse(response);

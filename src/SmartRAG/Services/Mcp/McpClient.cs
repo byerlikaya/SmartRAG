@@ -84,7 +84,7 @@ public class McpClient : IMcpClient
 
             if (!response.IsSuccess)
             {
-                _logger.LogError("Failed to discover tools: {Error}", response.Error.Message);
+                _logger.LogError("Failed to discover tools: {Error}", response.Error?.Message ?? "Unknown error");
                 return new List<McpTool>();
             }
 

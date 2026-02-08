@@ -22,7 +22,7 @@ public class McpResponse
     /// <summary>
     /// Whether the response indicates success
     /// </summary>
-    public bool IsSuccess => false;
+    public bool IsSuccess => Error is null;
 }
 
 /// <summary>
