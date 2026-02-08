@@ -64,7 +64,7 @@ public class ResultMerger : IResultMerger
         if (parsedResults.Count > 1)
         {
             var mergedData = await SmartMergeResultsAsync(parsedResults);
-            if (mergedData.Rows.Count > 0)
+            if (mergedData is { Rows.Count: > 0 })
             {
                 sb.AppendLine("=== SMART MERGED RESULTS (Cross-Database JOIN) ===");
                 sb.AppendLine(FormatParsedResult(mergedData));
@@ -72,7 +72,7 @@ public class ResultMerger : IResultMerger
             }
             else
             {
-                _logger.LogWarning("Smart merge failed, falling back to separate results");
+                DatabaseLogMessages.LogSmartMergeFallbackToSeparate(_logger, null);
                 AppendSeparateResultsWithJoinHints(sb, parsedResults);
             }
         }
@@ -232,7 +232,7 @@ public class ResultMerger : IResultMerger
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error generating final answer");
+            DatabaseLogMessages.LogFinalAnswerGenerationFailed(_logger, ex);
             return new RagResponse
             {
                 Answer = mergedData,
@@ -278,7 +278,7 @@ public class ResultMerger : IResultMerger
 
             if (headers == null || headerIndex == -1)
             {
-                _logger.LogWarning("Could not parse query result - no header found");
+                DatabaseLogMessages.LogQueryResultParseNoHeader(_logger, null);
                 return null;
             }
 
@@ -310,7 +310,7 @@ public class ResultMerger : IResultMerger
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error parsing query result");
+            DatabaseLogMessages.LogQueryResultParseFailed(_logger, ex);
             return null;
         }
     }
@@ -325,25 +325,25 @@ public class ResultMerger : IResultMerger
             {
                 mappingBasedRetry = await TryMergeWithMappingWhenTargetMissingAsync(parsedResults);
 
-                if (mappingBasedRetry!.Rows.Count <= 0)
+                if (mappingBasedRetry is not { Rows.Count: > 0 })
                     return null;
 
-                _logger.LogInformation("Merge successful using mapping when target database result was missing");
+                DatabaseLogMessages.LogMergeSuccessfulMappingTargetMissing(_logger, null);
                 return mappingBasedRetry;
             }
 
             var joinableResults = await FindJoinableTablesAsync(parsedResults);
 
-            if (joinableResults is { Count: < 2 })
+            if (joinableResults is not { Count: >= 2 })
             {
-                _logger.LogWarning("No joinable relationships found between databases");
+                DatabaseLogMessages.LogNoJoinableRelationships(_logger, null);
 
                 mappingBasedRetry = await TryMergeWithMappingWhenTargetMissingAsync(parsedResults);
 
-                if (mappingBasedRetry!.Rows.Count <= 0)
+                if (mappingBasedRetry is not { Rows.Count: > 0 })
                     return null;
 
-                _logger.LogInformation("Merge successful using mapping when target database result was missing");
+                DatabaseLogMessages.LogMergeSuccessfulMappingTargetMissing(_logger, null);
                 return mappingBasedRetry;
 
             }
@@ -352,28 +352,28 @@ public class ResultMerger : IResultMerger
             if (merged.Rows.Count != 0)
                 return merged;
 
-            _logger.LogWarning("Smart merge failed: No matching rows found after join attempt");
+            DatabaseLogMessages.LogSmartMergeNoMatchingRows(_logger, null);
 
             var retryMerged = await RetryMergeWithFilteredQueryAsync(joinableResults);
 
             if (retryMerged.Rows.Count > 0)
             {
-                _logger.LogInformation("Retry merge successful with filtered query");
+                DatabaseLogMessages.LogRetryMergeSuccessful(_logger, null);
                 return retryMerged;
             }
 
             mappingBasedRetry = await TryMergeWithMappingWhenTargetMissingAsync(parsedResults);
 
-            if (mappingBasedRetry.Rows.Count <= 0)
+            if (mappingBasedRetry is not { Rows.Count: > 0 })
                 return null;
 
-            _logger.LogInformation("Merge successful using mapping when target database result was missing");
+            DatabaseLogMessages.LogMergeSuccessfulMappingTargetMissing(_logger, null);
             return mappingBasedRetry;
 
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error in smart merge");
+            DatabaseLogMessages.LogSmartMergeFailed(_logger, ex);
             return null;
         }
     }
@@ -386,9 +386,9 @@ public class ResultMerger : IResultMerger
         var joinable = new List<(ParsedQueryResult Result, string JoinColumn)>();
 
         var mappingBasedMatches = await FindMappingBasedMatchesAsync(parsedResults);
-        if (mappingBasedMatches.Count >= 2)
+        if (mappingBasedMatches is { Count: >= 2 })
         {
-            _logger.LogInformation("Found mapping-based matches across {Count} databases", mappingBasedMatches.Count);
+            DatabaseLogMessages.LogMappingBasedMatchesFound(_logger, mappingBasedMatches.Count, null);
             return mappingBasedMatches;
         }
 
@@ -429,19 +429,19 @@ public class ResultMerger : IResultMerger
 
             if (joinable.Count >= 2)
             {
-                _logger.LogInformation("Found common join column: {JoinColumn} across {Count} databases", bestJoinColumn, joinable.Count);
+                DatabaseLogMessages.LogCommonJoinColumnFound(_logger, bestJoinColumn, joinable.Count, null);
                 return joinable;
             }
         }
 
         var valueBasedMatches = FindValueBasedMatches(parsedResults);
-        if (valueBasedMatches.Count >= 2)
+        if (valueBasedMatches is { Count: >= 2 })
         {
-            _logger.LogInformation("Found value-based matches across {Count} databases", valueBasedMatches.Count);
+            DatabaseLogMessages.LogValueBasedMatchesFound(_logger, valueBasedMatches.Count, null);
             return valueBasedMatches;
         }
 
-        _logger.LogWarning("No joinable relationships found between databases");
+        DatabaseLogMessages.LogNoJoinableRelationships(_logger, null);
         return null;
     }
 
@@ -484,8 +484,7 @@ public class ResultMerger : IResultMerger
 
                     if (!sourceResult.Columns.Contains(mapping.SourceColumn, StringComparer.OrdinalIgnoreCase))
                     {
-                        _logger.LogDebug("FindMappingBasedMatchesAsync: Source column '{SourceColumn}' not found in result columns: {AvailableColumns}",
-                            mapping.SourceColumn, string.Join(", ", sourceResult.Columns));
+                        DatabaseLogMessages.LogSourceColumnNotFound(_logger, mapping.SourceColumn, string.Join(", ", sourceResult.Columns), null);
                         continue;
                     }
 
@@ -504,13 +503,12 @@ public class ResultMerger : IResultMerger
 
             if (mappings.Count == 0)
             {
-                _logger.LogWarning("FindMappingBasedMatchesAsync: No mappings found. Source columns available: {SourceColumns}, Target columns available: {TargetColumns}",
-                    string.Join(", ", parsedResults.Values.SelectMany(r => r.Columns).Distinct()),
-                    string.Join(", ", parsedResults.Values.SelectMany(r => r.Columns).Distinct()));
+                var sourceCols = string.Join(", ", parsedResults.Values.SelectMany(r => r.Columns).Distinct());
+                DatabaseLogMessages.LogNoMappingsFound(_logger, sourceCols, sourceCols, null);
                 return null;
             }
 
-            _logger.LogDebug("FindMappingBasedMatchesAsync: Found {Count} potential mappings", mappings.Count);
+            DatabaseLogMessages.LogPotentialMappingsFound(_logger, mappings.Count, null);
 
             var bestMapping = mappings.GroupBy(m => new { m.SourceDatabaseId, m.TargetDatabaseId })
                 .OrderByDescending(g => g.Count())
@@ -519,11 +517,13 @@ public class ResultMerger : IResultMerger
             if (bestMapping == null)
                 return null;
 
-            _logger.LogInformation("FindMappingBasedMatchesAsync: Using mapping {SourceDb}.[{SourceCol}] → {TargetDb}.[{TargetCol}]",
-                parsedResults[bestMapping.First().SourceDatabaseId].DatabaseName,
-                bestMapping.First().SourceColumn,
-                parsedResults[bestMapping.First().TargetDatabaseId].DatabaseName,
-                bestMapping.First().TargetColumn);
+            var fm = bestMapping.First();
+            DatabaseLogMessages.LogMappingBasedMappingUsed(_logger,
+                parsedResults[fm.SourceDatabaseId].DatabaseName,
+                fm.SourceColumn,
+                parsedResults[fm.TargetDatabaseId].DatabaseName,
+                fm.TargetColumn,
+                null);
 
             var firstMapping = bestMapping.First();
             var joinable = new List<(ParsedQueryResult Result, string JoinColumn)>();
@@ -542,7 +542,7 @@ public class ResultMerger : IResultMerger
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Error finding mapping-based matches");
+            DatabaseLogMessages.LogMappingBasedMatchesFailed(_logger, ex);
             return null;
         }
     }
@@ -584,6 +584,8 @@ public class ResultMerger : IResultMerger
             return null;
 
         var bestMatch = FindBestValueBasedMatch(allIdColumns);
+        if (bestMatch == null)
+            return null;
 
         var joinable = new List<(ParsedQueryResult Result, string JoinColumn)>();
 
@@ -629,8 +631,7 @@ public class ResultMerger : IResultMerger
         if (maxMatches == 0)
             return null;
 
-        _logger.LogInformation("Found value-based match: {MatchCount} matching values between {Col1} and {Col2}",
-            maxMatches, bestMatch[0].ColumnName, bestMatch[1].ColumnName);
+        DatabaseLogMessages.LogValueBasedMatchFound(_logger, maxMatches, bestMatch[0].ColumnName, bestMatch[1].ColumnName, null);
 
         return bestMatch;
     }
@@ -716,13 +717,12 @@ public class ResultMerger : IResultMerger
             matchedRows++;
         }
 
-        _logger.LogInformation("PerformInMemoryJoin completed: Processed={Processed}, Matched={Matched}, Skipped={Skipped}, Final rows={FinalRows}",
-            processedRows, matchedRows, skippedRows, merged.Rows.Count);
+        DatabaseLogMessages.LogPerformInMemoryJoinCompleted(_logger, processedRows, matchedRows, skippedRows, merged.Rows.Count, null);
 
         if (merged.Rows.Count == 0)
         {
-            _logger.LogWarning("PerformInMemoryJoin: No matching rows found. Base values sample: {SampleValues}",
-                string.Join(", ", baseResult.Rows.Take(5).Select(r => r.TryGetValue(baseJoinColumn, out var v) ? v : "NULL")));
+            var sampleValues = string.Join(", ", baseResult.Rows.Take(5).Select(r => r.TryGetValue(baseJoinColumn, out var v) ? v : "NULL"));
+            DatabaseLogMessages.LogPerformInMemoryJoinNoMatchingRows(_logger, sampleValues, null);
         }
 
         return merged.Rows.Count > 0 ? merged : null;
@@ -782,8 +782,7 @@ public class ResultMerger : IResultMerger
                 return null;
             }
 
-            _logger.LogInformation("RetryMergeWithFilteredQueryAsync: Found {Count} ID values: {Ids}",
-                idValues.Count, string.Join(", ", idValues.Take(10)));
+            DatabaseLogMessages.LogRetryMergeIdValuesFound(_logger, idValues.Count, string.Join(", ", idValues.Take(10)), null);
 
             var connections = await _connectionManager.GetAllConnectionsAsync();
             var descriptiveConnection = connections.FirstOrDefault(c =>
@@ -791,8 +790,7 @@ public class ResultMerger : IResultMerger
 
             if (descriptiveConnection == null)
             {
-                _logger.LogWarning("RetryMergeWithFilteredQueryAsync: Connection not found for {Database}",
-                    descriptiveResultTuple.Result.DatabaseName);
+                DatabaseLogMessages.LogRetryMergeConnectionNotFound(_logger, descriptiveResultTuple.Result.DatabaseName, null);
                 return null;
             }
 
@@ -815,14 +813,14 @@ public class ResultMerger : IResultMerger
 
             if (mapping == null)
             {
-                _logger.LogWarning("RetryMergeWithFilteredQueryAsync: Mapping not found for {Database}.{Column} in any connection",
-                    descriptiveResultTuple.Result.DatabaseName, descriptiveJoinColumn);
+                DatabaseLogMessages.LogRetryMergeMappingNotFound(_logger, descriptiveResultTuple.Result.DatabaseName, descriptiveJoinColumn, null);
                 return null;
             }
 
-            _logger.LogInformation("RetryMergeWithFilteredQueryAsync: Found mapping {SourceDb}.{SourceTable}.{SourceCol} → {TargetDb}.{TargetTable}.{TargetCol}",
+            DatabaseLogMessages.LogRetryMergeMappingFound(_logger,
                 mapping.SourceDatabase, mapping.SourceTable, mapping.SourceColumn,
-                mapping.TargetDatabase, mapping.TargetTable, mapping.TargetColumn);
+                mapping.TargetDatabase, mapping.TargetTable, mapping.TargetColumn,
+                null);
 
             var tableName = mapping.TargetTable;
             var numericIds = idValues.Where(v => TryParseNumeric(v, out _)).ToList();
@@ -873,7 +871,7 @@ public class ResultMerger : IResultMerger
                     break;
             }
 
-            _logger.LogInformation("Retrying merge with filtered query");
+            DatabaseLogMessages.LogRetryingMergeWithFilteredQuery(_logger, null);
 
             var maxRows = descriptiveConnection.MaxRowsPerQuery > 0 ? descriptiveConnection.MaxRowsPerQuery : 100;
             var filteredResult = await _databaseParser.ExecuteQueryAsync(
@@ -899,7 +897,7 @@ public class ResultMerger : IResultMerger
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error in retry merge with filtered query");
+            DatabaseLogMessages.LogRetryMergeFailed(_logger, ex);
             return null;
         }
     }
@@ -957,9 +955,10 @@ public class ResultMerger : IResultMerger
                     if (hasTargetResult)
                         continue;
 
-                    _logger.LogInformation("Found mapping {SourceDb}.{SourceTable}.{SourceCol} → {TargetDb}.{TargetTable}.{TargetCol}, but target database result is missing. Generating filtered query...",
+                    DatabaseLogMessages.LogMappingTargetMissingGeneratingQuery(_logger,
                         mapping.SourceDatabase, mapping.SourceTable, mapping.SourceColumn,
-                        mapping.TargetDatabase, mapping.TargetTable, mapping.TargetColumn);
+                        mapping.TargetDatabase, mapping.TargetTable, mapping.TargetColumn,
+                        null);
 
                     var idValues = new HashSet<string>();
                     foreach (var row in sourceResult.Rows)
@@ -1034,7 +1033,7 @@ public class ResultMerger : IResultMerger
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Could not determine descriptive columns for table {Table}, using join column only", tableName);
+                        DatabaseLogMessages.LogDescriptiveColumnsFallback(_logger, tableName, ex);
                     }
 
                     selectColumns = selectColumns.Distinct().ToList();
@@ -1057,7 +1056,7 @@ public class ResultMerger : IResultMerger
                             break;
                     }
 
-                    _logger.LogInformation("Executing filtered query for missing target database");
+                    DatabaseLogMessages.LogExecutingFilteredQuery(_logger, null);
 
                     var maxRows = targetConnection.MaxRowsPerQuery > 0 ? targetConnection.MaxRowsPerQuery : 100;
                     var filteredResult = await _databaseParser.ExecuteQueryAsync(
@@ -1083,7 +1082,7 @@ public class ResultMerger : IResultMerger
 
                     if (merged == null || merged.Rows.Count <= 0)
                         continue;
-                    _logger.LogInformation("Successfully merged results using mapping when target database was missing. Merged {RowCount} rows.", merged.Rows.Count);
+                    DatabaseLogMessages.LogMergedResultsMappingTargetMissing(_logger, merged.Rows.Count, null);
 
                     return merged;
                 }
@@ -1093,7 +1092,7 @@ public class ResultMerger : IResultMerger
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Error trying merge with mapping when target missing");
+            DatabaseLogMessages.LogMergeWithMappingTargetMissingFailed(_logger, ex);
             return null;
         }
     }
@@ -1355,7 +1354,7 @@ public class ResultMerger : IResultMerger
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Error checking schema for column {ColumnName} in database {DatabaseId}", columnName, databaseId);
+            DatabaseLogMessages.LogSchemaColumnCheckFailed(_logger, columnName, databaseId, ex);
         }
 
         if (DescriptiveColumnPatterns.Any(pattern =>
@@ -1389,7 +1388,6 @@ public class ResultMerger : IResultMerger
         if (string.IsNullOrWhiteSpace(value))
             return false;
 
-        // Remove whitespace and try parsing
         var trimmed = value.Trim();
         return double.TryParse(trimmed, NumberStyles.Any, CultureInfo.InvariantCulture, out numericValue);
     }
