@@ -25,9 +25,9 @@ public class SqlServerDialectStrategy : BaseSqlDialectStrategy
         return true;
     }
 
-    public override string FormatSql(string sql)
+    public override string FormatSql(string sql, DatabaseSchemaInfo? schema = null)
     {
-        var formatted = base.FormatSql(sql);
+        var formatted = base.FormatSql(sql, schema);
 
         // Remove LIMIT clause (SQL Server doesn't support it)
         if (formatted.ToUpper().Contains("LIMIT "))

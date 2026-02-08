@@ -1,4 +1,3 @@
-
 namespace SmartRAG.Interfaces.Database.Strategies;
 
 
@@ -18,8 +17,9 @@ public interface ISqlDialectStrategy
     bool ValidateSyntax(string sql, out string errorMessage);
 
     /// <summary>
-    /// Formats the SQL query according to dialect rules
+    /// Formats the SQL query according to dialect rules.
+    /// Schema is optional; some dialects (e.g. PostgreSQL) use it for column quoting.
     /// </summary>
-    string FormatSql(string sql);
+    string FormatSql(string sql, DatabaseSchemaInfo? schema = null);
 }
 

@@ -50,9 +50,10 @@ public class SQLQueryGenerator : ISqlQueryGenerator
     {
         queryIntent.DatabaseQueries = queryIntent.DatabaseQueries.OrderBy(q => q.Priority).ToList();
 
-        _logger.LogInformation("Executing {Count} database queries in priority order: {Order}",
+        DatabaseLogMessages.LogExecutingDatabaseQueries(_logger,
             queryIntent.DatabaseQueries.Count,
-            string.Join(" → ", queryIntent.DatabaseQueries.Select(q => $"{q.DatabaseName}(priority:{q.Priority})")));
+            string.Join(" → ", queryIntent.DatabaseQueries.Select(q => $"{q.DatabaseName}(priority:{q.Priority})")),
+            null);
 
         var schemas = new Dictionary<string, DatabaseSchemaInfo>();
 
@@ -69,14 +70,14 @@ public class SQLQueryGenerator : ISqlQueryGenerator
 
             if (requiredMappingColumns[dbQuery.DatabaseId].Any())
             {
-                _logger.LogInformation("Database {DatabaseName} requires mapping columns: {Columns}",
-                    schema.DatabaseName, string.Join(", ", requiredMappingColumns[dbQuery.DatabaseId]));
+                DatabaseLogMessages.LogDatabaseRequiresMappingColumns(_logger,
+                    schema.DatabaseName, string.Join(", ", requiredMappingColumns[dbQuery.DatabaseId]), null);
             }
         }
 
         if (schemas.Count == 0)
         {
-            _logger.LogError("No valid schemas found for any database");
+            DatabaseLogMessages.LogNoValidSchemasFound(_logger, null);
             return queryIntent;
         }
 
@@ -102,11 +103,11 @@ public class SQLQueryGenerator : ISqlQueryGenerator
             promptParts.UserMessage += "\n" + additionalInstructions;
         }
 
-        _logger.LogInformation("Sending separated multi-database prompt to AI for {DatabaseCount} databases", queryIntent.DatabaseQueries.Count);
+        DatabaseLogMessages.LogSendingMultiDatabasePrompt(_logger, queryIntent.DatabaseQueries.Count, null);
 
         var context = new List<string> { promptParts.SystemMessage };
         var aiResponse = await _aiService.GenerateResponseAsync(promptParts.UserMessage, context, cancellationToken);
-        _logger.LogInformation("AI response received for multi-database SQL generation");
+        DatabaseLogMessages.LogAIResponseReceived(_logger, null);
 
         var databaseSqls = ExtractMultiDatabaseSQL(aiResponse, queryIntent.DatabaseQueries, schemas);
 
@@ -114,7 +115,7 @@ public class SQLQueryGenerator : ISqlQueryGenerator
         {
             if (!databaseSqls.TryGetValue(dbQuery.DatabaseId, out var extractedSql) || string.IsNullOrEmpty(extractedSql))
             {
-                _logger.LogError("Failed to extract SQL for database {DatabaseId}", dbQuery.DatabaseId);
+                DatabaseLogMessages.LogExtractSqlFailed(_logger, dbQuery.DatabaseId, null);
                 dbQuery.GeneratedQuery = null;
                 continue;
             }
@@ -122,19 +123,19 @@ public class SQLQueryGenerator : ISqlQueryGenerator
             var schema = schemas[dbQuery.DatabaseId];
             var strategy = strategies[dbQuery.DatabaseId];
 
-            extractedSql = strategy.FormatSql(extractedSql);
+            extractedSql = strategy.FormatSql(extractedSql, schema);
 
+            extractedSql = StripDatabaseNamePrefixWhenSameDatabase(extractedSql, schema);
             extractedSql = DetectAndFixCrossDatabaseReferences(extractedSql, schema, dbQuery.RequiredTables);
 
             extractedSql = FixAmbiguousColumnsInJoin(extractedSql, schema);
 
-            _logger.LogDebug("AI generated SQL for database {DatabaseName}: {Sql}", schema.DatabaseName, extractedSql);
 
             var allDatabaseNames = schemas.Values.Select(s => s.DatabaseName).Distinct().ToList();
             if (!ValidateSql(extractedSql, schema, dbQuery.RequiredTables, strategy, allDatabaseNames, out var validationErrors))
             {
-                _logger.LogError("AI generated invalid SQL for database {DatabaseName}. SQL: {Sql}. Errors: {Errors}",
-                    schema.DatabaseName, extractedSql, string.Join("; ", validationErrors));
+                DatabaseLogMessages.LogAIGeneratedInvalidSql(_logger,
+                    schema.DatabaseName, extractedSql, string.Join("; ", validationErrors), null);
                 dbQuery.GeneratedQuery = null;
                 continue;
             }
@@ -142,8 +143,10 @@ public class SQLQueryGenerator : ISqlQueryGenerator
             var mappingErrors = await ValidateCrossDatabaseMappingColumnsAsync(extractedSql, schema.DatabaseName, dbQuery.RequiredTables);
             if (mappingErrors.Any())
             {
-                _logger.LogWarning("Generated SQL missing required mapping columns for database {DatabaseName}. SQL: {Sql}. Missing: {Missing}",
-                    schema.DatabaseName, extractedSql, string.Join(", ", mappingErrors));
+                DatabaseLogMessages.LogSqlMissingMappingColumns(_logger,
+                    schema.DatabaseName, extractedSql, string.Join(", ", mappingErrors), null);
+                dbQuery.GeneratedQuery = null;
+                continue;
             }
 
             dbQuery.GeneratedQuery = extractedSql;
@@ -158,7 +161,7 @@ public class SQLQueryGenerator : ISqlQueryGenerator
 
         if (string.IsNullOrWhiteSpace(response))
         {
-            _logger.LogWarning("AI response is empty, cannot extract SQL");
+            DatabaseLogMessages.LogAIResponseEmpty(_logger, null);
             return result;
         }
 
@@ -202,7 +205,6 @@ public class SQLQueryGenerator : ISqlQueryGenerator
                         currentSql.Clear();
                         inSql = false;
                         waitingForConfirmed = true;
-                        _logger.LogDebug("Found database header: {DatabaseId}", currentDatabase);
                     }
                     else
                     {
@@ -210,7 +212,6 @@ public class SQLQueryGenerator : ISqlQueryGenerator
                         currentSql.Clear();
                         inSql = false;
                         waitingForConfirmed = true;
-                        _logger.LogDebug("Skipping database header at index {DbIndex} (out of range, expected databases: {ExpectedCount})", dbIndex, databaseQueries.Count);
                     }
                 }
                 continue;
@@ -237,7 +238,6 @@ public class SQLQueryGenerator : ISqlQueryGenerator
                         currentSql.Clear();
                         inSql = false;
                         waitingForConfirmed = true;
-                        _logger.LogDebug("Found database marker: {DatabaseId} (response had: {DbName})", currentDatabase, dbNameFromResponse);
                     }
                     else if (!string.IsNullOrWhiteSpace(dbNameFromResponse) && !dbNameFromResponse.Equals("DatabaseName", StringComparison.OrdinalIgnoreCase))
                     {
@@ -249,7 +249,6 @@ public class SQLQueryGenerator : ISqlQueryGenerator
                             currentSql.Clear();
                             inSql = false;
                             waitingForConfirmed = true;
-                            _logger.LogDebug("Found database by name match: {DatabaseId} (from response: {DbName})", currentDatabase, dbNameFromResponse);
                         }
                     }
                     else
@@ -363,11 +362,9 @@ public class SQLQueryGenerator : ISqlQueryGenerator
             return result;
 
         result = ExtractSqlBlocksWithoutDatabaseMarkers(response, databaseQueries, schemas);
-        if (result.Count > 0)
-            _logger.LogDebug("Extracted {Count} SQL block(s) via fallback (no DATABASE N: markers)", result.Count);
-        else
-            _logger.LogWarning("Failed to extract any SQL from AI response. Response preview: {Preview}",
-                response?.Substring(0, Math.Min(500, (int)response?.Length)));
+        if (result.Count == 0)
+            DatabaseLogMessages.LogFailedToExtractAnySql(_logger,
+                response?.Substring(0, Math.Min(500, response?.Length ?? 0)) ?? string.Empty, null);
 
         return result;
     }
@@ -472,7 +469,7 @@ public class SQLQueryGenerator : ISqlQueryGenerator
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting required mapping columns for database {DatabaseName}", databaseName);
+            DatabaseLogMessages.LogErrorGettingRequiredMappingColumns(_logger, databaseName, ex);
         }
 
         return requiredColumns;
@@ -524,15 +521,30 @@ public class SQLQueryGenerator : ISqlQueryGenerator
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error validating cross-database mapping columns for database {DatabaseName}", databaseName);
+            DatabaseLogMessages.LogErrorValidatingMappingColumns(_logger, databaseName, ex);
         }
 
         return missingColumns;
     }
 
+    private static readonly string[] InvalidSqlPlaceholders = { "ABOVE QUERY", "YOUR QUERY", "SUBQUERY HERE", "PLACEHOLDER", "INSERT QUERY" };
+
     private bool ValidateSql(string sql, DatabaseSchemaInfo schema, List<string> requiredTables, ISqlDialectStrategy strategy, List<string> allDatabaseNames, out List<string> errors)
     {
         errors = new List<string>();
+
+        var sqlUpper = sql.ToUpperInvariant();
+        foreach (var placeholder in InvalidSqlPlaceholders)
+        {
+            if (sqlUpper.Contains(placeholder, StringComparison.OrdinalIgnoreCase))
+            {
+                errors.Add($"SQL contains invalid placeholder: {placeholder}. AI must generate complete SQL, not placeholders.");
+                break;
+            }
+        }
+
+        if (errors.Count > 0)
+            return false;
 
         if (!strategy.ValidateSyntax(sql, out var syntaxError))
         {
@@ -595,6 +607,54 @@ public class SQLQueryGenerator : ISqlQueryGenerator
         return string.Join(" ", sqlLines).Trim();
     }
 
+    private string StripDatabaseNamePrefixWhenSameDatabase(string sql, DatabaseSchemaInfo schema)
+    {
+        if (string.IsNullOrWhiteSpace(sql))
+            return sql;
+
+        var fixedSql = sql;
+        var replacements = new List<(string Original, string Replacement)>();
+
+        var sameDatabasePatterns = new[]
+        {
+            @"(\w+)\.\[(\w+)\]\.\[(\w+)\]",
+            @"\[(\w+)\]\.\[(\w+)\]\.\[(\w+)\]",
+            @"\b(\w+)\.(\w+)\.(\w+)\b"
+        };
+
+        foreach (var pattern in sameDatabasePatterns)
+        {
+            var matches = Regex.Matches(fixedSql, pattern, RegexOptions.IgnoreCase);
+
+            foreach (Match match in matches)
+            {
+                var fullMatch = match.Value;
+                var databaseName = match.Groups[1].Value.Trim('[', ']');
+                var schemaName = match.Groups[2].Value.Trim('[', ']');
+                var tableName = match.Groups[3].Value.Trim('[', ']');
+
+                if (!schema.DatabaseName.Equals(databaseName, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                string replacement;
+                if (pattern.Contains(@"\[(\w+)\]"))
+                    replacement = $"[{schemaName}].[{tableName}]";
+                else
+                    replacement = $"{schemaName}.{tableName}";
+
+                if (!replacements.Any(r => r.Original.Equals(fullMatch, StringComparison.OrdinalIgnoreCase)))
+                    replacements.Add((fullMatch, replacement));
+            }
+        }
+
+        foreach (var (original, replacement) in replacements.OrderByDescending(r => r.Original.Length))
+        {
+            fixedSql = Regex.Replace(fixedSql, Regex.Escape(original), replacement, RegexOptions.IgnoreCase);
+        }
+
+        return fixedSql;
+    }
+
     private string DetectAndFixCrossDatabaseReferences(string sql, DatabaseSchemaInfo schema, List<string> requiredTables)
     {
         if (string.IsNullOrWhiteSpace(sql))
@@ -641,7 +701,7 @@ public class SQLQueryGenerator : ISqlQueryGenerator
 
                 if (foundValidTable != null)
                 {
-                    _logger.LogWarning("Removing database prefix from table reference: {Full} -> {Table}", fullMatch, foundValidTable);
+                    DatabaseLogMessages.LogRemovingDatabasePrefix(_logger, fullMatch, foundValidTable, null);
                     replacement = foundValidTable;
                 }
                 else
@@ -655,12 +715,12 @@ public class SQLQueryGenerator : ISqlQueryGenerator
 
                     if (requiredTableMatch != null)
                     {
-                        _logger.LogWarning("Removing database prefix from table reference: {Full} -> {Table}", fullMatch, requiredTableMatch);
+                        DatabaseLogMessages.LogRemovingDatabasePrefix(_logger, fullMatch, requiredTableMatch, null);
                         replacement = requiredTableMatch;
                     }
                     else
                     {
-                        _logger.LogWarning("Removing entire cross-database table reference: {Full} (table not found in {Database})", fullMatch, schema.DatabaseName);
+                        DatabaseLogMessages.LogRemovingCrossDatabaseReference(_logger, fullMatch, schema.DatabaseName, null);
                         replacement = string.Empty;
                     }
                 }
@@ -704,7 +764,7 @@ public class SQLQueryGenerator : ISqlQueryGenerator
         if (!invalidPatterns.Any(pattern => Regex.IsMatch(fixedSql, pattern, RegexOptions.IgnoreCase)))
             return fixedSql;
 
-        _logger.LogWarning("Detected invalid FROM clause after removing cross-database reference. Attempting to fix SQL.");
+        DatabaseLogMessages.LogDetectedInvalidFromClause(_logger, null);
 
         fixedSql = Regex.Replace(fixedSql, @"FROM\s+GROUP\s+BY", "WHERE 1=0 GROUP BY", RegexOptions.IgnoreCase);
         fixedSql = Regex.Replace(fixedSql, @"FROM\s+WHERE\s+", "FROM (SELECT NULL) AS InvalidTable WHERE ", RegexOptions.IgnoreCase);
@@ -779,7 +839,6 @@ public class SQLQueryGenerator : ISqlQueryGenerator
                 fixedSql = fixedSql[..selectMatch.Groups[1].Index] +
                            fixedSelectClause +
                            fixedSql[(selectMatch.Groups[1].Index + selectMatch.Groups[1].Length)..];
-                _logger.LogDebug("Fixed ambiguous columns in SELECT clause");
             }
         }
 
@@ -794,7 +853,6 @@ public class SQLQueryGenerator : ISqlQueryGenerator
                 fixedSql = fixedSql[..groupByMatch.Groups[1].Index] +
                            fixedGroupByClause +
                            fixedSql[(groupByMatch.Groups[1].Index + groupByMatch.Groups[1].Length)..];
-                _logger.LogDebug("Fixed ambiguous columns in GROUP BY clause");
             }
         }
 
@@ -812,7 +870,6 @@ public class SQLQueryGenerator : ISqlQueryGenerator
                    fixedOrderByClause +
                    fixedSql[(orderByMatch.Groups[1].Index + orderByMatch.Groups[1].Length)..];
 
-        _logger.LogDebug("Fixed ambiguous columns in ORDER BY clause");
 
         return fixedSql;
     }
@@ -904,7 +961,6 @@ public class SQLQueryGenerator : ISqlQueryGenerator
 
             var fixedInner = $"{functionBestAlias}.{innerColumn}";
             fixedRef = columnRef.Replace(innerColumn, fixedInner);
-            _logger.LogTrace("Fixed ambiguous column '{Column}' in function to '{Fixed}'", innerColumn, fixedRef);
             return fixedRef;
         }
 
@@ -936,7 +992,6 @@ public class SQLQueryGenerator : ISqlQueryGenerator
             return columnRef;
 
         fixedRef = Regex.Replace(columnRef, $@"\b{Regex.Escape(columnName)}\b", $"{bestAlias}.{columnName}", RegexOptions.IgnoreCase);
-        _logger.LogTrace("Fixed ambiguous column '{Column}' to '{Fixed}'", columnName, fixedRef);
         return fixedRef;
 
     }

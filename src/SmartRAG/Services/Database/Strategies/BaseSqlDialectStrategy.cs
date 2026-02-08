@@ -1,4 +1,3 @@
-
 namespace SmartRAG.Services.Database.Strategies;
 
 
@@ -36,7 +35,7 @@ public abstract class BaseSqlDialectStrategy : ISqlDialectStrategy
         return true;
     }
 
-    public virtual string FormatSql(string sql)
+    public virtual string FormatSql(string sql, DatabaseSchemaInfo? schema = null)
     {
         if (string.IsNullOrWhiteSpace(sql)) return sql;
 
