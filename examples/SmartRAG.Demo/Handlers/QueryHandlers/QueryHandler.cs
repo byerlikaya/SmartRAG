@@ -308,7 +308,9 @@ public class QueryHandler(
 
             try
             {
-                var response = await _documentSearchService.QueryIntelligenceAsync(trimmedInput, maxResults: 8, startNewConversation: false, CancellationToken.None);
+                var response = await _documentSearchService.QueryIntelligenceAsync(
+                    new QueryIntelligenceRequest { Query = trimmedInput, MaxResults = 8 },
+                    CancellationToken.None);
 
                 Console.WriteLine();
                 _console.WriteSuccess("Assistant:");

@@ -281,8 +281,15 @@ public static class DashboardEndpointRouteBuilderExtensions
 
                 var truncatedHistory = conversationManager.TruncateConversationHistory(fullHistory, maxTurns: RagConversationMaxTurns);
 
+                var ragRequest = new QueryIntelligenceRequest
+                {
+                    Query = incomingMessage,
+                    MaxResults = 8,
+                    SessionId = sessionId,
+                    ConversationHistory = truncatedHistory
+                };
                 var ragResponse = await documentSearchService
-                    .QueryIntelligenceAsync(incomingMessage, 8, sessionId, truncatedHistory, cancellationToken)
+                    .QueryIntelligenceAsync(ragRequest, cancellationToken)
                     .ConfigureAwait(false);
 
                 var answer = ragResponse.Answer;

@@ -124,7 +124,9 @@ public class IntelligenceController : ControllerBase
 
         try
         {
-            var response = await _documentSearchService.QueryIntelligenceAsync(query, maxResults, false, HttpContext.RequestAborted);
+            var response = await _documentSearchService.QueryIntelligenceAsync(
+                new QueryIntelligenceRequest { Query = query, MaxResults = maxResults },
+                HttpContext.RequestAborted);
             return Ok(response);
         }
         catch (Exception ex)

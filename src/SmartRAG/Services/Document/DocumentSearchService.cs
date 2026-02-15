@@ -131,65 +131,32 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
 
 
     /// <summary>
-    /// [AI Query] Process intelligent query with RAG and automatic session management
-    /// Unified approach: searches across documents, images, audio, and databases
+    /// [AI Query] Process intelligent query with RAG. When request.SessionId is null, session and history are resolved automatically.
     /// </summary>
-    public async Task<RagResponse> QueryIntelligenceAsync(
-        string query,
-        int maxResults = 5,
-        bool startNewConversation = false,
-        CancellationToken cancellationToken = default)
+    public async Task<RagResponse> QueryIntelligenceAsync(QueryIntelligenceRequest request, CancellationToken cancellationToken = default)
     {
-        if (startNewConversation)
+        ArgumentNullException.ThrowIfNull(request);
+
+        var sessionId = request.SessionId;
+        var conversationHistory = request.ConversationHistory;
+        if (sessionId == null)
         {
-            await _conversationManager.StartNewConversationAsync(cancellationToken);
-            return _responseBuilder.CreateRagResponse(query, "New conversation started. How can I help you?", new List<SearchSource>());
+            sessionId = await _conversationManager.GetOrCreateSessionIdAsync(cancellationToken);
+            conversationHistory = await _conversationManager.GetConversationHistoryAsync(sessionId, cancellationToken);
         }
-        var sessionId = await _conversationManager.GetOrCreateSessionIdAsync(cancellationToken);
-        var conversationHistory = await _conversationManager.GetConversationHistoryAsync(sessionId, cancellationToken);
-        return await QueryIntelligenceAsync(query, maxResults, sessionId, conversationHistory, cancellationToken);
-    }
-
-    /// <summary>
-    /// [AI Query] Process intelligent query with RAG using explicit session context
-    /// </summary>
-    public async Task<RagResponse> QueryIntelligenceAsync(
-        string query,
-        int maxResults,
-        string sessionId,
-        string conversationHistory,
-        CancellationToken cancellationToken = default)
-    {
-        var trimmedQuery = query.Trim();
-        var hasCommand = _queryIntentClassifier.TryParseCommand(trimmedQuery, out var commandType, out var commandPayload);
-
-        if (hasCommand && commandType == QueryCommandType.NewConversation)
+        else if (conversationHistory == null)
         {
-            await _conversationManager.StartNewConversationAsync(cancellationToken);
-            return _responseBuilder.CreateRagResponse(query, "New conversation started. How can I help you?", new List<SearchSource>());
+            conversationHistory = string.Empty;
         }
 
-        if (trimmedQuery.StartsWith("/", StringComparison.Ordinal) && !hasCommand)
-        {
-            return _responseBuilder.CreateRagResponse(trimmedQuery, string.Empty, new List<SearchSource>());
-        }
+        var query = request.Query;
+        var maxResults = request.MaxResults;
 
         var (cleanedQuery, searchOptions) = ParseSourceTags(query);
         query = cleanedQuery;
 
         if (string.IsNullOrWhiteSpace(query))
             throw new ArgumentException("Query cannot be empty", nameof(query));
-
-        var originalQuery = query;
-
-        if (hasCommand && commandType == QueryCommandType.ForceConversation)
-        {
-            var conversationQuery = string.IsNullOrWhiteSpace(commandPayload)
-                ? originalQuery
-                : commandPayload;
-
-            return await HandleConversationQueryAsync(conversationQuery, sessionId, conversationHistory, cancellationToken);
-        }
 
         if (searchOptions.EnableDocumentSearch)
         {

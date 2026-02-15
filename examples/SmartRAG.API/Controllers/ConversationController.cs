@@ -160,7 +160,9 @@ public class ConversationController : ControllerBase
             // If RAG is requested, use DocumentSearchService
             if (request.GenerateResponse && request.UseRAG)
             {
-                var result = await _documentSearchService.QueryIntelligenceAsync(request.Content, 5, false, HttpContext.RequestAborted);
+                var result = await _documentSearchService.QueryIntelligenceAsync(
+                new QueryIntelligenceRequest { Query = request.Content, MaxResults = 5 },
+                HttpContext.RequestAborted);
                 answer = result.Answer;
             }
 
