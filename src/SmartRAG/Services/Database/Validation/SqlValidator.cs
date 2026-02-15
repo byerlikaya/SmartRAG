@@ -44,6 +44,8 @@ public class SqlValidator : ISqlValidator
     {
         var errors = new List<string>();
 
+        var sqlForTableExtraction = StripSqlComments(sql);
+
         var threePartPatterns = new[]
         {
             @"(?:FROM|JOIN)\s+(\[?[a-zA-Z0-9_]+\]?\.\[?[a-zA-Z0-9_]+\]?\.\[?[a-zA-Z0-9_]+\]?)",
@@ -54,7 +56,7 @@ public class SqlValidator : ISqlValidator
 
         foreach (var pattern in threePartPatterns)
         {
-            var matches = Regex.Matches(sql, pattern, RegexOptions.IgnoreCase);
+            var matches = Regex.Matches(sqlForTableExtraction, pattern, RegexOptions.IgnoreCase);
 
             foreach (Match match in matches)
             {
@@ -93,7 +95,7 @@ public class SqlValidator : ISqlValidator
 
         foreach (var pattern in allTablePatterns)
         {
-            var matches = Regex.Matches(sql, pattern, RegexOptions.IgnoreCase | RegexOptions.Singleline);
+            var matches = Regex.Matches(sqlForTableExtraction, pattern, RegexOptions.IgnoreCase | RegexOptions.Singleline);
             foreach (Match match in matches)
             {
                 if (match.Groups.Count > 1 && !string.IsNullOrWhiteSpace(match.Groups[1].Value))
@@ -293,6 +295,16 @@ public class SqlValidator : ISqlValidator
         }
 
         return errors;
+    }
+
+    private static string StripSqlComments(string sql)
+    {
+        if (string.IsNullOrWhiteSpace(sql))
+            return sql;
+
+        var result = Regex.Replace(sql, @"--[^\r\n]*", " ", RegexOptions.Multiline);
+        result = Regex.Replace(result, @"/\*[\s\S]*?\*/", " ", RegexOptions.Multiline);
+        return result;
     }
 
     private static bool IsSqlKeyword(string word)

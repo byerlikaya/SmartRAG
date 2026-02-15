@@ -199,6 +199,20 @@ public class SqlPromptBuilder : ISqlPromptBuilder
             sb.AppendLine("  → If you SELECT from TargetTable, you MUST include TargetColumn in SELECT!");
             sb.AppendLine("  → These columns are needed to JOIN results from different databases!");
             sb.AppendLine();
+            sb.AppendLine("🚨 SOURCE TABLE AGGREGATION RULE (top N by count, top entities by related count):");
+            sb.AppendLine("  → When SourceTable has a mapping column (SourceColumn) AND you aggregate related data (e.g. count of related rows):");
+            sb.AppendLine("  → Use SourceTable as main FROM, LEFT JOIN the transactional table ON the join key!");
+            sb.AppendLine("  → Include SourceColumn in both SELECT and GROUP BY! Filter WHERE SourceColumn IS NOT NULL when query targets individuals/persons!");
+            sb.AppendLine("  → ✓ CORRECT: FROM SourceTable t1 LEFT JOIN RelatedTable t2 ON t1.JoinKey = t2.ForeignKey WHERE t1.SourceColumn IS NOT NULL");
+            sb.AppendLine("  → ✓ CORRECT: SELECT t1.JoinKey, t1.SourceColumn, COUNT(t2.RelatedID) AS CountCol GROUP BY t1.JoinKey, t1.SourceColumn ORDER BY CountCol DESC");
+            sb.AppendLine("  → ✗ WRONG: FROM transactional table with WHERE X IN (SELECT SourceColumn FROM SourceTable) - never mix different ID types in subqueries!");
+            sb.AppendLine();
+            sb.AppendLine("🚨 TARGET DATABASE WHERE CLAUSE - CRITICAL:");
+            sb.AppendLine("  → When writing SQL for TargetDatabase: use TargetColumn in WHERE IN (...), NOT SourceColumn!");
+            sb.AppendLine("  → Example: Mapping SourceDB.TableA.SourceCol → TargetDB.TableB.TargetCol");
+            sb.AppendLine("    → SQL for TargetDB: WHERE TargetCol IN (1, 2, 3)  ✓ CORRECT");
+            sb.AppendLine("    → SQL for TargetDB: WHERE SourceCol IN (1, 2, 3)  ✗ WRONG - SourceCol does not exist in TargetDB!");
+            sb.AppendLine();
         }
 
         for (var i = 0; i < queryIntent.DatabaseQueries.Count; i++)
@@ -228,19 +242,33 @@ public class SqlPromptBuilder : ISqlPromptBuilder
             sb.AppendLine($"  5. ✗ NEVER reference ANY table that belongs to ANOTHER database");
             sb.AppendLine($"  6. ✗ If you see multiple databases listed → They are ALL COMPLETELY SEPARATE!");
             sb.AppendLine($"  7. ✗ For this database query → ONLY use this database's tables!");
+            sb.AppendLine($"  8. ✗ NEVER reference tables from another database (e.g. Sales.OrderHeader in Inventory DB) → 'table does not exist'!");
             sb.AppendLine();
-            sb.AppendLine($"✓✓✓✓✓ ALLOWED - ONLY THESE TABLES EXIST IN THIS DATABASE: ✓✓✓✓✓");
+            sb.AppendLine($"✓✓✓✓✓ ALLOWED - ONLY THESE TABLES EXIST IN THIS DATABASE (EXHAUSTIVE LIST): ✓✓✓✓✓");
         foreach (var tableName in dbQuery.RequiredTables)
         {
             sb.AppendLine($"  ✓ {tableName}");
         }
             sb.AppendLine();
+            if (i >= 1)
+            {
+                sb.AppendLine("🚨🚨🚨 DATABASE 2+ RULE - FLAT QUERY ONLY! NO SUBQUERIES! 🚨🚨🚨");
+                sb.AppendLine("  → This database runs AFTER the first. You receive literal values (e.g. 1,2,3,4,5) from the first query.");
+                sb.AppendLine("  → Your SQL MUST be a SIMPLE flat query: SELECT ... FROM [this DB tables] WHERE [mapping column] IN (1, 2, 3, 4, 5)");
+                sb.AppendLine("  → CRITICAL: Include mapping column PLUS descriptive columns (Name, Title, Text, etc.) in SELECT so merged result has human-readable data!");
+                sb.AppendLine("  ✗✗✗ FORBIDDEN: Subqueries that reference the first database's tables!");
+                sb.AppendLine("  ✗✗✗ FORBIDDEN: JOIN with tables from the first database (they do not exist here)!");
+                sb.AppendLine("  ✗✗✗ FORBIDDEN: SELECT ... FROM (SELECT ... FROM Database1.SchemaName.TableName ...) - never embed first DB's query!");
+                sb.AppendLine("  ✓ CORRECT: SELECT MappingCol, DescriptiveCol FROM Schema.Table WHERE MappingCol IN (1, 2, 3, 4, 5)");
+                sb.AppendLine();
+            }
             sb.AppendLine("🚨🚨🚨 REMEMBER: 🚨🚨🚨");
             sb.AppendLine($"  → When writing SQL for DATABASE #{i + 1}");
             sb.AppendLine($"  → Look at the table list ABOVE");
             sb.AppendLine($"  → Use ONLY those tables in your SQL");
             sb.AppendLine($"  → If a table name is NOT in the list above, it DOES NOT EXIST in this database!");
             sb.AppendLine($"  → DO NOT invent tables from other databases!");
+            sb.AppendLine($"  → Use SchemaName.TableName (e.g. SchemaA.TableX) - NEVER use DatabaseName.TableName!");
             sb.AppendLine();
             sb.AppendLine($"Purpose: {dbQuery.Purpose}");
             sb.AppendLine();
@@ -254,6 +282,11 @@ public class SqlPromptBuilder : ISqlPromptBuilder
             };
 
             sb.AppendLine($"💾 SQL DIALECT: {dialectInfo}");
+            if (strategy.DatabaseType == DatabaseType.SqlServer)
+            {
+                sb.AppendLine();
+                sb.AppendLine("🚨 SQL Server JOIN: Use explicit table aliases and qualify ALL columns (alias.Column) to avoid ambiguous column errors!");
+            }
 
                 if (strategy.DatabaseType == DatabaseType.PostgreSQL)
                 {
@@ -275,8 +308,12 @@ public class SqlPromptBuilder : ISqlPromptBuilder
             {
                 case DatabaseType.SqlServer:
                     sb.AppendLine();
+                    sb.AppendLine("🚨 COLUMN vs FUNCTION: Column names are NEVER functions! Use ColumnName as column reference only.");
+                    sb.AppendLine("  ✗ WRONG: ColumnName(OtherColumn) or ColumnName(0) - ColumnName is not a function!");
+                    sb.AppendLine("  ✓ CORRECT: ColumnName, or ColumnName * OtherColumn, or SUM(ColumnName), COUNT(ColumnName) for aggregation");
+                    sb.AppendLine();
                     sb.AppendLine("🚨🚨🚨 SQL SERVER TOP N RULE - CRITICAL! 🚨🚨🚨");
-                    sb.AppendLine("  ✗✗✗ LIMIT is FORBIDDEN in SQL Server! Use TOP N instead!");
+                    sb.AppendLine("  ✗✗✗ LIMIT and FETCH FIRST are FORBIDDEN in SQL Server! Use TOP N instead!");
                     sb.AppendLine("  ✗✗✗ NEVER use LIMIT in SQL Server queries - it will cause SYNTAX ERROR!");
                     sb.AppendLine("  ✓ CORRECT: SELECT TOP 5 ... FROM ... ORDER BY ...");
                     sb.AppendLine("  ✗ WRONG: SELECT ... FROM ... ORDER BY ... LIMIT 5  -- SYNTAX ERROR!");
@@ -290,12 +327,14 @@ public class SqlPromptBuilder : ISqlPromptBuilder
                     sb.AppendLine();
                     sb.AppendLine("🚨🚨🚨 MySQL SYNTAX RULES - CRITICAL! 🚨🚨🚨");
                     sb.AppendLine("  1. Use BACKTICKS for identifiers: `TableName`, `ColumnName`");
-                    sb.AppendLine("     ✓ CORRECT: SELECT `ColumnA`, `ColumnB` FROM `SchemaName`.`TableName`");
-                    sb.AppendLine("     ✗ WRONG: SELECT \"ColumnA\", \"ColumnB\" FROM \"SchemaName\".\"TableName\"  -- SYNTAX ERROR!");
-                    sb.AppendLine("  2. Use LIMIT, NOT TOP!");
-                    sb.AppendLine("     ✓ CORRECT: SELECT `ColumnA` FROM `TableName` ORDER BY `ColumnA` LIMIT 5");
-                    sb.AppendLine("     ✗ WRONG: SELECT TOP 5 `ColumnA` FROM `TableName`  -- SYNTAX ERROR!");
-                    sb.AppendLine("  → LIMIT N MUST be at the END, after ORDER BY clause");
+                    sb.AppendLine("     ✓ CORRECT: SELECT `ColumnA`, `ColumnB` FROM `TableName`");
+                    sb.AppendLine("     ✗ WRONG: SELECT \"ColumnA\", \"ColumnB\" FROM \"TableName\"  -- SYNTAX ERROR!");
+                    sb.AppendLine("  2. In JOINs, qualify columns with TABLE ALIAS (e.g. pc.`ColumnName`), NOT full table name!");
+                    sb.AppendLine("     ✓ CORRECT: SELECT pc.`ProductCategoryID`, pc.`Name` FROM `Production_ProductCategory` pc");
+                    sb.AppendLine("     ✗ WRONG: Production_ProductCategory.ProductCategoryID when alias pc exists - causes 'Unknown column'!");
+                    sb.AppendLine("  3. Use LIMIT, NOT TOP! LIMIT N at the END, after ORDER BY");
+                    sb.AppendLine("     ✓ CORRECT: SELECT ... FROM `Table` ORDER BY ... LIMIT 5");
+                    sb.AppendLine("     ✗ WRONG: SELECT TOP 5 ...  -- SYNTAX ERROR!");
                     break;
                 case DatabaseType.PostgreSQL:
                 case DatabaseType.SQLite:
@@ -369,7 +408,7 @@ public class SqlPromptBuilder : ISqlPromptBuilder
                         }
                         else
                         {
-                            sb.AppendLine($"     • {mapping.TargetColumn} (maps from SourceDatabase.{mapping.SourceColumn})");
+                            sb.AppendLine($"     • {mapping.TargetColumn} (maps from SourceDatabase.{mapping.SourceColumn}) - use TargetColumn in WHERE IN, NOT SourceColumn!");
                         }
                     }
                 }
@@ -392,7 +431,7 @@ public class SqlPromptBuilder : ISqlPromptBuilder
         sb.AppendLine("⚠️⚠️⚠️ CRITICAL: All SQL queries must be EXECUTABLE AS-IS! ⚠️⚠️⚠️");
         sb.AppendLine("  → For sequential queries: Use NUMERIC placeholder values (system will replace them)");
         sb.AppendLine("  → These are EXAMPLE numbers - system replaces them with real values from first query");
-        sb.AppendLine("  → ✓ CORRECT: WHERE column IN (1, 2, 3)  -- Example numeric values, system replaces with real IDs");
+        sb.AppendLine("  → ✓ CORRECT: WHERE column IN (1, 2, 3)  (numeric values only, no comments; system replaces with real IDs)");
         sb.AppendLine("  → ✗ WRONG: WHERE column IN (VALUE1, VALUE2, VALUE3)  -- Text causes SQL error!");
         sb.AppendLine("  → ✗ WRONG: WHERE column IN ([values from previous database results])  -- Bracket causes SQL error!");
         sb.AppendLine("  → Use actual column/table names from the schema above");
@@ -456,6 +495,13 @@ public class SqlPromptBuilder : ISqlPromptBuilder
         sb.AppendLine("CONFIRMED");
         sb.AppendLine("SELECT * FROM SchemaName.TableName1 WHERE JoinColumnID IN (SELECT JoinColumnID FROM OtherDatabaseName.SchemaName.TableName1);  -- ✗✗✗ FORBIDDEN!");
         sb.AppendLine("-- REASON: Subquery references OtherDatabaseName, but we're in CurrentDatabaseName!");
+        sb.AppendLine();
+        sb.AppendLine("✗✗✗✗✗ WRONG - Embedding first database's query as subquery in second database (NEVER!): ✗✗✗✗✗");
+        sb.AppendLine("DATABASE 2: TargetDatabaseName");
+        sb.AppendLine("CONFIRMED");
+        sb.AppendLine("SELECT T1.OrderCount FROM (SELECT TOP 5 JoinCol, COUNT(*) FROM SourceSchema.SourceTable ...) T1 JOIN TargetSchema.TargetTable T2 ON ...  -- ✗✗✗ FORBIDDEN!");
+        sb.AppendLine("-- REASON: SourceSchema.* tables do NOT exist in TargetDatabaseName! Second DB SQL must use ONLY its own tables!");
+        sb.AppendLine("-- CORRECT: SELECT \"Col1\", \"Col2\" FROM \"SchemaName\".\"TableName\" WHERE \"MappingColumn\" IN (1, 2, 3, 4, 5);");
         sb.AppendLine();
         sb.AppendLine("✗✗✗✗✗ WRONG - 3-part name with different database (NEVER DO THIS!): ✗✗✗✗✗");
         sb.AppendLine("DATABASE X: CurrentDatabaseName");
@@ -557,6 +603,12 @@ public class SqlPromptBuilder : ISqlPromptBuilder
 
         sb.AppendLine($"USER QUERY: \"{userQuery}\"");
         sb.AppendLine($"TASK: Generate {queryIntent.DatabaseQueries.Count} SQL query/queries");
+        sb.AppendLine();
+        sb.AppendLine("CRITICAL - Entity vs Agent semantics (use SYSTEM message tables):");
+        sb.AppendLine("  → Query asks 'who performed action X the most' = the ENTITY that performs the action (actor), not the intermediary");
+        sb.AppendLine("  → Use the table representing that entity, JOINed to the related child/detail table via FK from SYSTEM message");
+        sb.AppendLine("  → WRONG: Using intermediary/agent table when query asks about the entity that performs the action");
+        sb.AppendLine("  → Mapping columns (for cross-database) must be in SELECT - get them from SYSTEM message");
         sb.AppendLine();
         sb.AppendLine("CRITICAL RULES:");
         if (queryIntent.DatabaseQueries.Count == 1)

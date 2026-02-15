@@ -84,6 +84,8 @@ public class DatabaseSchemaAnalyzer : IDatabaseSchemaAnalyzer
             _logger.LogError(ex, "Error analyzing schema for database");
             schemaInfo.Status = SchemaAnalysisStatus.Failed;
             schemaInfo.ErrorMessage = ex.Message;
+            _schemaCache[databaseId] = schemaInfo;
+            _lastRefreshTimes[databaseId] = DateTime.UtcNow;
         }
 
         return schemaInfo;

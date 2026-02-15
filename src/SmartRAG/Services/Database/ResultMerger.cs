@@ -207,6 +207,12 @@ public class ResultMerger : IResultMerger
 
             answer = RemoveSQLCodeBlocksFromAnswer(answer);
 
+            if (AnswerIndicatesFailureButDataExists(answer, mergedData))
+            {
+                DatabaseLogMessages.LogAnswerFallbackToRawData(_logger, null);
+                answer = FormatRawDataAsAnswer(mergedData, userQuery);
+            }
+
             var sources = queryResults.DatabaseResults
                 .Where(r => r.Value.Success)
                 .Select(r => new SearchSource
@@ -250,6 +256,37 @@ public class ResultMerger : IResultMerger
                 SearchedAt = DateTime.UtcNow
             };
         }
+    }
+
+    private static bool AnswerIndicatesFailureButDataExists(string answer, string mergedData)
+    {
+        if (string.IsNullOrWhiteSpace(answer) || string.IsNullOrWhiteSpace(mergedData))
+            return false;
+
+        var lowerAnswer = answer.ToLowerInvariant();
+        var failurePatterns = new[]
+        {
+            "could not find", "cannot find", "unable to find", "no information", "not found",
+            "not available", "no data", "cannot answer", "could not determine", "no results"
+        };
+
+        if (!failurePatterns.Any(p => lowerAnswer.Contains(p)))
+            return false;
+
+        var totalRowsMatches = Regex.Matches(mergedData, @"📊\s+Total\s+rows:\s+(\d+)", RegexOptions.IgnoreCase);
+        return totalRowsMatches.Cast<Match>()
+            .Any(m => int.TryParse(m.Groups[1].Value, out var rows) && rows > 0);
+    }
+
+    private static string FormatRawDataAsAnswer(string mergedData, string userQuery)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine($"Query: {userQuery}");
+        sb.AppendLine();
+        sb.AppendLine("Data from database queries:");
+        sb.AppendLine();
+        sb.Append(mergedData);
+        return sb.ToString();
     }
 
     private ParsedQueryResult? ParseQueryResult(string resultData)

@@ -138,7 +138,8 @@ public class DatabaseParserService : IDatabaseParserService
         if (string.IsNullOrWhiteSpace(connectionString)) throw new ArgumentNullException(nameof(connectionString));
         if (string.IsNullOrWhiteSpace(query)) throw new ArgumentNullException(nameof(query));
 
-        var sanitizedQuery = ValidateAndSanitizeQuery(query);
+        var preprocessed = StripCommentsAndTakeFirstStatement(query);
+        var sanitizedQuery = ValidateAndSanitizeQuery(preprocessed);
 
         return databaseType switch
         {
@@ -152,6 +153,38 @@ public class DatabaseParserService : IDatabaseParserService
                 cancellationToken),
             _ => throw new NotSupportedException($"Database type {databaseType} is not supported")
         };
+    }
+
+    private static string StripCommentsAndTakeFirstStatement(string query)
+    {
+        if (string.IsNullOrWhiteSpace(query)) return query;
+        var sb = new System.Text.StringBuilder();
+        var i = 0;
+        while (i < query.Length)
+        {
+            if (i + 1 < query.Length && query[i] == '-' && query[i + 1] == '-')
+            {
+                while (i < query.Length && query[i] != '\n') i++;
+                continue;
+            }
+            if (i + 1 < query.Length && query[i] == '/' && query[i + 1] == '*')
+            {
+                i += 2;
+                while (i + 1 < query.Length && (query[i] != '*' || query[i + 1] != '/')) i++;
+                if (i + 1 < query.Length) i += 2;
+                continue;
+            }
+            sb.Append(query[i++]);
+        }
+        var withoutComments = sb.ToString();
+        var semicolonIdx = withoutComments.IndexOf(';');
+        if (semicolonIdx >= 0)
+        {
+            var rest = withoutComments[(semicolonIdx + 1)..].Trim();
+            if (rest.Length > 0 && char.IsLetter(rest[0]))
+                withoutComments = withoutComments[..semicolonIdx].Trim();
+        }
+        return withoutComments.Trim();
     }
 
     private static string ValidateAndSanitizeQuery(string query)
@@ -178,9 +211,7 @@ public class DatabaseParserService : IDatabaseParserService
 
         if (sanitized.Contains(";--", StringComparison.Ordinal) ||
             sanitized.Contains(";/*", StringComparison.Ordinal) ||
-            sanitized.Contains("UNION", StringComparison.OrdinalIgnoreCase) ||
-            sanitized.Contains("--", StringComparison.Ordinal) ||
-            sanitized.Contains("/*", StringComparison.Ordinal))
+            sanitized.Contains("UNION", StringComparison.OrdinalIgnoreCase))
         {
             throw new ArgumentException("Query contains potentially dangerous SQL patterns", nameof(query));
         }

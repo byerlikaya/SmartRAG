@@ -98,7 +98,6 @@ public class MultiDatabaseQueryCoordinator : IMultiDatabaseQueryCoordinator
 
             cancellationToken.ThrowIfCancellationRequested();
             var finalAnswer = await _resultMerger.GenerateFinalAnswerAsync(userQuery, mergedData, queryResults, preferredLanguage);
-
             return finalAnswer;
         }
         catch (Exception ex)
@@ -201,19 +200,26 @@ public class MultiDatabaseQueryCoordinator : IMultiDatabaseQueryCoordinator
 
             foreach (var tableName in dbQuery.RequiredTables)
             {
-                if (schema.Tables.Any(t => t.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase)))
+                var matched = schema.Tables.FirstOrDefault(t => t.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase));
+                if (matched == null)
                 {
-                    var exactTableName = schema.Tables.First(t => t.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase)).TableName;
-                    validTables.Add(exactTableName);
+                    var altName = tableName.Replace(".", "_");
+                    matched = schema.Tables.FirstOrDefault(t => t.TableName.Equals(altName, StringComparison.OrdinalIgnoreCase));
+                }
+                if (matched == null)
+                {
+                    var altName2 = tableName.Replace("_", ".");
+                    matched = schema.Tables.FirstOrDefault(t => t.TableName.Equals(altName2, StringComparison.OrdinalIgnoreCase));
+                }
+                if (matched != null)
+                {
+                    validTables.Add(matched.TableName);
                 }
                 else
                 {
                     invalidTables.Add(tableName);
-
                     if (!missingTables.ContainsKey(tableName))
-                    {
                         missingTables[tableName] = new List<string>();
-                    }
                     missingTables[tableName].Add(dbQuery.DatabaseId);
                 }
             }
@@ -237,31 +243,34 @@ public class MultiDatabaseQueryCoordinator : IMultiDatabaseQueryCoordinator
         foreach (var kvp in missingTables)
         {
             var tableName = kvp.Key;
-
-            var correctSchema = allSchemas.FirstOrDefault(s =>
-                s.Tables.Any(t => t.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase)));
-
-            if (correctSchema == null)
+            DatabaseSchemaInfo? correctSchema = null;
+            string? exactTableName = null;
+            foreach (var s in allSchemas)
+            {
+                var t = s.Tables.FirstOrDefault(x => x.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase))
+                    ?? s.Tables.FirstOrDefault(x => x.TableName.Equals(tableName.Replace(".", "_"), StringComparison.OrdinalIgnoreCase))
+                    ?? s.Tables.FirstOrDefault(x => x.TableName.Equals(tableName.Replace("_", "."), StringComparison.OrdinalIgnoreCase));
+                if (t != null)
+                {
+                    correctSchema = s;
+                    exactTableName = t.TableName;
+                    break;
+                }
+            }
+            if (correctSchema == null || exactTableName == null)
             {
                 _logger.LogWarning("Table '{Table}' not found in any database", tableName);
                 continue;
             }
-
             if (validQueries.Any(q => q.DatabaseId == correctSchema.DatabaseId))
             {
                 var existingQuery = validQueries.First(q => q.DatabaseId == correctSchema.DatabaseId);
-                if (existingQuery.RequiredTables.Contains(tableName, StringComparer.OrdinalIgnoreCase))
+                if (existingQuery.RequiredTables.Contains(exactTableName, StringComparer.OrdinalIgnoreCase))
                     continue;
-                var exactTableName = correctSchema.Tables.First(t =>
-                    t.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase)).TableName;
-
                 existingQuery.RequiredTables.Add(exactTableName);
             }
             else
             {
-                var exactTableName = correctSchema.Tables.First(t =>
-                    t.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase)).TableName;
-
                 validQueries.Add(new DatabaseQueryIntent
                 {
                     DatabaseId = correctSchema.DatabaseId,
@@ -273,7 +282,26 @@ public class MultiDatabaseQueryCoordinator : IMultiDatabaseQueryCoordinator
             }
         }
 
-        queryIntent.DatabaseQueries = validQueries;
+        var deduplicated = validQueries
+            .GroupBy(q => q.DatabaseId, StringComparer.OrdinalIgnoreCase)
+            .Select(g =>
+            {
+                var first = g.First();
+                if (g.Count() == 1)
+                    return first;
+                var merged = new DatabaseQueryIntent
+                {
+                    DatabaseId = first.DatabaseId,
+                    DatabaseName = first.DatabaseName,
+                    RequiredTables = g.SelectMany(q => q.RequiredTables).Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+                    Purpose = first.Purpose,
+                    Priority = g.Max(q => q.Priority)
+                };
+                return merged;
+            })
+            .ToList();
+
+        queryIntent.DatabaseQueries = deduplicated;
 
         return queryIntent;
     }

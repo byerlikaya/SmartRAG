@@ -127,7 +127,7 @@ public class QueryIntentAnalyzer : IQueryIntentAnalyzer
             schema.Tables.Any(table =>
                 table.Columns.Any(col => IsNumericType(col.DataType))));
 
-        var aggregationPatterns = new[] { "count", "sum", "avg", "total", "most", "top", "max", "min", "highest", "lowest", "first", "order", "sort" };
+        var aggregationPatterns = new[] { "count", "sum", "avg", "average", "ortalama", "total", "most", "top", "max", "min", "highest", "lowest", "first", "order", "sort" };
         var hasAggregationPattern = aggregationPatterns.Any(pattern => lowerQuery.Contains(pattern));
 
         return hasNumericColumns && hasAggregationPattern;
@@ -555,16 +555,16 @@ public class QueryIntentAnalyzer : IQueryIntentAnalyzer
                         foreach (var tableElement in tablesElement.EnumerateArray())
                         {
                             var tableName = tableElement.GetString() ?? string.Empty;
-
-                            if (validTables.Contains(tableName))
-                            {
-                                dbQuery.RequiredTables.Add(tableName);
-                            }
+                            var exactName = targetSchema.Tables
+                                .Select(t => t.TableName)
+                                .FirstOrDefault(t => t.Equals(tableName, StringComparison.OrdinalIgnoreCase)
+                                    || t.Equals(tableName.Replace(".", "_"), StringComparison.OrdinalIgnoreCase)
+                                    || t.Equals(tableName.Replace("_", "."), StringComparison.OrdinalIgnoreCase));
+                            if (exactName != null)
+                                dbQuery.RequiredTables.Add(exactName);
                             else
-                            {
                                 _logger.LogWarning("AI attempted to add table '{Table}' to '{Database}', but it doesn't exist there. Skipping.",
                                     tableName, dbQuery.DatabaseName);
-                            }
                         }
 
                         ExpandTablesWithForeignKeyDependencies(dbQuery, targetSchema);

@@ -341,4 +341,129 @@ public static class DatabaseLogMessages
         new EventId(36067, "DetectedInvalidFromClause"),
         "Detected invalid FROM clause after removing cross-database reference. Attempting to fix SQL.");
 
+    public static readonly Action<ILogger, string, string, string, Exception> LogRemovingInvalidJoinClause = LoggerMessage.Define<string, string, string>(
+        LogLevel.Warning,
+        new EventId(36068, "RemovingInvalidJoinClause"),
+        "Removing invalid JOIN clause: {TableRef} (table not in schema for {Database}). Alias {Alias} references removed.");
+
+    public static readonly Action<ILogger, Exception> LogAnswerFallbackToRawData = LoggerMessage.Define(
+        LogLevel.Information,
+        new EventId(36069, "AnswerFallbackToRawData"),
+        "AI returned failure message but merged data contains rows; returning raw data as answer");
+
+    public static readonly Action<ILogger, string, string, string, Exception> LogInjectedMissingMappingColumn = LoggerMessage.Define<string, string, string>(
+        LogLevel.Debug,
+        new EventId(36070, "InjectedMissingMappingColumn"),
+        "Injected missing mapping column {Column} into SQL for database {DatabaseName}. SQL: {Sql}");
+
+    public static readonly Action<ILogger, string, string, Exception> LogSkippedMappingColumnNotInSchema = LoggerMessage.Define<string, string>(
+        LogLevel.Information,
+        new EventId(36071, "SkippedMappingColumnNotInSchema"),
+        "Skipped mapping columns not in schema for database {DatabaseName}: {Columns}");
+
+    public static readonly Action<ILogger, string, string, string, int, Exception> LogInjectedSourceValuesIntoTargetQuery = LoggerMessage.Define<string, string, string, int>(
+        LogLevel.Debug,
+        new EventId(36071, "InjectedSourceValuesIntoTargetQuery"),
+        "Two-phase execution: Injected {Count} values from {SourceDb}.{SourceColumn} into {TargetDb} WHERE clause");
+
+    public static readonly Action<ILogger, string, Exception> LogExecutingSqlForDatabase = LoggerMessage.Define<string>(
+        LogLevel.Debug,
+        new EventId(36072, "ExecutingSqlForDatabase"),
+        "Executing SQL for database {DatabaseName}");
+
+    public static readonly Action<ILogger, string, string, Exception> LogExecutingSqlWithQuery = LoggerMessage.Define<string, string>(
+        LogLevel.Debug,
+        new EventId(36092, "ExecutingSqlWithQuery"),
+        "[DEBUG] Executing SQL for {DatabaseName}: {Sql}");
+
+    public static readonly Action<ILogger, string, Exception> LogQueryExecutionFailed = LoggerMessage.Define<string>(
+        LogLevel.Error,
+        new EventId(36073, "QueryExecutionFailed"),
+        "Error executing query on database {DatabaseName}");
+
+    public static readonly Action<ILogger, string, string, string, Exception> LogRemovingInvalidSubqueryReference = LoggerMessage.Define<string, string, string>(
+        LogLevel.Warning,
+        new EventId(36074, "RemovingInvalidSubqueryReference"),
+        "Removing invalid subquery: {Column} IN (SELECT ... FROM {TableRef}) - table not in schema for {DatabaseName}");
+
+    public static readonly Action<ILogger, bool, int, Exception> LogTwoPhaseMappingCheck = LoggerMessage.Define<bool, int>(
+        LogLevel.Debug,
+        new EventId(36075, "TwoPhaseMappingCheck"),
+        "[INS] HasMappingDependency={HasMapping}, AllMappingsCount={Count}");
+
+    public static readonly Action<ILogger, int, string, Exception> LogTwoPhaseLoopStart = LoggerMessage.Define<int, string>(
+        LogLevel.Debug,
+        new EventId(36076, "TwoPhaseLoopStart"),
+        "[INS] Two-phase loop iteration {Index}: database {DatabaseName}");
+
+    public static readonly Action<ILogger, bool, int, Exception> LogTwoPhaseInjectDecision = LoggerMessage.Define<bool, int>(
+        LogLevel.Debug,
+        new EventId(36077, "TwoPhaseInjectDecision"),
+        "[INS] Will inject: {WillInject}, sourceValues key count={Count}");
+
+    public static readonly Action<ILogger, string, bool, int, Exception> LogTwoPhaseAfterExecution = LoggerMessage.Define<string, bool, int>(
+        LogLevel.Debug,
+        new EventId(36078, "TwoPhaseAfterExecution"),
+        "[INS] After execution {DatabaseName}: Success={Success}, RowCount={RowCount}");
+
+    public static readonly Action<ILogger, string, int, Exception> LogTwoPhaseAfterExtract = LoggerMessage.Define<string, int>(
+        LogLevel.Debug,
+        new EventId(36079, "TwoPhaseAfterExtract"),
+        "[INS] After ExtractMappingColumnValues for {DatabaseName}: sourceValues has {KeyCount} keys");
+
+    public static readonly Action<ILogger, string, int, int, Exception> LogExtractMappingEntry = LoggerMessage.Define<string, int, int>(
+        LogLevel.Debug,
+        new EventId(36080, "ExtractMappingEntry"),
+        "[INS] ExtractMappingColumnValues: db={DatabaseName}, resultDataLen={Len}, mappingsCount={Count}");
+
+    public static readonly Action<ILogger, string, int, Exception> LogExtractMappingHeaders = LoggerMessage.Define<string, int>(
+        LogLevel.Debug,
+        new EventId(36081, "ExtractMappingHeaders"),
+        "[INS] ExtractMapping headers: {Headers}, headerIndex={Index}");
+
+    public static readonly Action<ILogger, string, string, int, Exception> LogExtractMappingColumnsToExtract = LoggerMessage.Define<string, string, int>(
+        LogLevel.Debug,
+        new EventId(36082, "ExtractMappingColumnsToExtract"),
+        "[INS] ExtractMapping sourceMappings for {DatabaseName}, columnsToExtract=[{Columns}], count={Count}");
+
+    public static readonly Action<ILogger, string, int, bool, Exception> LogExtractMappingColumnLookup = LoggerMessage.Define<string, int, bool>(
+        LogLevel.Debug,
+        new EventId(36083, "ExtractMappingColumnLookup"),
+        "[INS] ExtractMapping column {ColName}: colIndex={Index}, found={Found}");
+
+    public static readonly Action<ILogger, string, int, Exception> LogExtractMappingValuesExtracted = LoggerMessage.Define<string, int>(
+        LogLevel.Debug,
+        new EventId(36084, "ExtractMappingValuesExtracted"),
+        "[INS] ExtractMapping key {Key}: extracted {Count} values");
+
+    public static readonly Action<ILogger, string, Exception> LogExtractMappingNoHeaders = LoggerMessage.Define<string>(
+        LogLevel.Debug,
+        new EventId(36085, "ExtractMappingNoHeaders"),
+        "[INS] ExtractMapping for {DatabaseName}: no headers found, aborting");
+
+    public static readonly Action<ILogger, string, int, Exception> LogInjectEntry = LoggerMessage.Define<string, int>(
+        LogLevel.Debug,
+        new EventId(36086, "InjectEntry"),
+        "[INS] InjectSourceValuesIntoTargetQuery: targetDb={TargetDb}, targetMappingsCount={Count}");
+
+    public static readonly Action<ILogger, string, Exception> LogInjectSourceValuesKeys = LoggerMessage.Define<string>(
+        LogLevel.Debug,
+        new EventId(36087, "InjectSourceValuesKeys"),
+        "[INS] Inject sourceValues keys: [{Keys}]");
+
+    public static readonly Action<ILogger, string, bool, string, int, Exception> LogInjectKeyLookup = LoggerMessage.Define<string, bool, string, int>(
+        LogLevel.Debug,
+        new EventId(36088, "InjectKeyLookup"),
+        "[INS] Inject key {Key}: found={Found}, altKey={AltKey}, valuesCount={Count}");
+
+    public static readonly Action<ILogger, bool, Exception> LogInjectRegexMatch = LoggerMessage.Define<bool>(
+        LogLevel.Debug,
+        new EventId(36089, "InjectRegexMatch"),
+        "[INS] Inject IN clause regex match: {Success}");
+
+    public static readonly Action<ILogger, Exception> LogInjectNoMatchSkipped = LoggerMessage.Define(
+        LogLevel.Debug,
+        new EventId(36090, "InjectNoMatchSkipped"),
+        "[INS] Inject: no IN clause match, mapping skipped");
+
 }
