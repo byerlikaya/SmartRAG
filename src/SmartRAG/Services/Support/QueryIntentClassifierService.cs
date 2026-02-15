@@ -327,49 +327,6 @@ IMPORTANT:
         }
     }
 
-    /// <summary>
-    /// Parses command from user input and extracts payload if available
-    /// </summary>
-    public bool TryParseCommand(string input, out QueryCommandType commandType, out string payload)
-    {
-        commandType = QueryCommandType.None;
-        payload = string.Empty;
-
-        if (string.IsNullOrWhiteSpace(input))
-        {
-            return false;
-        }
-
-        var trimmed = input.Trim();
-        var lowerTrimmed = trimmed.ToLowerInvariant();
-
-        if (lowerTrimmed == "/new" ||
-            lowerTrimmed == "/reset" ||
-            lowerTrimmed == "/clear" ||
-            lowerTrimmed.StartsWith("/new ") ||
-            lowerTrimmed.StartsWith("/reset ") ||
-            lowerTrimmed.StartsWith("/clear "))
-        {
-            commandType = QueryCommandType.NewConversation;
-            if (lowerTrimmed.StartsWith("/new "))
-                payload = trimmed[5..].TrimStart();
-            else if (lowerTrimmed.StartsWith("/reset ") || lowerTrimmed.StartsWith("/clear "))
-                payload = trimmed[7..].TrimStart();
-            return true;
-        }
-
-        if (!trimmed.StartsWith("/chat", StringComparison.OrdinalIgnoreCase) &&
-            !trimmed.StartsWith("/talk", StringComparison.OrdinalIgnoreCase) &&
-            !trimmed.StartsWith("/conversation", StringComparison.OrdinalIgnoreCase))
-            return false;
-
-        commandType = QueryCommandType.ForceConversation;
-        payload = trimmed.Length > 5 ? trimmed[5..].TrimStart() : string.Empty;
-
-        return true;
-
-    }
-
     private HeuristicDecision HeuristicClassify(string query, out int score)
     {
         score = 0;
