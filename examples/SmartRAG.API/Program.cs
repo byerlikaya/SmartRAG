@@ -2,10 +2,14 @@ using SmartRAG.Dashboard;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Configure Kestrel server options for file uploads
+var port = Environment.GetEnvironmentVariable("SMARTRAG_API_PORT");
+if (string.IsNullOrEmpty(port))
+    port = "5050";
+builder.WebHost.UseUrls($"http://localhost:{port}");
+
 builder.WebHost.UseKestrel(options =>
 {
-    options.Limits.MaxRequestBodySize = 100 * 1024 * 1024; // 100 MB
+    options.Limits.MaxRequestBodySize = 100 * 1024 * 1024;
 });
 
 RegisterServices(builder.Services, builder.Configuration);
