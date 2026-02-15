@@ -26,7 +26,7 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
     private const double PreviousQueryChunkScoreBoost = 0.5;
 
     private const string DocumentTagPattern = @"\s*-d\s*$";
-    private const string DatabaseTagPattern = @"\s*-db\s*$";
+    private const string DatabaseTagPattern = @"(?:^\s*-db\s*|\s*-db\s*$)";
     private const string McpTagPattern = @"\s*-mcp\s*$";
     private const string AudioTagPattern = @"\s*-a\s*$";
     private const string ImageTagPattern = @"\s*-i\s*$";
@@ -471,7 +471,9 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
             var adjustedOptions = factory(options);
             if (pattern == McpTagPattern)
                 adjustedOptions.EnableMcpSearch = true;
-            cleanedQuery = cleanedQuery.Substring(0, match.Index).TrimEnd();
+            cleanedQuery = match.Index == 0
+                ? cleanedQuery.Substring(match.Length).TrimStart()
+                : cleanedQuery.Substring(0, match.Index).TrimEnd();
             return (cleanedQuery, adjustedOptions);
         }
 
@@ -1827,7 +1829,7 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Error querying MCP servers");
+            ServiceLogMessages.LogMcpQueryError(_logger, ex);
             return existingResponse;
         }
     }

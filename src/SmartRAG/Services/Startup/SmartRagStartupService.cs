@@ -31,17 +31,17 @@ public class SmartRagStartupService : IHostedService
             var mcpConnectionManager = _serviceProvider.GetService<IMcpConnectionManager>();
             if (mcpConnectionManager != null)
             {
-                _logger.LogInformation("Initializing MCP connections...");
+                StartupLogMessages.LogMcpInit(_logger, null!);
                 await mcpConnectionManager.ConnectAllAsync();
             }
             else
             {
-                _logger.LogWarning("IMcpConnectionManager service not found. MCP client may not be properly registered.");
+                StartupLogMessages.LogMcpServiceNotFound(_logger, null!);
             }
         }
         else
         {
-            _logger.LogInformation("MCP client is disabled in configuration");
+            StartupLogMessages.LogMcpDisabled(_logger, null!);
         }
 
         if (_options.Features.EnableFileWatcher)
@@ -49,7 +49,7 @@ public class SmartRagStartupService : IHostedService
             var fileWatcherService = _serviceProvider.GetService<IFileWatcherService>();
             if (fileWatcherService != null)
             {
-                _logger.LogInformation("Initializing file watchers...");
+                StartupLogMessages.LogFileWatcherInit(_logger, null!);
                 foreach (var folderConfig in _options.WatchedFolders)
                 {
                     try
@@ -58,7 +58,7 @@ public class SmartRagStartupService : IHostedService
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Failed to start watching folder: {FolderPath}", folderConfig.FolderPath);
+                        StartupLogMessages.LogFileWatcherFailed(_logger, folderConfig.FolderPath, ex);
                     }
                 }
             }
@@ -66,20 +66,24 @@ public class SmartRagStartupService : IHostedService
 
         if (_options.DatabaseConnections.Count > 0)
         {
-            using var dbScope = _serviceProvider.CreateScope();
-            var databaseConnectionManager = dbScope.ServiceProvider.GetService<IDatabaseConnectionManager>();
-            if (databaseConnectionManager != null)
+            _ = Task.Run(async () =>
             {
-                _logger.LogInformation("Initializing database connections and schema analysis...");
-                try
+                await Task.Yield();
+                using var dbScope = _serviceProvider.CreateScope();
+                var databaseConnectionManager = dbScope.ServiceProvider.GetService<IDatabaseConnectionManager>();
+                if (databaseConnectionManager != null)
                 {
-                    await databaseConnectionManager.InitializeAsync(cancellationToken);
+                    StartupLogMessages.LogDatabaseInitBackground(_logger, null!);
+                    try
+                    {
+                        await databaseConnectionManager.InitializeAsync(CancellationToken.None);
+                    }
+                    catch (Exception ex)
+                    {
+                        StartupLogMessages.LogDatabaseInitFailed(_logger, ex);
+                    }
                 }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Database connection manager initialization failed; schema scanning may be skipped.");
-                }
-            }
+            }, CancellationToken.None);
         }
     }
 

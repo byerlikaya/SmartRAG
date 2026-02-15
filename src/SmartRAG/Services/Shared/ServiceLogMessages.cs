@@ -46,6 +46,11 @@ public static class ServiceLogMessages
         new EventId(3022, "ContextExpansionError"),
         "Error during context expansion, returning original chunks");
 
+    public static readonly Action<ILogger, Exception> LogMcpQueryError = LoggerMessage.Define(
+        LogLevel.Warning,
+        new EventId(3023, "McpQueryError"),
+        "Error querying MCP servers");
+
     public static readonly Action<ILogger, int, Exception> LogBatchFailed = LoggerMessage.Define<int>(
         LogLevel.Warning,
         new EventId(5004, "BatchFailed"),
