@@ -1500,6 +1500,38 @@ body {
     margin-bottom: 0.35rem;
 }
 
+.sr-msg-with-copy {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    min-width: 0;
+}
+
+.sr-msg-with-copy .sr-msg {
+    flex: 1;
+    min-width: 0;
+}
+
+.sr-msg-copy-btn {
+    flex-shrink: 0;
+    padding: 0.25rem;
+    min-width: 28px;
+    min-height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sr-msg-copy-btn .sr-copy-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sr-msg-copy-btn .sr-copy-icon svg {
+    display: block;
+}
+
 .sr-msg-sources {
     display: flex;
     flex-wrap: wrap;

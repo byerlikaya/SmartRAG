@@ -364,6 +364,37 @@
         return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/><path d="M5 16l.75 2.25L8 19l-2.25.75L5 22l-.75-2.25L2 19l2.25-.75L5 16zm14 0l.75 2.25L22 19l-2.25.75L19 22l-.75-2.25L16 19l2.25-.75L19 16z"/></svg>';
     }
 
+    function getCopyIconSvg() {
+        return '<span class="sr-copy-icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg></span>';
+    }
+
+    function getCheckIconSvg() {
+        return '<span class="sr-copy-icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></span>';
+    }
+
+    function createCopyButton(textToCopy) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'sr-btn sr-btn-secondary sr-msg-copy-btn';
+        btn.setAttribute('title', 'Copy answer');
+        btn.setAttribute('aria-label', 'Copy answer');
+        btn.innerHTML = getCopyIconSvg();
+        btn.addEventListener('click', function () {
+            if (!textToCopy) return;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(textToCopy).then(function () {
+                    btn.innerHTML = getCheckIconSvg();
+                    btn.setAttribute('title', 'Copied!');
+                    setTimeout(function () {
+                        btn.innerHTML = getCopyIconSvg();
+                        btn.setAttribute('title', 'Copy answer');
+                    }, 1500);
+                });
+            }
+        });
+        return btn;
+    }
+
     function appendChatMessage(role, text) {
         var container = document.getElementById('sr-chat-messages');
         if (!container) return;
@@ -377,7 +408,18 @@
         body.className = 'sr-msg sr-msg-' + role;
         body.textContent = text;
         row.appendChild(avatar);
-        row.appendChild(body);
+        if (role === 'assistant') {
+            var bodyWrap = document.createElement('div');
+            bodyWrap.className = 'sr-msg-body-wrap';
+            var msgWithCopy = document.createElement('div');
+            msgWithCopy.className = 'sr-msg-with-copy';
+            msgWithCopy.appendChild(body);
+            msgWithCopy.appendChild(createCopyButton(text));
+            bodyWrap.appendChild(msgWithCopy);
+            row.appendChild(bodyWrap);
+        } else {
+            row.appendChild(body);
+        }
         container.appendChild(row);
         container.scrollTop = container.scrollHeight;
     }
@@ -412,10 +454,14 @@
         avatar.innerHTML = getAiAvatarSvg();
         var bodyWrap = document.createElement('div');
         bodyWrap.className = 'sr-msg-body-wrap';
+        var msgWithCopy = document.createElement('div');
+        msgWithCopy.className = 'sr-msg-with-copy';
         var msgDiv = document.createElement('div');
         msgDiv.className = 'sr-msg sr-msg-assistant';
         msgDiv.textContent = text;
-        bodyWrap.appendChild(msgDiv);
+        msgWithCopy.appendChild(msgDiv);
+        msgWithCopy.appendChild(createCopyButton(text));
+        bodyWrap.appendChild(msgWithCopy);
         if (sources && sources.length > 0) {
             var groups = groupSourcesByDocument(sources);
             var sourcesRow = document.createElement('div');
