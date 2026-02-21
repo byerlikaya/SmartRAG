@@ -1,138 +1,51 @@
-using SmartRAG.Interfaces.Search;
-
 namespace SmartRAG.Services.Document;
 
 
 /// <summary>
-/// Service for document search and RAG (Retrieval-Augmented Generation) operations
+/// Orchestrates query intelligence: parses source tags, resolves session/intent, and delegates to source handlers (database, document, MCP).
 /// </summary>
-public class DocumentSearchService : IDocumentSearchService, IRagAnswerGeneratorService
+public class DocumentSearchService : IDocumentSearchService
 {
-    private const int MinSearchResultsCount = 0;
-    private const int FallbackSearchMaxResults = 30;
-    private const int MinSubstantialContentLength = 30;
-    private const int MaxExpandedChunks = 50;
-    private const int MaxContextSize = 18000;
-    private const double DocumentBoostThreshold = 4.5;
-    private const int TopChunksPerDocument = 5;
-    private const int ChunksToCheckForKeywords = 30;
-    private const double DocumentScoreThreshold = 0.8;
-    private const double NumberedListBonusPerItem = 100.0;
-    private const double NumberedListWordMatchBonus = 10.0;
     private const double SkipEagerDocumentAnswerConfidenceThreshold = 0.85;
     private const double DatabaseQueryConfidenceThreshold = 0.5;
     private const double StrongDocumentMatchThreshold = 4.8;
-    private const int PreviousQuerySearchMaxResults = 15;
-    private const double PreviousQueryChunkScoreBoost = 0.5;
 
-    private const string DocumentTagPattern = @"\s*-d\s*$";
-    private const string DatabaseTagPattern = @"(?:^\s*-db\s*|\s*-db\s*$)";
-    private const string McpTagPattern = @"\s*-mcp\s*$";
-    private const string AudioTagPattern = @"\s*-a\s*$";
-    private const string ImageTagPattern = @"\s*-i\s*$";
-    private const string PunctuationPrefix = @"[\p{P}]";
-    private const RegexOptions TagRegexOptions = RegexOptions.IgnoreCase;
-
-    private readonly IDocumentRepository _documentRepository;
-    private readonly IAIService _aiService;
     private readonly SmartRagOptions _options;
     private readonly ILogger<DocumentSearchService> _logger;
-    private readonly IQueryIntentAnalyzer _queryIntentAnalyzer;
+    private readonly IRagAnswerGeneratorService _ragAnswerGenerator;
+    private readonly IReadOnlyList<IQuerySourceHandler> _sourceHandlers;
     private readonly IConversationManagerService _conversationManager;
     private readonly IQueryIntentClassifierService _queryIntentClassifier;
-    private readonly IPromptBuilderService _promptBuilder;
-    private readonly IDocumentScoringService _documentScoring;
-    private readonly ISourceBuilderService _sourceBuilder;
-    private readonly IContextExpansionService _contextExpansion;
-    private readonly IMcpIntegrationService _mcpIntegration;
-    private readonly IDocumentRelevanceCalculatorService _relevanceCalculator;
-    private readonly IQueryWordMatcherService _queryWordMatcher;
-    private readonly IQueryPatternAnalyzerService _queryPatternAnalyzer;
-    private readonly IChunkPrioritizerService _chunkPrioritizer;
-    private readonly IDocumentService _documentService;
-    private readonly IQueryAnalysisService _queryAnalysis;
+    private readonly IQueryIntentAnalyzer _queryIntentAnalyzer;
     private readonly IResponseBuilderService _responseBuilder;
-    private readonly IQueryStrategyOrchestratorService _strategyOrchestrator;
-    private readonly IQueryStrategyExecutorService _strategyExecutor;
-    private readonly IDocumentSearchStrategyService _documentSearchStrategy;
+    private readonly IPromptBuilderService _promptBuilder;
+    private readonly IAIService _aiService;
 
-    /// <summary>
-    /// Initializes a new instance of the DocumentSearchService
-    /// </summary>
-    /// <param name="documentRepository">Repository for document operations</param>
-    /// <param name="aiService">AI service for text generation</param>
-    /// <param name="options">SmartRAG configuration options</param>
-    /// <param name="logger">Logger instance for this service</param>
-    /// <param name="queryIntentAnalyzer">Service for analyzing database query intent</param>
-    /// <param name="conversationManager">Service for managing conversation sessions and history</param>
-    /// <param name="queryIntentClassifier">Service for classifying query intent</param>
-    /// <param name="promptBuilder">Service for building AI prompts</param>
-    /// <param name="documentScoring">Service for scoring document chunks</param>
-    /// <param name="sourceBuilder">Service for building search sources</param>
-    /// <param name="contextExpansion">Service for expanding chunk context with adjacent chunks</param>
-    /// <param name="mcpIntegration">Service for integrating MCP server results</param>
-    /// <param name="relevanceCalculator">Service for calculating document-level relevance scores</param>
-    /// <param name="queryWordMatcher">Service for query word matching operations</param>
-    /// <param name="queryPatternAnalyzer">Service for analyzing query patterns and detecting numbered lists</param>
-    /// <param name="chunkPrioritizer">Service for prioritizing chunks</param>
-    /// <param name="documentService">Service for document operations and filtering</param>
-    /// <param name="queryAnalysis">Service for analyzing queries and determining search parameters</param>
-    /// <param name="responseBuilder">Service for building RAG responses</param>
-    /// <param name="strategyOrchestrator">Service for determining query execution strategy</param>
-    /// <param name="strategyExecutor">Service for executing query strategies</param>
-    /// <param name="documentSearchStrategy">Service for executing document search strategies</param>
     public DocumentSearchService(
-        IDocumentRepository documentRepository,
-        IAIService aiService,
         IOptions<SmartRagOptions> options,
         ILogger<DocumentSearchService> logger,
-        IResponseBuilderService responseBuilder,
+        IRagAnswerGeneratorService ragAnswerGenerator,
+        IEnumerable<IQuerySourceHandler> sourceHandlers,
+        IConversationManagerService conversationManager,
+        IQueryIntentClassifierService queryIntentClassifier,
         IQueryIntentAnalyzer queryIntentAnalyzer,
-        IContextExpansionService contextExpansion,
-        IDocumentRelevanceCalculatorService relevanceCalculator,
-        IQueryWordMatcherService queryWordMatcher,
-        IQueryPatternAnalyzerService queryPatternAnalyzer,
-        IChunkPrioritizerService chunkPrioritizer,
-        IDocumentService documentService,
-        IQueryAnalysisService queryAnalysis,
-        IQueryStrategyOrchestratorService strategyOrchestrator,
-        IQueryStrategyExecutorService strategyExecutor,
-        IDocumentSearchStrategyService documentSearchStrategy,
-        IMcpIntegrationService mcpIntegration,
-        IConversationManagerService? conversationManager = null,
-        IQueryIntentClassifierService? queryIntentClassifier = null,
-        IPromptBuilderService? promptBuilder = null,
-        IDocumentScoringService? documentScoring = null,
-        ISourceBuilderService? sourceBuilder = null)
+        IResponseBuilderService responseBuilder,
+        IPromptBuilderService promptBuilder,
+        IAIService aiService)
     {
-        _documentRepository = documentRepository;
-        _aiService = aiService;
         _options = options.Value;
-        _logger = logger;
-        _queryIntentAnalyzer = queryIntentAnalyzer ?? throw new ArgumentNullException(nameof(queryIntentAnalyzer));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _ragAnswerGenerator = ragAnswerGenerator ?? throw new ArgumentNullException(nameof(ragAnswerGenerator));
+        _sourceHandlers = (sourceHandlers ?? throw new ArgumentNullException(nameof(sourceHandlers))).ToList();
         _conversationManager = conversationManager ?? throw new ArgumentNullException(nameof(conversationManager));
         _queryIntentClassifier = queryIntentClassifier ?? throw new ArgumentNullException(nameof(queryIntentClassifier));
-        _promptBuilder = promptBuilder ?? throw new ArgumentNullException(nameof(promptBuilder));
-        _documentScoring = documentScoring ?? throw new ArgumentNullException(nameof(documentScoring));
-        _sourceBuilder = sourceBuilder ?? throw new ArgumentNullException(nameof(sourceBuilder));
-        _contextExpansion = contextExpansion ?? throw new ArgumentNullException(nameof(contextExpansion));
-        _mcpIntegration = mcpIntegration ?? throw new ArgumentNullException(nameof(mcpIntegration));
-        _relevanceCalculator = relevanceCalculator ?? throw new ArgumentNullException(nameof(relevanceCalculator));
-        _queryWordMatcher = queryWordMatcher ?? throw new ArgumentNullException(nameof(queryWordMatcher));
-        _queryPatternAnalyzer = queryPatternAnalyzer ?? throw new ArgumentNullException(nameof(queryPatternAnalyzer));
-        _chunkPrioritizer = chunkPrioritizer ?? throw new ArgumentNullException(nameof(chunkPrioritizer));
-        _documentService = documentService ?? throw new ArgumentNullException(nameof(documentService));
-        _queryAnalysis = queryAnalysis ?? throw new ArgumentNullException(nameof(queryAnalysis));
+        _queryIntentAnalyzer = queryIntentAnalyzer ?? throw new ArgumentNullException(nameof(queryIntentAnalyzer));
         _responseBuilder = responseBuilder ?? throw new ArgumentNullException(nameof(responseBuilder));
-        _strategyOrchestrator = strategyOrchestrator ?? throw new ArgumentNullException(nameof(strategyOrchestrator));
-        _strategyExecutor = strategyExecutor ?? throw new ArgumentNullException(nameof(strategyExecutor));
-        _documentSearchStrategy = documentSearchStrategy ?? throw new ArgumentNullException(nameof(documentSearchStrategy));
+        _promptBuilder = promptBuilder ?? throw new ArgumentNullException(nameof(promptBuilder));
+        _aiService = aiService ?? throw new ArgumentNullException(nameof(aiService));
     }
 
-
-    /// <summary>
-    /// [AI Query] Process intelligent query with RAG. When request.SessionId is null, session and history are resolved automatically.
-    /// </summary>
+    /// <inheritdoc />
     public async Task<RagResponse> QueryIntelligenceAsync(QueryIntelligenceRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -152,37 +65,25 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
         var query = request.Query;
         var maxResults = request.MaxResults;
 
-        var (cleanedQuery, searchOptions) = ParseSourceTags(query);
+        var baseOptions = SearchOptions.FromConfig(_options);
+        var (cleanedQuery, searchOptions) = SourceTagParser.Parse(query, baseOptions);
         query = cleanedQuery;
 
         if (string.IsNullOrWhiteSpace(query))
-            throw new ArgumentException("Query cannot be empty", nameof(query));
+            throw new ArgumentException("Query cannot be empty", nameof(request));
 
-        if (searchOptions.EnableDocumentSearch)
+        var contentSearchEnabled = searchOptions.EnableDocumentSearch || searchOptions.EnableImageSearch || searchOptions.EnableAudioSearch;
+        var documentSearchEnabled = searchOptions.EnableDocumentSearch;
+        var databaseSearchEnabled = searchOptions.EnableDatabaseSearch;
+        var mcpSearchEnabled = searchOptions.EnableMcpSearch;
+
+        if (contentSearchEnabled)
         {
-            var coreFilenameWords = QueryTokenizer.GetWordsForPhraseExtraction(query).Where(w => w.Length >= 4).ToList();
-            var coreAllDocs = await _documentService.GetAllDocumentsFilteredAsync(searchOptions, cancellationToken);
-            var coreFilenameMatched = coreAllDocs
-                .Where(d => MatchesFilenameForQuery(coreFilenameWords, d.FileName))
-                .ToList();
-
-            if (coreFilenameMatched.Count > 0)
+            var filenameResponse = await _ragAnswerGenerator.TryAnswerFromFilenameMatchAsync(query, searchOptions, conversationHistory, cancellationToken);
+            if (filenameResponse != null)
             {
-                var coreChunks = await LoadChunksFromEntityMatchedDocumentsAsync(
-                    coreFilenameMatched.Select(d => d.Id).ToHashSet(),
-                    80,
-                    cancellationToken);
-                if (coreChunks.Count > 0)
-                {
-                    foreach (var c in coreChunks)
-                        c.RelevanceScore = DocumentBoostThreshold + 2.0;
-                    var coreContext = _contextExpansion.BuildLimitedContext(coreChunks, MaxContextSize);
-                    var coreAnswer = await GenerateRagAnswerFromContextAsync(query, coreContext, conversationHistory, cancellationToken);
-                    var coreSources = await _sourceBuilder.BuildSourcesAsync(coreChunks, _documentRepository);
-                    var coreResponse = _responseBuilder.CreateRagResponse(query, coreAnswer, coreSources);
-                    await _conversationManager.AddToConversationAsync(sessionId, query, coreResponse.Answer, cancellationToken);
-                    return coreResponse;
-                }
+                await _conversationManager.AddToConversationAsync(sessionId, query, filenameResponse.Answer, cancellationToken);
+                return filenameResponse;
             }
         }
 
@@ -191,7 +92,6 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
 
         if (intentAnalysis.IsConversation)
         {
-            // If answer is already provided by the intent classifier, use it directly to avoid redundant LLM call
             if (string.IsNullOrWhiteSpace(intentAnalysis.Answer))
                 return await HandleConversationQueryAsync(query, sessionId, conversationHistory, cancellationToken);
 
@@ -205,16 +105,25 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
         var queryTokens = intentAnalysis.Tokens.ToList();
 
         cancellationToken.ThrowIfCancellationRequested();
-        var (canAnswer, results) = await CanAnswerFromDocumentsAsync(query, searchOptions, queryTokens, cancellationToken);
-
-        QueryIntent? preAnalyzedQueryIntent = null;
-
-        if (searchOptions.EnableDatabaseSearch)
+        bool canAnswer;
+        List<DocumentChunk> results;
+        if (documentSearchEnabled)
         {
-            preAnalyzedQueryIntent = await _queryIntentAnalyzer.AnalyzeQueryIntentAsync(query, cancellationToken);
+            var canAnswerResult = await _ragAnswerGenerator.CanAnswerFromDocumentsAsync(query, searchOptions, queryTokens, cancellationToken);
+            canAnswer = canAnswerResult.CanAnswer;
+            results = canAnswerResult.Results;
+        }
+        else
+        {
+            canAnswer = false;
+            results = new List<DocumentChunk>();
         }
 
-        if (searchOptions.EnableDocumentSearch)
+        QueryIntent? preAnalyzedQueryIntent = null;
+        if (databaseSearchEnabled)
+            preAnalyzedQueryIntent = await _queryIntentAnalyzer.AnalyzeQueryIntentAsync(query, cancellationToken);
+
+        if (documentSearchEnabled)
         {
             searchMetadata.DocumentSearchPerformed = true;
             searchMetadata.DocumentChunksFound = results.Count;
@@ -224,40 +133,45 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
         var hasStrongDocumentMatch = topScore > StrongDocumentMatchThreshold;
 
         var hasHighConfidenceForSkip = preAnalyzedQueryIntent?.Confidence > SkipEagerDocumentAnswerConfidenceThreshold;
-        var hasDatabaseQueriesForSkip = preAnalyzedQueryIntent?.DatabaseQueries.Count > 0 && preAnalyzedQueryIntent?.Confidence > DatabaseQueryConfidenceThreshold;
+        var hasDatabaseQueriesForSkip = preAnalyzedQueryIntent?.DatabaseQueries.Count > 0 && preAnalyzedQueryIntent.Confidence > DatabaseQueryConfidenceThreshold;
         var skipEagerDocumentAnswer = (!hasStrongDocumentMatch && hasHighConfidenceForSkip) || hasDatabaseQueriesForSkip;
 
         RagResponse? earlyDocumentResponse = null;
-        if (searchOptions.EnableDocumentSearch && canAnswer && results.Count > 0 && !skipEagerDocumentAnswer)
-        {
-            var docRequest = CreateStrategyRequest(new StrategyRequestParams(query, maxResults, conversationHistory, canAnswer, searchOptions, queryTokens, PreCalculatedResults: results));
-            earlyDocumentResponse = await _strategyExecutor.ExecuteDocumentOnlyStrategyAsync(docRequest, cancellationToken);
 
-            var queryIntentForCheck = preAnalyzedQueryIntent;
-            if (queryIntentForCheck == null && searchOptions.EnableDatabaseSearch || queryIntentForCheck != null &&
-                queryIntentForCheck.DatabaseQueries.Count == 0 &&
-                searchOptions.EnableDatabaseSearch)
-            {
-                queryIntentForCheck = await _queryIntentAnalyzer.AnalyzeQueryIntentAsync(query, cancellationToken);
-                preAnalyzedQueryIntent = queryIntentForCheck;
-            }
+        var documentOnlyOptions = new SearchOptions
+        {
+            EnableDocumentSearch = true,
+            EnableDatabaseSearch = false,
+            EnableMcpSearch = false,
+            EnableImageSearch = searchOptions.EnableImageSearch,
+            EnableAudioSearch = searchOptions.EnableAudioSearch
+        };
+
+        var documentHandler = _sourceHandlers.FirstOrDefault(h => h.CanHandle(documentOnlyOptions));
+        if (documentHandler != null && documentSearchEnabled && canAnswer && results.Count > 0 && !skipEagerDocumentAnswer)
+        {
+            var docHandlerRequest = CreateHandlerRequest(query, maxResults, conversationHistory, sessionId, searchOptions, searchMetadata, queryTokens, results, canAnswerFromDocuments: true);
+            earlyDocumentResponse = await documentHandler.ExecuteAsync(docHandlerRequest, cancellationToken);
+
+            if (preAnalyzedQueryIntent != null && preAnalyzedQueryIntent.DatabaseQueries.Count == 0)
+                preAnalyzedQueryIntent = await _queryIntentAnalyzer.AnalyzeQueryIntentAsync(query, cancellationToken);
 
             var indicatesMissingData = _responseBuilder.IndicatesMissingData(
-                earlyDocumentResponse.Answer,
+                earlyDocumentResponse?.Answer ?? string.Empty,
                 query,
-                earlyDocumentResponse.Sources);
+                earlyDocumentResponse?.Sources ?? new List<SearchSource>());
 
-            if (!indicatesMissingData)
+            if (earlyDocumentResponse != null && !indicatesMissingData)
             {
                 earlyDocumentResponse.SearchMetadata = searchMetadata;
                 await _conversationManager.AddToConversationAsync(sessionId, query, earlyDocumentResponse.Answer, cancellationToken);
                 return earlyDocumentResponse;
             }
 
-            var documentSourcesWithContent = earlyDocumentResponse.Sources?
+            var documentSourcesWithContent = earlyDocumentResponse?.Sources?
                 .Where(s => SearchSourceHelper.HasContentBearingSource(s) && !string.IsNullOrWhiteSpace(s.RelevantContent))
-                .ToList();
-            var totalSourceContentLength = documentSourcesWithContent.Sum(s => s.RelevantContent.Length);
+                .ToList() ?? new List<SearchSource>();
+            var totalSourceContentLength = documentSourcesWithContent.Sum(s => s.RelevantContent?.Length ?? 0);
 
             if (documentSourcesWithContent.Count > 0 && totalSourceContentLength >= 50)
             {
@@ -265,6 +179,7 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
                 var extractionPrompt = _promptBuilder.BuildDocumentRagPrompt(query, extractionContext, extractionRetryMode: true);
                 var retryAnswer = await _aiService.GenerateResponseAsync(extractionPrompt, new List<string> { extractionContext }, cancellationToken);
                 if (!string.IsNullOrWhiteSpace(retryAnswer) &&
+                    earlyDocumentResponse != null &&
                     !_responseBuilder.IndicatesMissingData(retryAnswer, query, earlyDocumentResponse.Sources))
                 {
                     var retryResponse = _responseBuilder.CreateRagResponse(query, retryAnswer.Trim(), earlyDocumentResponse.Sources, searchMetadata);
@@ -273,7 +188,7 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
                 }
             }
 
-            if (!searchOptions.EnableDatabaseSearch)
+            if (!databaseSearchEnabled)
             {
                 var hasNoDocumentContext = documentSourcesWithContent.Count == 0;
                 RagResponse fallbackResponse;
@@ -291,80 +206,56 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
             }
         }
 
-        if (searchOptions.EnableDatabaseSearch)
+        var dbOnlyOptions = SearchOptions.CreateDatabaseOnly(searchOptions);
+        var dbHandler = _sourceHandlers.FirstOrDefault(h => h.CanHandle(dbOnlyOptions));
+        if (dbHandler != null && databaseSearchEnabled)
         {
             try
             {
                 var queryIntent = preAnalyzedQueryIntent ?? await _queryIntentAnalyzer.AnalyzeQueryIntentAsync(query, cancellationToken);
-
-                var confidence = queryIntent.Confidence;
-                var hasDatabaseQueries = queryIntent.DatabaseQueries.Count > 0;
-
-                var strategy = _strategyOrchestrator.DetermineQueryStrategy(confidence, hasDatabaseQueries, canAnswer);
-
-                var hasDatabaseQueriesForRequest = strategy == QueryStrategy.Hybrid ? (bool?)hasDatabaseQueries : null;
-
-                var strategyRequest = CreateStrategyRequest(new StrategyRequestParams(query, maxResults, conversationHistory, canAnswer, searchOptions, queryTokens,
-                    queryIntent, results, hasDatabaseQueriesForRequest));
-
-                response = strategy switch
-                {
-                    QueryStrategy.DatabaseOnly => await _strategyExecutor.ExecuteDatabaseOnlyStrategyAsync(strategyRequest, cancellationToken),
-                    QueryStrategy.DocumentOnly => earlyDocumentResponse ?? await _strategyExecutor.ExecuteDocumentOnlyStrategyAsync(strategyRequest, cancellationToken),
-                    QueryStrategy.Hybrid => await _strategyExecutor.ExecuteHybridStrategyAsync(strategyRequest, cancellationToken),
-                    _ => earlyDocumentResponse ?? await _strategyExecutor.ExecuteDocumentOnlyStrategyAsync(strategyRequest, cancellationToken)
-                };
-
-                if (strategy is QueryStrategy.DatabaseOnly or QueryStrategy.Hybrid)
-                {
-                    searchMetadata.DatabaseSearchPerformed = true;
-                    searchMetadata.DatabaseResultsFound = response.Sources.Count(s => s.SourceType == "Database");
-                }
+                var handlerRequest = CreateHandlerRequest(query, maxResults, conversationHistory, sessionId, searchOptions, searchMetadata, queryTokens, results, canAnswer, queryIntent, queryIntent.DatabaseQueries.Count > 0);
+                response = await dbHandler.ExecuteAsync(handlerRequest, cancellationToken);
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "Error during query intent analysis, falling back to document-only query");
+                ServiceLogMessages.LogQueryIntentAnalysisError(_logger, ex);
                 response = earlyDocumentResponse;
-                if (response == null)
+                if (response == null && documentHandler != null)
                 {
-                    var docRequest = CreateStrategyRequest(new StrategyRequestParams(query, maxResults, conversationHistory, canAnswer, searchOptions, queryTokens, PreCalculatedResults: results));
-                    response = await _strategyExecutor.ExecuteDocumentOnlyStrategyAsync(docRequest, cancellationToken);
+                    var fallbackRequest = CreateHandlerRequest(query, maxResults, conversationHistory, sessionId, searchOptions, searchMetadata, queryTokens, results, canAnswer);
+                    response = await documentHandler.ExecuteAsync(fallbackRequest, cancellationToken);
                 }
             }
 
             if (response is { SearchMetadata: null })
-            {
                 response.SearchMetadata = searchMetadata;
-            }
         }
         else
         {
-            if (searchOptions.EnableDocumentSearch)
+            if (documentHandler != null)
             {
-                var docRequest = CreateStrategyRequest(new StrategyRequestParams(query, maxResults, conversationHistory, canAnswer, searchOptions, queryTokens, PreCalculatedResults: results));
-                response = await _strategyExecutor.ExecuteDocumentOnlyStrategyAsync(docRequest, cancellationToken);
-            }
-            else if (searchOptions.EnableDatabaseSearch)
-            {
-                var queryIntent = await _queryIntentAnalyzer.AnalyzeQueryIntentAsync(query, cancellationToken);
-                var strategyRequest = CreateStrategyRequest(new StrategyRequestParams(query, maxResults, conversationHistory, canAnswer, searchOptions, queryTokens, queryIntent, results, queryIntent.DatabaseQueries.Count > 0));
-                response = await _strategyExecutor.ExecuteDatabaseOnlyStrategyAsync(strategyRequest, cancellationToken);
-                if (response != null)
-                    searchMetadata.DatabaseSearchPerformed = true;
-            }
-            else if (searchOptions.EnableMcpSearch)
-            {
-                response = await ExecuteMcpSearchAsync(query, maxResults, conversationHistory, searchMetadata, existingResponse: null, cancellationToken);
-                if (response != null)
-                {
-                    await _conversationManager.AddToConversationAsync(sessionId, query, response.Answer, cancellationToken);
-                    return response;
-                }
+                var docRequest = CreateHandlerRequest(query, maxResults, conversationHistory, sessionId, searchOptions, searchMetadata, queryTokens, results, canAnswer);
+                response = await documentHandler.ExecuteAsync(docRequest, cancellationToken);
             }
             else
             {
-                var chatResponse = await _conversationManager.HandleGeneralConversationAsync(query, conversationHistory, cancellationToken);
-                response = _responseBuilder.CreateRagResponse(query, chatResponse, new List<SearchSource>());
+                var mcpOnlyOptions = SearchOptions.CreateMcpOnly(searchOptions);
+                var mcpHandler = _sourceHandlers.FirstOrDefault(h => h.CanHandle(mcpOnlyOptions));
+                if (mcpHandler != null)
+                {
+                    var mcpRequest = CreateHandlerRequest(query, maxResults, conversationHistory, sessionId, searchOptions, searchMetadata);
+                    response = await mcpHandler.ExecuteAsync(mcpRequest, cancellationToken);
+                    if (response != null)
+                    {
+                        await _conversationManager.AddToConversationAsync(sessionId, query, response.Answer, cancellationToken);
+                        return response;
+                    }
+                }
+                else
+                {
+                    var chatResponse = await _conversationManager.HandleGeneralConversationAsync(query, conversationHistory, cancellationToken);
+                    response = _responseBuilder.CreateRagResponse(query, chatResponse, new List<SearchSource>());
+                }
             }
         }
 
@@ -372,1319 +263,72 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
             (response.Sources?.Any(s => s.SourceType == "Database") ?? false) &&
             (!string.IsNullOrWhiteSpace(response.Answer) || (response.Sources?.Any(s => s.SourceType == "Database" && !string.IsNullOrWhiteSpace(s.RelevantContent)) ?? false));
 
-        // If database has meaningful data, consider answer sufficient (don't check IndicatesMissingData)
-        // Database results exist, so we don't need MCP search even if AI gives wrong answer
-        var databaseAnswerIsSufficient = hasMeaningfulDatabaseData && response != null &&
-            !string.IsNullOrWhiteSpace(response.Answer);
+        var databaseAnswerIsSufficient = hasMeaningfulDatabaseData && response != null && !string.IsNullOrWhiteSpace(response.Answer);
 
         var hasDocumentAnswer = response != null && !string.IsNullOrWhiteSpace(response.Answer) &&
             (response.Sources?.Any(SearchSourceHelper.HasContentBearingSource) ?? false);
 
         var documentAnswerIsSufficient = hasDocumentAnswer && response != null &&
-            !_responseBuilder!.IndicatesMissingData(response.Answer, query);
+            !_responseBuilder.IndicatesMissingData(response.Answer, query);
 
         var answerIsSufficient = databaseAnswerIsSufficient || documentAnswerIsSufficient;
-
         var mcpAlreadyPerformed = searchMetadata.McpSearchPerformed;
 
-        if (searchOptions.EnableMcpSearch && !mcpAlreadyPerformed && !answerIsSufficient)
+        if (mcpSearchEnabled && !mcpAlreadyPerformed && !answerIsSufficient)
         {
-            var mcpResponse = await ExecuteMcpSearchAsync(query, maxResults, conversationHistory, searchMetadata, existingResponse: response, cancellationToken);
-            if (mcpResponse != null)
+            var mcpOnlyOpts = SearchOptions.CreateMcpOnly(searchOptions);
+            var mcpHandler = _sourceHandlers.FirstOrDefault(h => h.CanHandle(mcpOnlyOpts));
+            if (mcpHandler != null)
             {
-                response = mcpResponse;
+                var mcpRequest = CreateHandlerRequest(query, maxResults, conversationHistory, sessionId, searchOptions, searchMetadata, existingResponse: response);
+                var mcpResponse = await mcpHandler.ExecuteAsync(mcpRequest, cancellationToken);
+                if (mcpResponse != null)
+                    response = mcpResponse;
             }
         }
 
         if (response != null)
         {
             response.SearchMetadata ??= searchMetadata;
-
             await _conversationManager.AddToConversationAsync(sessionId, query, response.Answer, cancellationToken);
-
             return response;
         }
 
-        var finalFallbackResponse = _responseBuilder!.CreateRagResponse(query, RagMessages.NoDocumentContext, new List<SearchSource>(), searchMetadata);
+        var finalFallbackResponse = _responseBuilder.CreateRagResponse(query, RagMessages.NoDocumentContext, new List<SearchSource>(), searchMetadata);
         await _conversationManager.AddToConversationAsync(sessionId, query, finalFallbackResponse.Answer, cancellationToken);
         return finalFallbackResponse;
     }
 
-    /// <summary>
-    /// Parses source tags from query and adjusts SearchOptions accordingly
-    /// Tags: -d (document), -db (database), -mcp (MCP), -a (audio), -i (image)
-    /// Returns cleaned query without tags
-    /// </summary>
-    private (string cleanedQuery, SearchOptions adjustedOptions) ParseSourceTags(string query)
+    private QuerySourceHandlerRequest CreateHandlerRequest(
+        string query,
+        int maxResults,
+        string? conversationHistory,
+        string? sessionId,
+        SearchOptions searchOptions,
+        SearchMetadata searchMetadata,
+        List<string>? queryTokens = null,
+        List<DocumentChunk>? preCalculatedResults = null,
+        bool? canAnswerFromDocuments = null,
+        QueryIntent? queryIntent = null,
+        bool? hasDatabaseQueries = null,
+        RagResponse? existingResponse = null)
     {
-        var options = SearchOptions.FromConfig(_options);
-        var cleanedQuery = query.TrimEnd();
-
-        var tagHandlers = new[]
+        return new QuerySourceHandlerRequest
         {
-            (Pattern: DocumentTagPattern, Factory: (Func<SearchOptions, SearchOptions>)SearchOptions.CreateDocumentOnly),
-            (Pattern: DatabaseTagPattern, Factory: SearchOptions.CreateDatabaseOnly),
-            (Pattern: McpTagPattern, Factory: SearchOptions.CreateMcpOnly),
-            (Pattern: AudioTagPattern, Factory: SearchOptions.CreateAudioOnly),
-            (Pattern: ImageTagPattern, Factory: SearchOptions.CreateImageOnly)
+            Query = query,
+            MaxResults = maxResults,
+            ConversationHistory = conversationHistory,
+            SessionId = sessionId,
+            Options = searchOptions,
+            SearchMetadata = searchMetadata,
+            PreferredLanguage = _options.DefaultLanguage,
+            QueryTokens = queryTokens,
+            PreCalculatedResults = preCalculatedResults,
+            CanAnswerFromDocuments = canAnswerFromDocuments,
+            QueryIntent = queryIntent,
+            HasDatabaseQueries = hasDatabaseQueries,
+            ExistingResponse = existingResponse
         };
-
-        foreach (var (pattern, factory) in tagHandlers)
-        {
-            var match = Regex.Match(cleanedQuery, CreateTagPatternWithOptionalPunctuation(pattern), TagRegexOptions);
-            if (!match.Success)
-                continue;
-
-            var adjustedOptions = factory(options);
-            if (pattern == McpTagPattern)
-                adjustedOptions.EnableMcpSearch = true;
-            cleanedQuery = match.Index == 0
-                ? cleanedQuery.Substring(match.Length).TrimStart()
-                : cleanedQuery.Substring(0, match.Index).TrimEnd();
-            return (cleanedQuery, adjustedOptions);
-        }
-
-        return (cleanedQuery, options);
-    }
-
-
-    /// <summary>
-    /// Creates a tag pattern that matches both with and without punctuation prefix
-    /// </summary>
-    private static string CreateTagPatternWithOptionalPunctuation(string baseTagPattern)
-    {
-        return $@"(?:{PunctuationPrefix})?{baseTagPattern}";
-    }
-
-    /// <summary>
-    /// Generates RAG answer with automatic session management and context expansion
-    /// </summary>
-    /// <param name="request">Request containing query parameters</param>
-    /// <param name="cancellationToken">Token to cancel the operation</param>
-    /// <exception cref="ArgumentException"></exception>
-    /// <returns>RAG response with answer and sources</returns>
-    public async Task<RagResponse> GenerateBasicRagAnswerAsync(GenerateRagAnswerRequest request, CancellationToken cancellationToken = default)
-    {
-        if (request == null)
-            throw new ArgumentNullException(nameof(request));
-
-        var trimmedQuery = request.Query.Trim();
-
-        var filenameMatchWords = QueryTokenizer.GetWordsForPhraseExtraction(trimmedQuery).Where(w => w.Length >= 4).ToList();
-        var allDocsForFilename = await _documentService.GetAllDocumentsFilteredAsync(request.Options, cancellationToken);
-        var filenameMatchedDocs = allDocsForFilename
-            .Where(d => MatchesFilenameForQuery(filenameMatchWords, d.FileName))
-            .ToList();
-        if (filenameMatchedDocs.Count > 0 && !string.IsNullOrWhiteSpace(trimmedQuery) &&
-            (request.PreCalculatedResults == null || request.PreCalculatedResults.Count == 0))
-        {
-            var directChunks = await LoadChunksFromEntityMatchedDocumentsAsync(
-                filenameMatchedDocs.Select(d => d.Id).ToHashSet(),
-                80,
-                cancellationToken);
-            if (directChunks.Count > 0)
-            {
-                foreach (var c in directChunks)
-                    c.RelevanceScore = DocumentBoostThreshold + 2.0;
-                var directContext = _contextExpansion.BuildLimitedContext(directChunks, MaxContextSize);
-                var directAnswer = await GenerateRagAnswerFromContextAsync(trimmedQuery, directContext, request.ConversationHistory, cancellationToken);
-                var directSources = await _sourceBuilder.BuildSourcesAsync(directChunks, _documentRepository);
-                return _responseBuilder.CreateRagResponse(trimmedQuery, directAnswer, directSources);
-            }
-        }
-
-        if (!string.IsNullOrWhiteSpace(trimmedQuery))
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            var intentAnalysis = await _queryIntentClassifier.AnalyzeQueryAsync(trimmedQuery, request.ConversationHistory, cancellationToken).ConfigureAwait(false);
-            if (intentAnalysis.IsConversation)
-            {
-                var conversationAnswer = !string.IsNullOrWhiteSpace(intentAnalysis.Answer)
-                    ? intentAnalysis.Answer
-                    : await _conversationManager.HandleGeneralConversationAsync(trimmedQuery, request.ConversationHistory, cancellationToken).ConfigureAwait(false);
-                return _responseBuilder.CreateRagResponse(trimmedQuery, conversationAnswer ?? string.Empty, new List<SearchSource>());
-            }
-        }
-
-        var (cleanedForTags, tagOptions) = ParseSourceTags(request.Query);
-        if (tagOptions.EnableMcpSearch && !tagOptions.EnableDocumentSearch && !string.IsNullOrWhiteSpace(cleanedForTags))
-        {
-            var meta = new SearchMetadata();
-            var mcpResponse = await ExecuteMcpSearchAsync(cleanedForTags, request.MaxResults, request.ConversationHistory, meta, null, cancellationToken).ConfigureAwait(false);
-            if (mcpResponse != null)
-                return mcpResponse;
-        }
-
-        var queryForSearch = request.Query;
-        var searchMaxResults = _queryAnalysis.DetermineInitialSearchCount(queryForSearch, request.MaxResults);
-
-        List<DocumentChunk> chunks;
-        var queryTokens = request.QueryTokens ?? QueryTokenizer.TokenizeQuery(queryForSearch);
-        var previousQueryChunkIds = new HashSet<Guid>();
-
-        DocumentChunk? preservedChunk0 = null;
-        List<Entities.Document>? allDocuments = null;
-        var effectiveOptions = request.Options;
-
-        if (request.PreCalculatedResults is { Count: > 0 })
-        {
-            var filteredPreCalculatedResults = request.PreCalculatedResults;
-            if (request.Options != null)
-            {
-                allDocuments = await _documentService.GetAllDocumentsFilteredAsync(request.Options, cancellationToken);
-                var allowedDocIds = new HashSet<Guid>(allDocuments.Select(d => d.Id));
-                var optionFiltered = request.PreCalculatedResults.Where(c => allowedDocIds.Contains(c.DocumentId)).ToList();
-                if (optionFiltered.Count > 0)
-                    filteredPreCalculatedResults = optionFiltered;
-            }
-
-            chunks = filteredPreCalculatedResults
-                .OrderByDescending(c => c.RelevanceScore ?? 0.0)
-                .ThenBy(c => c.ChunkIndex)
-                .ToList();
-        }
-        else
-        {
-            var (cleanedQuery, searchOptions) = ParseSourceTags(queryForSearch);
-            effectiveOptions = searchOptions;
-
-            if (string.IsNullOrWhiteSpace(cleanedQuery))
-                throw new ArgumentException("Query cannot be empty", nameof(request.Query));
-
-            cancellationToken.ThrowIfCancellationRequested();
-            var searchResults = await _documentSearchStrategy.SearchDocumentsAsync(cleanedQuery, searchMaxResults, searchOptions, request.QueryTokens, cancellationToken);
-            chunks = searchResults.ToList();
-
-            var previousUserQuery = GetLastUserQueryDistinctFrom(request.ConversationHistory, cleanedQuery);
-            const int minSubstantiveQueryLength = 12;
-            var isSubstantivePreviousQuery = !string.IsNullOrWhiteSpace(previousUserQuery) &&
-                previousUserQuery.Trim().Length >= minSubstantiveQueryLength &&
-                !string.Equals(previousUserQuery.Trim(), cleanedQuery.Trim(), StringComparison.OrdinalIgnoreCase);
-
-            if (isSubstantivePreviousQuery)
-            {
-                var extraResults = await _documentSearchStrategy.SearchDocumentsAsync(
-                    previousUserQuery!.Trim(),
-                    Math.Min(searchMaxResults, PreviousQuerySearchMaxResults),
-                    searchOptions,
-                    null,
-                    cancellationToken);
-                var currentIds = new HashSet<Guid>(chunks.Select(c => c.Id));
-                var maxScore = chunks.Count > 0 ? chunks.Max(c => c.RelevanceScore ?? 0.0) : 0.0;
-                foreach (var c in extraResults.Where(c => !currentIds.Contains(c.Id)))
-                {
-                    c.RelevanceScore = maxScore + PreviousQueryChunkScoreBoost;
-                    previousQueryChunkIds.Add(c.Id);
-                    chunks.Add(c);
-                    currentIds.Add(c.Id);
-                }
-            }
-
-            var earlyPotentialNames = QueryTokenizer.ExtractPotentialNames(queryForSearch);
-            preservedChunk0 = chunks.FirstOrDefault(c => c.ChunkIndex == 0);
-            if (preservedChunk0 != null && !Chunk0IsQueryRelevant(preservedChunk0, queryTokens, earlyPotentialNames))
-                preservedChunk0 = null;
-            var nonZeroChunksForSearch = chunks.Where(c => c.ChunkIndex != 0).ToList();
-            var earlyPhraseWords = QueryTokenizer.GetWordsForPhraseExtraction(queryForSearch);
-            chunks = _chunkPrioritizer.PrioritizeChunksByQueryWords(nonZeroChunksForSearch, queryTokens, earlyPhraseWords);
-            chunks = _chunkPrioritizer.MergeChunksWithPreservedChunk0(chunks, preservedChunk0);
-
-            if (previousQueryChunkIds.Count > 0)
-            {
-                var previousQueryChunks = chunks.Where(c => previousQueryChunkIds.Contains(c.Id)).ToList();
-                var prevTopDocIds = previousQueryChunks
-                    .GroupBy(c => c.DocumentId)
-                    .Select(g => new { DocumentId = g.Key, Score = g.Sum(c => c.RelevanceScore ?? 0.0) })
-                    .OrderByDescending(x => x.Score)
-                    .Take(1)
-                    .Select(x => x.DocumentId)
-                    .ToHashSet();
-
-                var currentMainChunks = chunks.Where(c => !previousQueryChunkIds.Contains(c.Id)).ToList();
-                var currentTopDocId = currentMainChunks
-                    .OrderByDescending(c => c.RelevanceScore ?? 0.0)
-                    .Select(c => c.DocumentId)
-                    .FirstOrDefault();
-                var prevTopDocId = prevTopDocIds.FirstOrDefault();
-                var sameTopic = prevTopDocIds.Count > 0 && currentTopDocId != Guid.Empty &&
-                    currentTopDocId == prevTopDocId;
-                if (sameTopic)
-                {
-                    chunks = chunks.Where(c => prevTopDocIds.Contains(c.DocumentId)).ToList();
-                }
-            }
-        }
-
-        var currentTopDocIdForOrdering = Guid.Empty;
-        if (chunks.Count > 0)
-        {
-            var mainChunks = previousQueryChunkIds.Count > 0
-                ? chunks.Where(c => !previousQueryChunkIds.Contains(c.Id)).ToList()
-                : chunks;
-            currentTopDocIdForOrdering = mainChunks
-                .OrderByDescending(c => c.RelevanceScore ?? 0.0)
-                .Select(c => c.DocumentId)
-                .FirstOrDefault();
-        }
-
-        var preferPreviousDoc = previousQueryChunkIds.Count > 0 && currentTopDocIdForOrdering != Guid.Empty &&
-            chunks.Any(c => previousQueryChunkIds.Contains(c.Id) && c.DocumentId == currentTopDocIdForOrdering);
-
-        var topOriginalChunks = chunks
-            .OrderByDescending(c => preferPreviousDoc && previousQueryChunkIds.Contains(c.Id))
-            .ThenByDescending(c => c.ChunkIndex == 0)
-            .ThenByDescending(c => c.RelevanceScore ?? 0.0)
-            .ThenBy(c => c.ChunkIndex)
-            .Take(Math.Min(chunks.Count, Math.Max(10, request.MaxResults * 2)))
-            .ToList();
-
-        var originalChunkIds = new HashSet<Guid>(topOriginalChunks.Select(c => c.Id));
-        HashSet<Guid>? overlapChunkIds = null;
-        HashSet<Guid>? entityChunkIdsFromComprehensive = null;
-
-        var isFollowUpWithContext = previousQueryChunkIds.Count > 0;
-        var requiresComprehensive = _queryPatternAnalyzer.RequiresComprehensiveSearch(queryForSearch);
-        var needsAggressiveSearch = !isFollowUpWithContext &&
-            (chunks.Count < 5 || requiresComprehensive);
-        if (needsAggressiveSearch)
-        {
-            var potentialNames = QueryTokenizer.ExtractPotentialNames(queryForSearch);
-            preservedChunk0 ??= chunks.FirstOrDefault(c => c.ChunkIndex == 0);
-            if (preservedChunk0 != null && !Chunk0IsQueryRelevant(preservedChunk0, queryTokens, potentialNames))
-                preservedChunk0 = null;
-
-            allDocuments = await EnsureAllDocumentsLoadedAsync(allDocuments, effectiveOptions, cancellationToken);
-            var allChunks = allDocuments.SelectMany(d => d.Chunks).ToList();
-            var queryWords = queryTokens;
-            var scoredChunks = _documentScoring.ScoreChunks(allChunks, queryWords, potentialNames);
-
-            var queryWordDocumentMap = _queryWordMatcher.MapQueryWordsToDocuments(
-                queryWords,
-                allDocuments,
-                scoredChunks,
-                ChunksToCheckForKeywords);
-
-            var documentScores = _relevanceCalculator.CalculateDocumentScores(
-                allDocuments,
-                scoredChunks,
-                queryWords,
-                queryWordDocumentMap,
-                TopChunksPerDocument,
-                queryForSearch,
-                potentialNames);
-
-            var relevantDocuments = _relevanceCalculator.IdentifyRelevantDocuments(
-                documentScores,
-                DocumentScoreThreshold);
-
-            var relevantDocumentChunks = relevantDocuments
-                .SelectMany(d => scoredChunks.Where(c => c.DocumentId == d.Id))
-                .ToList();
-
-            var docScoreMap = relevantDocuments.ToDictionary(
-                d => d.Id,
-                d => documentScores.First(ds => ds.Document.Id == d.Id).Score);
-
-            foreach (var chunk in relevantDocumentChunks)
-            {
-                if (docScoreMap.TryGetValue(chunk.DocumentId, out var docScore))
-                {
-                    chunk.RelevanceScore = (chunk.RelevanceScore ?? 0.0) + docScore;
-                }
-            }
-
-            allChunks = relevantDocumentChunks.Concat(
-                allDocuments.Except(relevantDocuments)
-                    .SelectMany(d => scoredChunks.Where(c => c.DocumentId == d.Id))
-            ).ToList();
-
-            if (preservedChunk0 != null && allChunks.All(c => c.Id != preservedChunk0.Id))
-            {
-                allChunks.Insert(0, preservedChunk0);
-            }
-
-            var numberedListChunks = _queryPatternAnalyzer.ScoreChunksByNumberedLists(
-                allChunks,
-                queryWords,
-                NumberedListBonusPerItem,
-                NumberedListWordMatchBonus);
-
-            if (_queryPatternAnalyzer.RequiresComprehensiveSearch(queryForSearch))
-            {
-                var words = queryWords ?? new List<string>();
-                var phraseWords = QueryTokenizer.GetWordsForPhraseExtraction(queryForSearch);
-                var docIdsFromFilenameMatch = GetEntityMatchedDocumentIds(allDocuments, words, potentialNames, phraseWords);
-                var entityFileNameChunks = GetEntityFileNameChunks(allChunks, words, potentialNames, phraseWords)
-                    .Take(Math.Max(searchMaxResults * 2, 50))
-                    .ToList();
-
-                var entityMatchedDocIds = entityFileNameChunks.Select(c => c.DocumentId).Distinct().ToHashSet();
-                if (entityMatchedDocIds.Count == 0 && docIdsFromFilenameMatch.Count > 0)
-                {
-                    var loadedFromMatch = await LoadChunksFromEntityMatchedDocumentsAsync(
-                        docIdsFromFilenameMatch,
-                        Math.Max(searchMaxResults * 2, 50),
-                        cancellationToken);
-                    entityFileNameChunks = loadedFromMatch;
-                    entityMatchedDocIds = docIdsFromFilenameMatch;
-                }
-                else if (docIdsFromFilenameMatch.Count > 0)
-                {
-                    var loadedWithTail = await LoadChunksFromEntityMatchedDocumentsAsync(
-                        docIdsFromFilenameMatch,
-                        Math.Max(searchMaxResults * 2, 50),
-                        cancellationToken);
-                    var existingIds = new HashSet<Guid>(entityFileNameChunks.Select(c => c.Id));
-                    var tailChunks = loadedWithTail.Where(c => !existingIds.Contains(c.Id)).ToList();
-                    entityFileNameChunks = entityFileNameChunks.Concat(tailChunks).ToList();
-                    entityMatchedDocIds = entityMatchedDocIds.Union(docIdsFromFilenameMatch).ToHashSet();
-                }
-
-                // For entity-matched documents, ensure longest header chunk (ChunkIndex 0) is included
-                var entityHeaderChunks = new List<DocumentChunk>();
-
-                foreach (var docId in entityMatchedDocIds)
-                {
-                    var longestHeader = allChunks
-                        .Where(c => c.DocumentId == docId && c.ChunkIndex == 0)
-                        .OrderByDescending(c => c.Content.Length)
-                        .FirstOrDefault();
-                    if (longestHeader != null)
-                        entityHeaderChunks.Add(longestHeader);
-                }
-
-                var existingChunkIds = new HashSet<Guid>(entityFileNameChunks.Concat(chunks).Concat(entityHeaderChunks).Select(c => c.Id));
-                var overlapChunks = new List<DocumentChunk>();
-                if (entityMatchedDocIds.Count > 0 && words.Count > 0)
-                {
-                    overlapChunks = await LoadChunksWithQueryWordOverlapAsync(
-                        entityMatchedDocIds,
-                        words,
-                        existingChunkIds,
-                        Math.Min(10, searchMaxResults),
-                        cancellationToken);
-                    overlapChunkIds = new HashSet<Guid>(overlapChunks.Concat(entityHeaderChunks).Select(c => c.Id));
-                }
-                else if (entityHeaderChunks.Any())
-                {
-                    overlapChunkIds = new HashSet<Guid>(entityHeaderChunks.Select(c => c.Id));
-                }
-
-                var numberedListWithQueryWords = GetFilteredAndSortedNumberedListChunks(
-                    numberedListChunks, words, hasQueryWords: true, takeCount: searchMaxResults * 3);
-
-                var numberedListOnly = GetFilteredAndSortedNumberedListChunks(
-                    numberedListChunks, words, hasQueryWords: false, takeCount: searchMaxResults * 2);
-
-                var queryWordsOnly = _chunkPrioritizer.PrioritizeChunksByQueryWords(
-                    allChunks.Where(c => !_queryPatternAnalyzer.DetectNumberedLists(c.Content)).ToList(),
-                    words)
-                    .Take(searchMaxResults * 2)
-                    .ToList();
-
-                var mergedChunks = new List<DocumentChunk>();
-                var seenIds = new HashSet<Guid>();
-
-                foreach (var chunk in entityHeaderChunks.Concat(overlapChunks).Concat(entityFileNameChunks).Concat(queryWordsOnly).Concat(numberedListWithQueryWords).Concat(numberedListOnly).Concat(chunks))
-                {
-                    if (seenIds.Contains(chunk.Id) || mergedChunks.Count >= searchMaxResults * 4)
-                        continue;
-                    mergedChunks.Add(chunk);
-                    seenIds.Add(chunk.Id);
-                }
-
-                mergedChunks = _chunkPrioritizer.MergeChunksWithPreservedChunk0(mergedChunks, preservedChunk0);
-
-                if (mergedChunks.Count > 0 && (overlapChunks.Count > 0 || entityFileNameChunks.Count > 0 || mergedChunks.Count > chunks.Count))
-                {
-                    chunks = mergedChunks;
-                    var entityChunkIds = new HashSet<Guid>(
-                        entityHeaderChunks.Concat(overlapChunks).Concat(entityFileNameChunks).Select(c => c.Id));
-                    if (entityChunkIds.Count > 0)
-                        entityChunkIdsFromComprehensive = entityChunkIds;
-                }
-            }
-            else
-            {
-                var prioritizedChunksForFallback = _chunkPrioritizer.PrioritizeChunksByQueryWords(
-                    numberedListChunks.Where(c => queryWords.Any(word => c.Content.IndexOf(word, StringComparison.OrdinalIgnoreCase) >= 0)).ToList(),
-                    queryWords)
-                    .Take(searchMaxResults * 4)
-                    .ToList();
-
-                if (prioritizedChunksForFallback.Count > chunks.Count)
-                {
-                    chunks = _chunkPrioritizer.MergeChunksWithPreservedChunk0(prioritizedChunksForFallback, preservedChunk0);
-                }
-            }
-        }
-        else if (requiresComprehensive)
-        {
-            allDocuments = await EnsureAllDocumentsLoadedAsync(allDocuments, effectiveOptions, cancellationToken);
-            var potentialNames = QueryTokenizer.ExtractPotentialNames(queryForSearch);
-            var words = queryTokens ?? new List<string>();
-            var phraseWords = QueryTokenizer.GetWordsForPhraseExtraction(queryForSearch);
-            var docIdsFromFilenameMatch = GetEntityMatchedDocumentIds(allDocuments, words, potentialNames, phraseWords);
-            if (docIdsFromFilenameMatch.Count > 0)
-            {
-                var entityChunks = await LoadChunksFromEntityMatchedDocumentsAsync(
-                    docIdsFromFilenameMatch,
-                    Math.Max(searchMaxResults * 2, 50),
-                    cancellationToken);
-                var existingIds = new HashSet<Guid>(chunks.Select(c => c.Id));
-                var newEntityChunks = entityChunks.Where(c => !existingIds.Contains(c.Id)).ToList();
-                if (newEntityChunks.Count > 0)
-                {
-                    const double entityChunkScore = 150.0;
-                    foreach (var c in newEntityChunks)
-                    {
-                        c.RelevanceScore = entityChunkScore;
-                    }
-                    entityChunkIdsFromComprehensive = new HashSet<Guid>(newEntityChunks.Select(c => c.Id));
-                    chunks = _chunkPrioritizer.MergeChunksWithPreservedChunk0(
-                        newEntityChunks.Concat(chunks).ToList(),
-                        preservedChunk0);
-                }
-            }
-        }
-
-        chunks = _chunkPrioritizer.MergeChunksWithPreservedChunk0(chunks, preservedChunk0);
-
-        if (entityChunkIdsFromComprehensive is { Count: > 0 })
-        {
-            foreach (var c in chunks.Where(c => entityChunkIdsFromComprehensive.Contains(c.Id)))
-            {
-                var current = c.RelevanceScore ?? 0.0;
-                if (current < DocumentBoostThreshold)
-                    c.RelevanceScore = DocumentBoostThreshold + 1.0;
-            }
-        }
-
-        if (chunks.Count > 0)
-        {
-            // Calculate adaptive threshold for context expansion
-            // Vector search scores: 0.0-1.0 range, Text search scores: 4.0-6.0+ range
-            // For high scores, use fixed DocumentBoostThreshold; for low scores, use percentile-based threshold
-            var contextExpansionThreshold = CalculateAdaptiveThreshold(
-                chunks,
-                highScoreThreshold: 3.0,
-                highScorePercentile: 1.0,
-                lowScorePercentile: 0.4,
-                useScoreRangeCheck: false,
-                fixedHighScoreThreshold: DocumentBoostThreshold);
-
-            var relevantDocumentChunks = chunks
-                .Where(c => (c.RelevanceScore ?? 0.0) >= contextExpansionThreshold)
-                .ToList();
-
-            var otherChunks = chunks
-                .Where(c => (c.RelevanceScore ?? 0.0) < contextExpansionThreshold)
-                .ToList();
-
-            if (relevantDocumentChunks.Count > 0)
-            {
-                var originalScores = relevantDocumentChunks.ToDictionary(c => c.Id, c => c.RelevanceScore ?? 0.0);
-
-                var topChunk = relevantDocumentChunks
-                    .OrderByDescending(c => c.ChunkIndex == 0)
-                    .ThenByDescending(c => c.RelevanceScore ?? 0.0)
-                    .ThenBy(c => c.ChunkIndex)
-                    .FirstOrDefault();
-
-                var topChunksForExpansion = topChunk != null
-                    ? relevantDocumentChunks
-                        .Where(c => c.DocumentId == topChunk.DocumentId)
-                        .OrderByDescending(c => c.ChunkIndex == 0)
-                        .ThenByDescending(c => c.RelevanceScore ?? 0.0)
-                        .ThenBy(c => c.ChunkIndex)
-                        .Take(Math.Min(5, relevantDocumentChunks.Count(c => c.DocumentId == topChunk.DocumentId)))
-                        .ToList()
-                    : relevantDocumentChunks
-                        .OrderByDescending(c => c.ChunkIndex == 0)
-                        .ThenByDescending(c => c.RelevanceScore ?? 0.0)
-                        .ThenBy(c => c.ChunkIndex)
-                        .Take(Math.Min(5, relevantDocumentChunks.Count))
-                        .ToList();
-
-                var contextWindow = _contextExpansion.DetermineContextWindow(topChunksForExpansion, queryForSearch);
-                var expandedChunks = await _contextExpansion.ExpandContextAsync(topChunksForExpansion, contextWindow);
-
-                var queryWords = queryTokens;
-
-                // Calculate max original score to ensure expanded chunks don't outrank original chunks
-                var maxOriginalScore = originalScores.Values.Any() ? originalScores.Values.Max() : 0.0;
-                var minOriginalScore = originalScores.Values.Any() ? originalScores.Values.Min() : 0.0;
-
-                // Score expanded chunks with simple word matching (not DocumentScoringService)
-                // Expanded chunks are context-only and should have much lower scores than original search results
-                foreach (var chunk in expandedChunks)
-                {
-                    if (originalScores.TryGetValue(chunk.Id, out var score))
-                    {
-                        chunk.RelevanceScore = score;
-                    }
-                    else
-                    {
-                        var content = chunk.Content.ToLowerInvariant();
-                        var wordMatches = (queryWords ?? Enumerable.Empty<string>()).Count(word =>
-                            content.IndexOf(word, StringComparison.OrdinalIgnoreCase) >= 0);
-
-                        var expandedScore = wordMatches * 0.05;
-                        var maxAllowedScore = minOriginalScore > 0 ? minOriginalScore * 0.3 : maxOriginalScore * 0.05;
-                        chunk.RelevanceScore = Math.Min(expandedScore, maxAllowedScore);
-                    }
-                }
-
-                var relevantNotExpanded = relevantDocumentChunks
-                    .Where(c => expandedChunks.All(e => e.Id != c.Id))
-                    .OrderByDescending(c => c.RelevanceScore ?? 0.0)
-                    .ThenBy(c => c.ChunkIndex)
-                    .ToList();
-                chunks = expandedChunks
-                    .OrderByDescending(c => originalChunkIds != null && originalChunkIds.Contains(c.Id))
-                    .ThenByDescending(c => c.ChunkIndex == 0)
-                    .ThenByDescending(c => c.RelevanceScore ?? 0.0)
-                    .ThenBy(c => c.ChunkIndex)
-                    .Concat(relevantNotExpanded)
-                    .Concat(otherChunks
-                        .OrderByDescending(c => c.ChunkIndex == 0)
-                        .ThenByDescending(c => c.RelevanceScore ?? 0.0)
-                        .ThenBy(c => c.ChunkIndex))
-                    .ToList();
-
-                if (chunks.Count > MaxExpandedChunks)
-                {
-                    chunks = chunks.Take(MaxExpandedChunks).ToList();
-                }
-            }
-            else
-            {
-                chunks = _chunkPrioritizer.PrioritizeChunksByRelevanceScore(chunks);
-            }
-        }
-
-        if (preservedChunk0 == null)
-        {
-            var topOriginalDocumentId = chunks
-                .Where(c => (c.RelevanceScore ?? 0.0) >= DocumentBoostThreshold)
-                .OrderByDescending(c => c.RelevanceScore ?? 0.0)
-                .Select(c => c.DocumentId)
-                .FirstOrDefault();
-
-            if (topOriginalDocumentId != Guid.Empty)
-            {
-                preservedChunk0 = chunks.FirstOrDefault(c => c.ChunkIndex == 0 && c.DocumentId == topOriginalDocumentId);
-            }
-        }
-
-        chunks = _chunkPrioritizer.MergeChunksWithPreservedChunk0(chunks, preservedChunk0);
-
-        var documentChunks = chunks.Where(c => c.DocumentType == "Document" || c.DocumentType == "Audio").ToList();
-        var imageChunks = chunks.Where(c => c.DocumentType == "Image").ToList();
-
-        var potentialNamesForOrdering = QueryTokenizer.ExtractPotentialNames(queryForSearch);
-        var entityHeaderChunkIds = GetEntityHeaderChunkIds(documentChunks.Concat(imageChunks).ToList(), potentialNamesForOrdering);
-        var entityMatchedChunkIds = entityChunkIdsFromComprehensive ?? new HashSet<Guid>();
-
-        // If we have entity-matched chunks from comprehensive search, restrict the
-        // primary document set to those documents. This guarantees that when the
-        // query clearly points to a specific entity (for example, a particular
-        // contract or policy identified via file name), the final context and
-        // answer are focused on that document instead of being diluted by
-        // unrelated documents from previous turns or generic matches.
-        if (entityMatchedChunkIds.Count > 0)
-        {
-            var entityMatchedDocumentIds = documentChunks
-                .Where(c => entityMatchedChunkIds.Contains(c.Id))
-                .Select(c => c.DocumentId)
-                .Distinct()
-                .ToHashSet();
-
-            if (entityMatchedDocumentIds.Count > 0)
-            {
-                documentChunks = documentChunks
-                    .Where(c => entityMatchedDocumentIds.Contains(c.DocumentId))
-                    .ToList();
-
-                // When the user query clearly targets a specific document (for example,
-                // via strong file-name entity match), treat all chunks from that document
-                // as highly relevant. This ensures that important structured fields such
-                // as dates or validity periods that may appear in low-text / numeric
-                // regions are still surfaced in the context window, rather than being
-                // filtered out by adaptive thresholds that favor only text-heavy chunks.
-                foreach (var c in documentChunks)
-                {
-                    var currentScore = c.RelevanceScore ?? 0.0;
-                    if (currentScore < DocumentBoostThreshold)
-                    {
-                        c.RelevanceScore = DocumentBoostThreshold + 1.0;
-                    }
-                }
-
-                chunks = documentChunks
-                    .Concat(imageChunks)
-                    .ToList();
-            }
-        }
-
-        var allContentChunks = documentChunks.Concat(imageChunks).ToList();
-        var orderedAllChunks = allContentChunks
-            .OrderByDescending(c => entityMatchedChunkIds.Contains(c.Id))
-            .ThenByDescending(c => entityHeaderChunkIds.Contains(c.Id))
-            .ThenByDescending(c => originalChunkIds != null && originalChunkIds.Contains(c.Id))
-            .ThenByDescending(c => c.RelevanceScore ?? 0.0)
-            .ToList();
-
-        var finalQueryTokens = queryTokens ?? QueryTokenizer.TokenizeQuery(queryForSearch);
-        var finalPhraseWords = QueryTokenizer.GetWordsForPhraseExtraction(queryForSearch);
-        chunks = _chunkPrioritizer.PrioritizeChunksByQueryWords(
-            orderedAllChunks,
-            finalQueryTokens,
-            finalPhraseWords);
-
-        if (chunks.Count == 0)
-        {
-            var fallbackWords = QueryTokenizer.GetWordsForPhraseExtraction(queryForSearch)
-                .Where(w => w.Length >= 4).ToList();
-            var fallbackDocs = await _documentService.GetAllDocumentsFilteredAsync(effectiveOptions, cancellationToken);
-            var filenameMatched = fallbackDocs
-                .Where(d => fallbackWords.Any(w =>
-                    (d.FileName ?? string.Empty).IndexOf(w, StringComparison.OrdinalIgnoreCase) >= 0 ||
-                    (w.Length > 4 && Enumerable.Range(4, w.Length - 3).Any(len =>
-                        (d.FileName ?? string.Empty).IndexOf(w.Substring(0, len), StringComparison.OrdinalIgnoreCase) >= 0))))
-                .ToList();
-            if (filenameMatched.Count > 0)
-            {
-                var fallbackChunks = await LoadChunksFromEntityMatchedDocumentsAsync(
-                    filenameMatched.Select(d => d.Id).ToHashSet(),
-                    50,
-                    cancellationToken);
-                if (fallbackChunks.Count > 0)
-                    chunks = fallbackChunks;
-            }
-        }
-
-        var context = _contextExpansion.BuildLimitedContext(chunks, MaxContextSize);
-
-        if (previousQueryChunkIds.Count > 0 && !string.IsNullOrWhiteSpace(request.ConversationHistory))
-        {
-            var lastAssistantAnswer = ExtractLastAssistantAnswer(request.ConversationHistory);
-            if (!string.IsNullOrWhiteSpace(lastAssistantAnswer))
-                context = "[Previous turn answer from conversation]\n" + lastAssistantAnswer + "\n\n" + context;
-        }
-
-        var answer = await GenerateRagAnswerFromContextAsync(queryForSearch, context, request.ConversationHistory, cancellationToken);
-
-        var sourcesChunkIds = originalChunkIds != null ? new HashSet<Guid>(originalChunkIds) : new HashSet<Guid>();
-        foreach (var id in entityHeaderChunkIds)
-            sourcesChunkIds.Add(id);
-        if (overlapChunkIds != null)
-            foreach (var id in overlapChunkIds)
-                sourcesChunkIds.Add(id);
-        if (entityChunkIdsFromComprehensive != null)
-            foreach (var id in entityChunkIdsFromComprehensive)
-                sourcesChunkIds.Add(id);
-        var sourcesChunks = sourcesChunkIds.Count > 0
-            ? chunks.Where(c => sourcesChunkIds.Contains(c.Id)).ToList()
-            : chunks;
-        if (sourcesChunks.Count == 0 && chunks.Count > 0)
-            sourcesChunks = chunks;
-
-        var sources = await _sourceBuilder.BuildSourcesAsync(sourcesChunks, _documentRepository);
-        return _responseBuilder.CreateRagResponse(queryForSearch, answer, sources);
-    }
-
-    /// <summary>
-    /// Generates RAG answer from context using AI service
-    /// </summary>
-    /// <param name="query">User query</param>
-    /// <param name="context">Context content for RAG</param>
-    /// <param name="conversationHistory">Conversation history</param>
-    /// <param name="cancellationToken">Token to cancel the operation</param>
-    /// <returns>Generated answer from AI</returns>
-    private async Task<string> GenerateRagAnswerFromContextAsync(string query, string context, string? conversationHistory, CancellationToken cancellationToken = default)
-    {
-        var prompt = _promptBuilder.BuildDocumentRagPrompt(query, context, conversationHistory);
-        return await _aiService.GenerateResponseAsync(prompt, new List<string> { context }, cancellationToken);
-    }
-
-    private static bool MatchesFilenameForQuery(List<string> queryWords, string? fileName)
-    {
-        var fn = (fileName ?? string.Empty).ToLowerInvariant();
-        if (string.IsNullOrWhiteSpace(fn))
-            return false;
-        var fnTokens = fn.Split(new[] { ' ', '.', '-', '_', '(', ')' }, StringSplitOptions.RemoveEmptyEntries)
-            .Where(t => t.Length >= 4).ToHashSet();
-        foreach (var wl in queryWords.Select(w => w.ToLowerInvariant()))
-        {
-            if (fn.IndexOf(wl, StringComparison.OrdinalIgnoreCase) >= 0)
-                return true;
-            for (var len = 4; len < wl.Length; len++)
-            {
-                var prefix = wl[..len];
-                if (fnTokens.Contains(prefix))
-                    return true;
-            }
-        }
-        return false;
-    }
-
-    private static bool Chunk0IsQueryRelevant(DocumentChunk? chunk0, List<string>? queryTokens, List<string>? potentialNames = null)
-    {
-        if (chunk0 == null)
-            return false;
-
-        if (queryTokens == null || queryTokens.Count == 0)
-            return true;
-
-        var searchableText = string.Concat(chunk0.Content, " ", chunk0.FileName).ToLowerInvariant();
-
-        if (string.IsNullOrWhiteSpace(searchableText.Trim()))
-            return false;
-
-        if (potentialNames is { Count: >= 2 })
-        {
-            var entityPhrase = string.Join(" ", potentialNames.Select(n => n.ToLowerInvariant()));
-            if (searchableText.Contains(entityPhrase))
-                return true;
-        }
-        var significantWords = queryTokens.Where(w => w.Length >= 4).ToList();
-        return significantWords.Count == 0 || significantWords.Any(w => searchableText.IndexOf(w, StringComparison.OrdinalIgnoreCase) >= 0);
-    }
-
-    private static string? GetLastUserQueryDistinctFrom(string? conversationHistory, string? currentQuery)
-    {
-        if (string.IsNullOrWhiteSpace(conversationHistory))
-            return null;
-        var current = currentQuery?.Trim();
-        const string userPrefix = "User: ";
-        var lines = conversationHistory.Split('\n');
-        for (var i = lines.Length - 1; i >= 0; i--)
-        {
-            var line = lines[i];
-            if (!line.StartsWith(userPrefix, StringComparison.OrdinalIgnoreCase))
-                continue;
-            var question = line[userPrefix.Length..].Trim();
-            if (string.IsNullOrWhiteSpace(question))
-                continue;
-            if (!string.Equals(question, current, StringComparison.OrdinalIgnoreCase))
-                return question;
-        }
-        return null;
-    }
-
-    private static string? ExtractLastAssistantAnswer(string? conversationHistory)
-    {
-        if (string.IsNullOrWhiteSpace(conversationHistory))
-            return null;
-        const string assistantPrefix = "Assistant: ";
-        var lines = conversationHistory.Split('\n');
-        for (var i = lines.Length - 1; i >= 0; i--)
-        {
-            var line = lines[i];
-            if (!line.StartsWith(assistantPrefix, StringComparison.OrdinalIgnoreCase))
-                continue;
-            var answer = line[assistantPrefix.Length..].Trim();
-            return string.IsNullOrWhiteSpace(answer) ? null : answer;
-        }
-        return null;
-    }
-
-    /// <summary>
-    /// Ensures all documents are loaded with full chunk content. Some repositories (e.g. Qdrant)
-    /// return documents with empty chunk content from GetAllAsync; this loads each document
-    /// via GetDocumentAsync to populate chunk content for aggressive search scoring.
-    /// </summary>
-    private async Task<List<Entities.Document>> EnsureAllDocumentsLoadedAsync(List<Entities.Document>? allDocuments, SearchOptions? options, CancellationToken cancellationToken = default)
-    {
-        allDocuments ??= await _documentService.GetAllDocumentsFilteredAsync(options, cancellationToken);
-
-        var loaded = new List<Entities.Document>();
-        foreach (var doc in allDocuments)
-        {
-            var fullDoc = await _documentService.GetDocumentAsync(doc.Id, cancellationToken);
-            loaded.Add(fullDoc.Chunks is { Count: > 0 } ? fullDoc : doc);
-        }
-        return loaded;
-    }
-
-    /// <summary>
-    /// Calculates adaptive threshold based on score distribution in chunks
-    /// Handles different score ranges: vector search (0.0-1.0) vs text search (4.0-6.0+)
-    /// </summary>
-    /// <param name="chunks">List of document chunks to analyze</param>
-    /// <param name="highScoreThreshold">Threshold to distinguish high-score vs low-score ranges (default: 3.0)</param>
-    /// <param name="highScorePercentile">Percentile to use for high-score range (default: 0.7 for CanAnswer, 1.0 for ContextExpansion)</param>
-    /// <param name="lowScorePercentile">Percentile to use for low-score range (default: 0.4)</param>
-    /// <param name="useScoreRangeCheck">Whether to apply score range validation for high-score range (default: true for CanAnswer)</param>
-    /// <param name="fixedHighScoreThreshold">Fixed threshold to use when maxScore > highScoreThreshold and useScoreRangeCheck is false (default: null, uses percentile)</param>
-    /// <returns>Adaptive threshold value</returns>
-    private static double CalculateAdaptiveThreshold(
-        List<DocumentChunk>? chunks,
-        double highScoreThreshold = 3.0,
-        double highScorePercentile = 0.7,
-        double lowScorePercentile = 0.4,
-        bool useScoreRangeCheck = true,
-        double? fixedHighScoreThreshold = null)
-    {
-        if (chunks == null || chunks.Count == 0)
-            return 0.0;
-
-        var sortedByScore = chunks.OrderByDescending(c => c.RelevanceScore ?? 0.0).ToList();
-        var maxScore = sortedByScore.FirstOrDefault()?.RelevanceScore ?? 0.0;
-
-        if (maxScore > highScoreThreshold)
-        {
-            // High-score range (text search: 4.0-6.0+)
-            if (fixedHighScoreThreshold.HasValue)
-            {
-                // Use fixed threshold (e.g., DocumentBoostThreshold for context expansion)
-                return fixedHighScoreThreshold.Value;
-            }
-
-            if (useScoreRangeCheck)
-            {
-                // CanAnswer logic: Check score range to handle edge cases
-                var topPercentileCount = Math.Max(1, (int)(sortedByScore.Count * highScorePercentile));
-                var percentileScore = sortedByScore.Skip(topPercentileCount - 1).FirstOrDefault()?.RelevanceScore ?? 4.0;
-
-                var minScore = sortedByScore.LastOrDefault()?.RelevanceScore ?? 0.0;
-                var scoreRange = maxScore - minScore;
-
-                // If scores are very close together, use stricter threshold
-                if (scoreRange < 0.5 && sortedByScore.Count > 1)
-                {
-                    return Math.Max(4.5, maxScore - 0.5);
-                }
-
-                return Math.Max(4.0, percentileScore - 0.01);
-            }
-            else
-            {
-                // Simple percentile-based threshold
-                var topPercentileCount = Math.Max(1, (int)(sortedByScore.Count * highScorePercentile));
-                var percentileScore = sortedByScore.Skip(topPercentileCount - 1).FirstOrDefault()?.RelevanceScore ?? 4.0;
-                return Math.Max(4.0, percentileScore - 0.01);
-            }
-        }
-        else
-        {
-            // Low-score range (vector search: 0.0-1.0)
-            var topPercentileCount = Math.Max(1, (int)(sortedByScore.Count * lowScorePercentile));
-            return Math.Max(0.01, sortedByScore.Skip(topPercentileCount - 1).FirstOrDefault()?.RelevanceScore ?? 0.01);
-        }
-    }
-
-    /// <summary>
-    /// Returns chunk IDs to prioritize: header chunks (index 0-2) from documents whose filename matches potential name phrases from the query.
-    /// </summary>
-    private static HashSet<Guid> GetEntityHeaderChunkIds(List<DocumentChunk> chunks, List<string> potentialNames)
-    {
-        var ids = new HashSet<Guid>();
-        if (potentialNames.Count < 2)
-            return ids;
-        var directPhrases = new List<string>();
-        for (var i = 0; i < potentialNames.Count - 1; i++)
-        {
-            var phrase = $"{potentialNames[i].ToLowerInvariant()} {potentialNames[i + 1].ToLowerInvariant()}";
-            if (phrase.Length >= 4)
-                directPhrases.Add(phrase);
-        }
-        if (directPhrases.Count == 0)
-            return ids;
-        foreach (var c in chunks)
-        {
-            if (c.ChunkIndex > 2)
-                continue;
-            var fn = c.FileName.ToLowerInvariant();
-            if (directPhrases.Any(p => fn.Contains(p)))
-                ids.Add(c.Id);
-        }
-        return ids;
-    }
-
-    private const int MinSingleWordLengthForFileNameMatch = 4;
-
-    private static HashSet<Guid> GetEntityMatchedDocumentIds(
-        List<Entities.Document>? documents,
-        List<string>? queryWords,
-        List<string>? potentialNames,
-        List<string>? phraseWords)
-    {
-        if (documents == null || documents.Count == 0)
-            return new HashSet<Guid>();
-
-        var phrases = new List<(string W1, string W2)>();
-        if (potentialNames is { Count: >= 2 })
-        {
-            for (var i = 0; i < potentialNames.Count - 1; i++)
-            {
-                var w1 = potentialNames[i].ToLowerInvariant();
-                var w2 = potentialNames[i + 1].ToLowerInvariant();
-                if (w1.Length >= 1 && w2.Length >= 3)
-                    phrases.Add((w1, w2));
-            }
-        }
-        if (phraseWords is { Count: >= 2 })
-        {
-            for (var i = 0; i < phraseWords.Count - 1; i++)
-            {
-                var w1 = phraseWords[i].ToLowerInvariant();
-                var w2 = phraseWords[i + 1].ToLowerInvariant();
-                if (w1.Length >= 1 && w2.Length >= 3)
-                    phrases.Add((w1, w2));
-            }
-        }
-        if (queryWords is { Count: >= 2 })
-        {
-            for (var i = 0; i < queryWords.Count - 1; i++)
-            {
-                var w1 = queryWords[i].ToLowerInvariant();
-                var w2 = queryWords[i + 1].ToLowerInvariant();
-                if (w1.Length >= 1 && w2.Length >= 3)
-                    phrases.Add((w1, w2));
-            }
-        }
-        phrases = phrases.Distinct().ToList();
-
-        var singleWords = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        if (phraseWords != null)
-        {
-            foreach (var w in phraseWords)
-            {
-                var lower = w.ToLowerInvariant();
-                if (lower.Length >= MinSingleWordLengthForFileNameMatch)
-                    singleWords.Add(lower);
-            }
-        }
-        if (queryWords != null)
-        {
-            foreach (var w in queryWords)
-            {
-                var lower = w.ToLowerInvariant();
-                if (lower.Length >= MinSingleWordLengthForFileNameMatch)
-                    singleWords.Add(lower);
-            }
-        }
-
-        var result = new HashSet<Guid>();
-        foreach (var doc in documents)
-        {
-            var fn = doc.FileName.ToLowerInvariant();
-            if (string.IsNullOrWhiteSpace(fn))
-                continue;
-
-            var phraseMatch = phrases.Count > 0 && phrases.Any(p =>
-            {
-                if (fn.IndexOf(p.W1, StringComparison.OrdinalIgnoreCase) < 0)
-                    return false;
-                if (fn.IndexOf(p.W2, StringComparison.OrdinalIgnoreCase) >= 0)
-                    return true;
-                for (var len = Math.Min(4, p.W2.Length); len < p.W2.Length; len++)
-                {
-                    var prefix = p.W2[..len];
-                    if (fn.IndexOf(prefix, StringComparison.OrdinalIgnoreCase) >= 0)
-                        return true;
-                }
-                return false;
-            });
-
-            var singleWordMatch = singleWords.Count > 0 && singleWords.Any(word =>
-            {
-                if (fn.IndexOf(word, StringComparison.OrdinalIgnoreCase) >= 0)
-                    return true;
-                for (var len = MinSingleWordLengthForFileNameMatch; len < word.Length; len++)
-                {
-                    var prefix = word[..len];
-                    if (fn.IndexOf(prefix, StringComparison.OrdinalIgnoreCase) >= 0)
-                        return true;
-                }
-                return false;
-            });
-
-            if (phraseMatch || singleWordMatch)
-                result.Add(doc.Id);
-        }
-        return result;
-    }
-
-    private const int EntityDocTailChunkCount = 25;
-
-    private async Task<List<DocumentChunk>> LoadChunksFromEntityMatchedDocumentsAsync(
-        HashSet<Guid>? documentIds,
-        int maxChunks,
-        CancellationToken cancellationToken)
-    {
-        if (documentIds == null || documentIds.Count == 0)
-            return new List<DocumentChunk>();
-
-        var result = new List<DocumentChunk>();
-        var seenIds = new HashSet<Guid>();
-        foreach (var docId in documentIds)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            var doc = await _documentRepository.GetByIdAsync(docId, cancellationToken);
-            if (doc.Chunks == null || doc.Chunks.Count == 0)
-                continue;
-
-            var ordered = doc.Chunks
-                .OrderBy(c => c.ChunkIndex)
-                .ToList();
-
-            var headerChunks = ordered
-                .Where(c => c.ChunkIndex is <= 2 or < 0)
-                .OrderBy(c => c.ChunkIndex)
-                .ThenByDescending(c => c.Content.Length)
-                .ToList();
-            var restChunks = ordered
-                .Where(c => c.ChunkIndex > 2)
-                .ToList();
-
-            var headLimit = Math.Max(0, maxChunks - EntityDocTailChunkCount);
-            var headChunks = headerChunks.Concat(restChunks).Take(headLimit).ToList();
-            var tailChunks = restChunks.Count > EntityDocTailChunkCount
-                ? restChunks.Skip(restChunks.Count - EntityDocTailChunkCount).ToList()
-                : new List<DocumentChunk>();
-
-            foreach (var c in headChunks.Concat(tailChunks))
-            {
-                if (!seenIds.Add(c.Id))
-                    continue;
-                result.Add(c);
-                if (result.Count >= maxChunks)
-                    break;
-            }
-            if (result.Count >= maxChunks)
-                break;
-        }
-        return result.Take(maxChunks).ToList();
-    }
-
-    /// <summary>
-    /// Returns chunks from documents whose filename matches query-derived phrases (potentialNames, queryWords, or phraseWords).
-    /// Also matches single significant words with prefix matching for morphological variants.
-    /// Header chunks (index 0-2) are prioritized, then remaining chunks by relevance score.
-    /// </summary>
-    private static List<DocumentChunk> GetEntityFileNameChunks(List<DocumentChunk>? chunks, List<string>? queryWords, List<string>? potentialNames, List<string>? phraseWords = null)
-    {
-        if (chunks == null || chunks.Count == 0)
-            return new List<DocumentChunk>();
-
-        var entityFileNameChunks = new List<DocumentChunk>();
-        var phrases = new List<(string W1, string W2)>();
-
-        if (potentialNames is { Count: >= 2 })
-        {
-            for (var i = 0; i < potentialNames.Count - 1; i++)
-            {
-                var w1 = potentialNames[i].ToLowerInvariant();
-                var w2 = potentialNames[i + 1].ToLowerInvariant();
-                if (w1.Length >= 1 && w2.Length >= 3)
-                    phrases.Add((w1, w2));
-            }
-        }
-        if (phraseWords is { Count: >= 2 })
-        {
-            for (var i = 0; i < phraseWords.Count - 1; i++)
-            {
-                var w1 = phraseWords[i].ToLowerInvariant();
-                var w2 = phraseWords[i + 1].ToLowerInvariant();
-                if (w1.Length >= 1 && w2.Length >= 3)
-                    phrases.Add((w1, w2));
-            }
-        }
-        if (queryWords is { Count: >= 2 })
-        {
-            for (var i = 0; i < queryWords.Count - 1; i++)
-            {
-                var w1 = queryWords[i].ToLowerInvariant();
-                var w2 = queryWords[i + 1].ToLowerInvariant();
-                if (w1.Length >= 1 && w2.Length >= 3)
-                    phrases.Add((w1, w2));
-            }
-        }
-        phrases = phrases.Distinct().ToList();
-
-        var singleWords = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        if (phraseWords != null)
-        {
-            foreach (var w in phraseWords)
-            {
-                var lower = w.ToLowerInvariant();
-                if (lower.Length >= MinSingleWordLengthForFileNameMatch)
-                    singleWords.Add(lower);
-            }
-        }
-        if (queryWords != null)
-        {
-            foreach (var w in queryWords)
-            {
-                var lower = w.ToLowerInvariant();
-                if (lower.Length >= MinSingleWordLengthForFileNameMatch)
-                    singleWords.Add(lower);
-            }
-        }
-
-        foreach (var c in chunks)
-        {
-            var fn = (c.FileName).ToLowerInvariant();
-            if (string.IsNullOrWhiteSpace(fn))
-                continue;
-
-            var phraseMatch = phrases.Count > 0 && phrases.Any(p =>
-            {
-                if (fn.IndexOf(p.W1, StringComparison.OrdinalIgnoreCase) < 0)
-                    return false;
-                if (fn.IndexOf(p.W2, StringComparison.OrdinalIgnoreCase) >= 0)
-                    return true;
-                for (var len = Math.Min(4, p.W2.Length); len < p.W2.Length; len++)
-                {
-                    var prefix = p.W2[..len];
-                    if (fn.IndexOf(prefix, StringComparison.OrdinalIgnoreCase) >= 0)
-                        return true;
-                }
-                return false;
-            });
-
-            var singleWordMatch = singleWords.Count > 0 && singleWords.Any(word =>
-            {
-                if (fn.IndexOf(word, StringComparison.OrdinalIgnoreCase) >= 0)
-                    return true;
-                for (var len = MinSingleWordLengthForFileNameMatch; len < word.Length; len++)
-                {
-                    var prefix = word.Substring(0, len);
-                    if (fn.IndexOf(prefix, StringComparison.OrdinalIgnoreCase) >= 0)
-                        return true;
-                }
-                return false;
-            });
-
-            if (phraseMatch || singleWordMatch)
-                entityFileNameChunks.Add(c);
-        }
-        var deduped = entityFileNameChunks.GroupBy(c => c.Id).Select(g => g.First()).ToList();
-        // Prioritize chunks with index <= 2 or invalid index (-1), then by relevance and content length (longer = more info)
-        var headerChunks = deduped.Where(c => c.ChunkIndex <= 2 || c.ChunkIndex < 0)
-            .OrderBy(c => c.DocumentId)
-            .ThenByDescending(c => c.Content.Length )
-            .ThenBy(c => c.ChunkIndex)
-            .ToList();
-        var rest = deduped.Where(c => c.ChunkIndex > 2).OrderByDescending(c => c.RelevanceScore ?? 0.0).ThenBy(c => c.ChunkIndex).ToList();
-        return headerChunks.Concat(rest).ToList();
-    }
-
-    private int CountQueryWordMatches(string content, List<string>? queryWords)
-    {
-        if (string.IsNullOrEmpty(content) || queryWords == null || queryWords.Count == 0)
-            return 0;
-        var contentLower = content.ToLowerInvariant();
-        var count = 0;
-        var matchedWords = new List<string>();
-
-        foreach (var w in queryWords.Where(w => w.Length >= 3))
-        {
-            if (contentLower.IndexOf(w, StringComparison.OrdinalIgnoreCase) >= 0)
-            {
-                count++;
-                matchedWords.Add(w);
-                continue;
-            }
-            var prefixLen = Math.Min(5, w.Length);
-            if (prefixLen < 4 ||
-                contentLower.IndexOf(w.Substring(0, prefixLen), StringComparison.OrdinalIgnoreCase) < 0) continue;
-            count++;
-            matchedWords.Add($"{w}[prefix:{w.Substring(0, prefixLen)}]");
-        }
-        return count;
-    }
-
-    private async Task<List<DocumentChunk>> LoadChunksWithQueryWordOverlapAsync(
-        HashSet<Guid>? documentIds,
-        List<string>? queryWords,
-        HashSet<Guid> existingChunkIds,
-        int maxChunksPerDocument,
-        CancellationToken cancellationToken)
-    {
-        if (documentIds == null || documentIds.Count == 0 || queryWords == null || queryWords.Count == 0)
-            return new List<DocumentChunk>();
-        var result = new List<DocumentChunk>();
-        foreach (var docId in documentIds)
-        {
-            var document = await _documentRepository.GetByIdAsync(docId, cancellationToken);
-            if (document?.Chunks == null || document.Chunks.Count == 0)
-                continue;
-            var scoredWithAll = document.Chunks
-                .Where(c => !existingChunkIds.Contains(c.Id))
-                .Select(c => new { Chunk = c, MatchCount = CountQueryWordMatches(c.Content, queryWords) })
-                .OrderByDescending(x => x.MatchCount)
-                .ThenBy(x => x.Chunk.ChunkIndex)
-                .ToList();
-
-            var scored = scoredWithAll
-                .Where(x => x.MatchCount > 0)
-                .Take(maxChunksPerDocument)
-                .Select(x => x.Chunk)
-                .ToList();
-            foreach (var c in scored)
-            {
-                c.RelevanceScore = (c.RelevanceScore ?? 0.0) + 5.0;
-                result.Add(c);
-            }
-        }
-        return result.OrderBy(c => c.DocumentId).ThenBy(c => c.ChunkIndex).ToList();
-    }
-
-    private List<DocumentChunk> GetFilteredAndSortedNumberedListChunks(
-        List<DocumentChunk> numberedListChunks,
-        List<string> queryWords,
-        bool hasQueryWords,
-        int takeCount)
-    {
-        return numberedListChunks
-            .Where(c => _queryPatternAnalyzer.DetectNumberedLists(c.Content) &&
-                (hasQueryWords
-                    ? queryWords.Any(word => c.Content.IndexOf(word, StringComparison.OrdinalIgnoreCase) >= 0)
-                    : !queryWords.Any(word => c.Content.IndexOf(word, StringComparison.OrdinalIgnoreCase) >= 0)))
-            .OrderByDescending(c => c.RelevanceScore ?? 0.0)
-            .ThenByDescending(c => _queryPatternAnalyzer.CountNumberedListItems(c.Content))
-            .Take(takeCount)
-            .ToList();
-    }
-
-    /// <summary>
-    /// Determines if a query can be answered from documents using language-agnostic content-based analysis
-    /// </summary>
-    /// <param name="query">User query to analyze</param>
-    /// <param name="searchOptions">Search options</param>
-    /// <param name="queryTokens">Pre-computed query tokens for performance</param>
-    /// <param name="cancellationToken">Token to cancel the operation</param>
-    /// <returns>Tuple containing whether documents can answer and the found chunks</returns>
-    public async Task<(bool CanAnswer, List<DocumentChunk> Results)> CanAnswerFromDocumentsAsync(string query, SearchOptions searchOptions, List<string>? queryTokens = null, CancellationToken cancellationToken = default)
-    {
-        if (!searchOptions.EnableDocumentSearch)
-        {
-            return (false, new List<DocumentChunk>());
-        }
-
-        try
-        {
-            var searchResults = await _documentSearchStrategy.SearchDocumentsAsync(query, FallbackSearchMaxResults, searchOptions, queryTokens, cancellationToken);
-
-            if (searchResults.Count is MinSearchResultsCount)
-            {
-                return (false, searchResults);
-            }
-
-            var totalContentLength = searchResults.Sum(c => c.Content.Length);
-            var hasSubstantialContent = totalContentLength > MinSubstantialContentLength;
-
-            return (hasSubstantialContent, searchResults);
-        }
-        catch (Exception ex)
-        {
-            ServiceLogMessages.LogCanAnswerFromDocumentsError(_logger, ex);
-            return (true, new List<DocumentChunk>());
-        }
     }
 
     private async Task<RagResponse> HandleConversationQueryAsync(string query, string sessionId, string? conversationHistory, CancellationToken cancellationToken = default)
@@ -1693,112 +337,4 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
         await _conversationManager.AddToConversationAsync(sessionId, query, conversationAnswer, cancellationToken);
         return _responseBuilder.CreateRagResponse(query, conversationAnswer, new List<SearchSource>());
     }
-
-    private QueryStrategyRequest CreateStrategyRequest(StrategyRequestParams p)
-    {
-        return new QueryStrategyRequest
-        {
-            Query = p.Query,
-            MaxResults = p.MaxResults,
-            ConversationHistory = p.ConversationHistory,
-            CanAnswerFromDocuments = p.CanAnswer,
-            HasDatabaseQueries = p.HasDatabaseQueries,
-            QueryIntent = p.QueryIntent,
-            PreferredLanguage = _options.DefaultLanguage,
-            Options = p.Options,
-            PreCalculatedResults = p.PreCalculatedResults,
-            QueryTokens = p.QueryTokens
-        };
-    }
-
-    private sealed record StrategyRequestParams(
-        string Query,
-        int MaxResults,
-        string ConversationHistory,
-        bool? CanAnswer,
-        SearchOptions Options,
-        List<string>? QueryTokens,
-        QueryIntent? QueryIntent = null,
-        List<DocumentChunk>? PreCalculatedResults = null,
-        bool? HasDatabaseQueries = null);
-
-    private async Task<RagResponse?> ExecuteMcpSearchAsync(
-        string query,
-        int maxResults,
-        string conversationHistory,
-        SearchMetadata searchMetadata,
-        RagResponse? existingResponse,
-        CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            var mcpResults = await _mcpIntegration.QueryWithMcpAsync(query, maxResults, conversationHistory, cancellationToken);
-            searchMetadata.McpSearchPerformed = true;
-            searchMetadata.McpResultsFound = mcpResults.Count(r => r.IsSuccess && !string.IsNullOrWhiteSpace(r.Content));
-
-            if (mcpResults.Count == 0)
-            {
-                return existingResponse;
-            }
-
-            var mcpSources = mcpResults
-                .Where(r => r.IsSuccess && !string.IsNullOrWhiteSpace(r.Content))
-                .Select(r => new SearchSource
-                {
-                    SourceType = "MCP",
-                    FileName = $"{r.ServerId}:{r.ToolName}",
-                    RelevantContent = r.Content,
-                    RelevanceScore = 1.0
-                })
-                .ToList();
-
-            if (mcpSources.Count == 0)
-            {
-                return existingResponse;
-            }
-
-            var mcpContext = string.Join("\n\n", mcpResults.Where(r => r.IsSuccess).Select(r => r.Content));
-
-            if (existingResponse != null)
-            {
-                existingResponse.Sources.AddRange(mcpSources);
-
-                if (string.IsNullOrWhiteSpace(mcpContext))
-                    return existingResponse;
-                var existingContext = existingResponse.Sources
-                    .Where(s => s.SourceType != "MCP")
-                    .Select(s => s.RelevantContent)
-                    .Where(c => !string.IsNullOrWhiteSpace(c))
-                    .ToList();
-
-                var combinedContext = existingContext.Count > 0
-                    ? string.Join("\n\n", existingContext) + "\n\n[MCP Results]\n" + mcpContext
-                    : mcpContext;
-
-                var mergedAnswer = await GenerateRagAnswerFromContextAsync(query, combinedContext, conversationHistory, cancellationToken);
-                if (!string.IsNullOrWhiteSpace(mergedAnswer))
-                {
-                    existingResponse.Answer = mergedAnswer;
-                }
-
-                return existingResponse;
-            }
-
-            var chatResponse = await _conversationManager.HandleGeneralConversationAsync(query, conversationHistory, cancellationToken);
-
-            if (string.IsNullOrWhiteSpace(mcpContext))
-            {
-                return _responseBuilder.CreateRagResponse(query, chatResponse, new List<SearchSource>(), searchMetadata);
-            }
-
-            var mcpAnswer = await GenerateRagAnswerFromContextAsync(query, mcpContext, conversationHistory, cancellationToken);
-            return _responseBuilder.CreateRagResponse(query, !string.IsNullOrWhiteSpace(mcpAnswer) ? mcpAnswer : chatResponse, mcpSources, searchMetadata);
-        }
-        catch (Exception ex)
-        {
-            ServiceLogMessages.LogMcpQueryError(_logger, ex);
-            return existingResponse;
-        }
-    }
-
 }
