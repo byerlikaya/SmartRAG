@@ -168,9 +168,16 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IQueryAnalysisService, QueryAnalysisService>();
         services.AddScoped<IResponseBuilderService, ResponseBuilderService>();
         services.AddScoped<IQueryStrategyOrchestratorService, QueryStrategyOrchestratorService>();
+        services.AddScoped<IDocumentSearchStrategyService, DocumentSearchStrategyService>();
+        services.AddScoped<DocumentRagService>();
+        services.AddScoped<IRagAnswerGeneratorService>(sp => sp.GetRequiredService<DocumentRagService>());
+        services.AddScoped<IRagContextAnswerGenerator>(sp => sp.GetRequiredService<DocumentRagService>());
+        services.AddScoped<IQuerySourceHandler, DocumentRagSourceHandler>();
+        services.AddScoped<IQuerySourceHandler, DatabaseQuerySourceHandler>();
+        services.AddScoped<IQuerySourceHandler, McpSearchHandler>();
         services.AddScoped<IQueryStrategyExecutorService>(sp =>
         {
-            var ragAnswerGeneratorLazy = new Lazy<IRagAnswerGeneratorService>(() => sp.GetRequiredService<IDocumentSearchService>() as IRagAnswerGeneratorService ?? throw new InvalidOperationException("DocumentSearchService must implement IRagAnswerGeneratorService"));
+            var ragAnswerGeneratorLazy = new Lazy<IRagAnswerGeneratorService>(() => sp.GetRequiredService<IRagAnswerGeneratorService>());
             return new QueryStrategyExecutorService(
                 sp.GetService<IMultiDatabaseQueryCoordinator>(),
                 sp.GetRequiredService<ILogger<QueryStrategyExecutorService>>(),
@@ -178,10 +185,8 @@ public static class ServiceCollectionExtensions
                 sp.GetRequiredService<IResponseBuilderService>(),
                 sp.GetRequiredService<IOptions<SmartRagOptions>>());
         });
-        services.AddScoped<IDocumentSearchStrategyService, DocumentSearchStrategyService>();
         services.AddScoped<IDocumentParserService, DocumentParserService>();
         services.AddScoped<IDocumentSearchService, DocumentSearchService>();
-        services.AddScoped(sp => sp.GetRequiredService<IDocumentSearchService>() as IRagAnswerGeneratorService ?? throw new InvalidOperationException("DocumentSearchService must implement IRagAnswerGeneratorService"));
     }
 
     private static void RegisterDatabaseServices(IServiceCollection services)

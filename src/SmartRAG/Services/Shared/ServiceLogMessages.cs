@@ -41,6 +41,11 @@ public static class ServiceLogMessages
         new EventId(3020, "CanAnswerFromDocumentsError"),
         "Error in CanAnswerFromDocumentsAsync, assuming document search for safety");
 
+    public static readonly Action<ILogger, Exception> LogQueryIntentAnalysisError = LoggerMessage.Define(
+        LogLevel.Error,
+        new EventId(3021, "QueryIntentAnalysisError"),
+        "Error during query intent analysis, falling back to document-only query");
+
     public static readonly Action<ILogger, Exception> LogContextExpansionError = LoggerMessage.Define(
         LogLevel.Warning,
         new EventId(3022, "ContextExpansionError"),

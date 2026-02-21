@@ -16,6 +16,11 @@ public interface IRagAnswerGeneratorService
     Task<RagResponse> GenerateBasicRagAnswerAsync(GenerateRagAnswerRequest request, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Tries to answer the query using only filename-matched documents (fast path). Returns null if no filename match.
+    /// </summary>
+    Task<RagResponse?> TryAnswerFromFilenameMatchAsync(string query, SearchOptions searchOptions, string? conversationHistory, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Determines if a query can be answered from documents using language-agnostic content-based analysis
     /// </summary>
     /// <param name="query">User query to analyze</param>
