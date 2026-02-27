@@ -118,7 +118,7 @@ public class RedisDocumentRepository : IDocumentRepository, IDisposable
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogWarning(ex, "Failed to generate embedding for chunk {ChunkId}", chunk.Id);
+                            RepositoryLogMessages.LogRedisChunkEmbeddingFailed(_logger, chunk.Id, ex);
                             continue;
                         }
                     }
@@ -266,7 +266,7 @@ public class RedisDocumentRepository : IDocumentRepository, IDisposable
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to retrieve documents from chunks");
+                    RepositoryLogMessages.LogRedisDocumentsFromChunksRetrievalFailed(_logger, ex);
                 }
             }
 
@@ -288,7 +288,7 @@ public class RedisDocumentRepository : IDocumentRepository, IDisposable
 
         if (endpoints.Length == 0)
         {
-            _logger.LogWarning("No Redis endpoints available for chunk key retrieval");
+            RepositoryLogMessages.LogRedisNoEndpointsChunkRetrieval(_logger, null);
             return chunkKeys;
         }
 
@@ -331,12 +331,12 @@ public class RedisDocumentRepository : IDocumentRepository, IDisposable
                         batch.Execute();
                         await Task.WhenAll(tasks);
 
-                        _logger.LogInformation("Cleared {Count} chunks from Redis", chunkKeys.Count);
+                        RepositoryLogMessages.LogRedisChunksCleared(_logger, chunkKeys.Count, null);
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to clear chunks from Redis");
+                    RepositoryLogMessages.LogRedisChunksClearFailed(_logger, ex);
                 }
             }
 
@@ -346,7 +346,7 @@ public class RedisDocumentRepository : IDocumentRepository, IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to clear all documents from Redis");
+            RepositoryLogMessages.LogRedisClearAllFailed(_logger, ex);
             return false;
         }
     }

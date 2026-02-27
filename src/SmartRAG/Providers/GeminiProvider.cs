@@ -155,10 +155,7 @@ public class GeminiProvider : BaseAIProvider
     /// <summary>
     /// Build Gemini API URL
     /// </summary>
-    private static string BuildGeminiUrl(string endpoint, string model, string operation)
-    {
-        return $"{endpoint.TrimEnd('/')}/models/{model}:{operation}";
-    }
+    private static string BuildGeminiUrl(string endpoint, string model, string operation) => $"{endpoint.TrimEnd('/')}/models/{model}:{operation}";
 
     /// <summary>
     /// Create Gemini text generation payload
@@ -186,9 +183,8 @@ public class GeminiProvider : BaseAIProvider
     /// <summary>
     /// Create Gemini embedding payload
     /// </summary>
-    private static object CreateGeminiEmbeddingPayload(string text, string model)
-    {
-        return new
+    private static object CreateGeminiEmbeddingPayload(string text, string model) =>
+        new
         {
             model = $"models/{model}",
             content = new
@@ -196,7 +192,6 @@ public class GeminiProvider : BaseAIProvider
                 parts = new[] { new { text } }
             }
         };
-    }
 
     /// <summary>
     /// Parse Gemini text response

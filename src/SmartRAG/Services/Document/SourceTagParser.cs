@@ -52,8 +52,5 @@ public static class SourceTagParser
         return (cleanedQuery, baseOptions);
     }
 
-    private static string CreateTagPatternWithOptionalPunctuation(string baseTagPattern)
-    {
-        return $@"(?:{PunctuationPrefix})?{baseTagPattern}";
-    }
+    private static string CreateTagPatternWithOptionalPunctuation(string baseTagPattern) => $@"(?:{PunctuationPrefix})?{baseTagPattern}";
 }

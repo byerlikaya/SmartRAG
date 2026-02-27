@@ -29,11 +29,9 @@ public class AIProviderFactory : IAIProviderFactory
         _providers[AIProvider.Custom] = new CustomProvider(_loggerFactory.CreateLogger<CustomProvider>(), _httpClientFactory);
     }
 
-    public IAIProvider CreateProvider(AIProvider providerType)
-    {
-        return _providers.TryGetValue(providerType, out var provider) ?
+    public IAIProvider CreateProvider(AIProvider providerType) =>
+        _providers.TryGetValue(providerType, out var provider) ?
             provider :
             throw new InvalidOperationException($"AI Provider '{providerType}' is not supported or not implemented.");
-    }
 }
 

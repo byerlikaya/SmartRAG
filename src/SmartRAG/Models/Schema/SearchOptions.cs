@@ -40,9 +40,8 @@ public class SearchOptions
     /// <summary>
     /// Creates search options from global configuration
     /// </summary>
-    public static SearchOptions FromConfig(SmartRagOptions options)
-    {
-        return new SearchOptions
+    public static SearchOptions FromConfig(SmartRagOptions options) =>
+        new()
         {
             EnableDatabaseSearch = options.Features.EnableDatabaseSearch,
             EnableDocumentSearch = options.Features.EnableDocumentSearch,
@@ -51,7 +50,6 @@ public class SearchOptions
             EnableMcpSearch = options.Features.EnableMcpSearch,
             PreferredLanguage = options.DefaultLanguage
         };
-    }
 
     /// <summary>
     /// Creates search options for document-only search

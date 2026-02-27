@@ -140,10 +140,7 @@ public class OpenAIProvider : BaseAIProvider
     /// <summary>
     /// Build OpenAI API URL
     /// </summary>
-    private static string BuildOpenAIUrl(string endpoint, string path)
-    {
-        return $"{endpoint.TrimEnd('/')}/{path}";
-    }
+    private static string BuildOpenAIUrl(string endpoint, string path) => $"{endpoint.TrimEnd('/')}/{path}";
 
     /// <summary>
     /// Create OpenAI text generation payload

@@ -106,5 +106,3 @@ public static class QueryTokenizer
         return hasCurrencySymbol;
     }
 }
-
-

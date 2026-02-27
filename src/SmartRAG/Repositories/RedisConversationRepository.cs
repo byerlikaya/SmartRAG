@@ -29,7 +29,7 @@ public class RedisConversationRepository : IConversationRepository, IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to connect to Redis server");
+            RepositoryLogMessages.LogRedisConnectionFailed(_logger, redisConfig.ConnectionString, ex);
             throw;
         }
     }
@@ -50,7 +50,7 @@ public class RedisConversationRepository : IConversationRepository, IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting conversation history");
+            RepositoryLogMessages.LogConversationGetHistoryFailed(_logger, ex);
             return string.Empty;
         }
     }
@@ -85,7 +85,7 @@ public class RedisConversationRepository : IConversationRepository, IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error adding to conversation");
+            RepositoryLogMessages.LogConversationAddFailed(_logger, ex);
         }
     }
 
@@ -106,7 +106,7 @@ public class RedisConversationRepository : IConversationRepository, IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error setting conversation history");
+            RepositoryLogMessages.LogConversationSetHistoryFailed(_logger, ex);
         }
     }
 
@@ -122,7 +122,7 @@ public class RedisConversationRepository : IConversationRepository, IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error clearing conversation");
+            RepositoryLogMessages.LogConversationClearFailed(_logger, ex);
         }
     }
 
@@ -154,7 +154,7 @@ public class RedisConversationRepository : IConversationRepository, IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error appending sources for turn");
+            RepositoryLogMessages.LogConversationAppendSourcesFailed(_logger, ex);
         }
     }
 
@@ -172,7 +172,7 @@ public class RedisConversationRepository : IConversationRepository, IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting sources for session");
+            RepositoryLogMessages.LogConversationGetSourcesFailed(_logger, ex);
             return null;
         }
     }
@@ -187,7 +187,7 @@ public class RedisConversationRepository : IConversationRepository, IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error checking session existence");
+            RepositoryLogMessages.LogConversationCheckSessionFailed(_logger, ex);
             return false;
         }
     }
@@ -200,7 +200,7 @@ public class RedisConversationRepository : IConversationRepository, IDisposable
             var endpoints = _redis.GetEndPoints();
             if (endpoints.Length == 0)
             {
-                _logger.LogWarning("No Redis endpoints available for clearing conversations");
+                RepositoryLogMessages.LogRedisNoEndpointsClear(_logger, null);
                 return;
             }
 
@@ -213,11 +213,11 @@ public class RedisConversationRepository : IConversationRepository, IDisposable
                 await _database.KeyDeleteAsync(key);
             }
 
-            _logger.LogInformation("Cleared all conversation history from Redis");
+            RepositoryLogMessages.LogRedisConversationsCleared(_logger, null);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error clearing all conversations from Redis");
+            RepositoryLogMessages.LogRedisConversationsClearFailed(_logger, ex);
             throw;
         }
     }
@@ -249,7 +249,7 @@ public class RedisConversationRepository : IConversationRepository, IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting session timestamps");
+            RepositoryLogMessages.LogConversationGetTimestampsFailed(_logger, ex);
             return (null, null);
         }
     }
@@ -261,7 +261,7 @@ public class RedisConversationRepository : IConversationRepository, IDisposable
             var endpoints = _redis.GetEndPoints();
             if (endpoints.Length == 0)
             {
-                _logger.LogWarning("No Redis endpoints available for listing conversations");
+                RepositoryLogMessages.LogRedisNoEndpointsList(_logger, null);
                 return Array.Empty<string>();
             }
 
@@ -285,7 +285,7 @@ public class RedisConversationRepository : IConversationRepository, IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error listing conversation sessions from Redis");
+            RepositoryLogMessages.LogConversationListSessionsFailed(_logger, "Redis", ex);
             return Array.Empty<string>();
         }
     }

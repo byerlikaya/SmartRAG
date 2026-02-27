@@ -248,25 +248,24 @@ public abstract class BaseAIProvider : IAIProvider
     protected static List<float> ParseEmbeddingResponse(string responseBody, string dataProperty = DefaultDataProperty, string embeddingProperty = DefaultEmbeddingProperty)
     {
         using var doc = JsonDocument.Parse(responseBody);
-        if (doc.RootElement.TryGetProperty(dataProperty, out var data) && data.ValueKind == JsonValueKind.Array)
+        if (!doc.RootElement.TryGetProperty(dataProperty, out var data) || data.ValueKind != JsonValueKind.Array)
+            return new List<float>();
+
+        var firstData = data.EnumerateArray().FirstOrDefault();
+
+        if (!firstData.TryGetProperty(embeddingProperty, out var embedding) ||
+            embedding.ValueKind != JsonValueKind.Array) return new List<float>();
+
+        var floats = new List<float>();
+
+        foreach (var value in embedding.EnumerateArray())
         {
-            var firstData = data.EnumerateArray().FirstOrDefault();
-
-            if (firstData.TryGetProperty(embeddingProperty, out var embedding) && embedding.ValueKind == JsonValueKind.Array)
-            {
-                var floats = new List<float>();
-
-                foreach (var value in embedding.EnumerateArray())
-                {
-                    if (value.TryGetSingle(out var f))
-                        floats.Add(f);
-                }
-
-                return floats;
-            }
+            if (value.TryGetSingle(out var f))
+                floats.Add(f);
         }
 
-        return new List<float>();
+        return floats;
+
     }
 
     /// <summary>

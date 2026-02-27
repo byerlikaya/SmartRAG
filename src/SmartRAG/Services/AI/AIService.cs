@@ -113,16 +113,14 @@ public class AIService : IAIService
         }
     }
 
-    private int CalculateRetryDelay(int attempt, int baseDelayMs)
-    {
-        return _options.RetryPolicy switch
+    private int CalculateRetryDelay(int attempt, int baseDelayMs) =>
+        _options.RetryPolicy switch
         {
             RetryPolicy.FixedDelay => baseDelayMs,
             RetryPolicy.LinearBackoff => baseDelayMs * attempt,
             RetryPolicy.ExponentialBackoff => baseDelayMs * (int)Math.Pow(2, attempt - 1),
             _ => baseDelayMs,
         };
-    }
 
     private async Task<string> TryFallbackProvidersAsync(string query, IEnumerable<string> context, CancellationToken cancellationToken = default)
     {

@@ -195,23 +195,15 @@ public class AnthropicProvider : BaseAIProvider
     /// <summary>
     /// Build Voyage AI API URL
     /// </summary>
-    private static string BuildVoyageUrl(string endpoint, string path)
-    {
-        return $"{endpoint.TrimEnd('/')}/{path}";
-    }
+    private static string BuildVoyageUrl(string endpoint, string path) => $"{endpoint.TrimEnd('/')}/{path}";
 
     /// <summary>
     /// Validate embedding-specific configuration
     /// </summary>
-    private static (bool isValid, string errorMessage) ValidateEmbeddingConfig(AIProviderConfig config)
-    {
-        var voyageApiKey = config.EmbeddingApiKey;
-
-        if (string.IsNullOrEmpty(voyageApiKey))
-            return (false, "Voyage API key is required for embeddings");
-
-        return (true, string.Empty);
-    }
+    private static (bool isValid, string errorMessage) ValidateEmbeddingConfig(AIProviderConfig config) =>
+        string.IsNullOrEmpty(config.EmbeddingApiKey)
+            ? (false, "Voyage API key is required for embeddings")
+            : (true, string.Empty);
 
     /// <summary>
     /// Parse Anthropic text response
@@ -219,13 +211,14 @@ public class AnthropicProvider : BaseAIProvider
     private static string ParseAnthropicTextResponse(string response)
     {
         using var doc = JsonDocument.Parse(response);
-        if (doc.RootElement.TryGetProperty("content", out var contentArray) && contentArray.ValueKind == JsonValueKind.Array)
-        {
-            var firstContent = contentArray.EnumerateArray().FirstOrDefault();
 
-            if (firstContent.TryGetProperty("text", out var text))
-                return text.GetString() ?? "No response generated";
-        }
+        if (!doc.RootElement.TryGetProperty("content", out var contentArray) ||
+            contentArray.ValueKind != JsonValueKind.Array) return "No response generated";
+
+        var firstContent = contentArray.EnumerateArray().FirstOrDefault();
+
+        if (firstContent.TryGetProperty("text", out var text))
+            return text.GetString() ?? "No response generated";
 
         return "No response generated";
     }
@@ -236,16 +229,16 @@ public class AnthropicProvider : BaseAIProvider
     private static List<float> ParseVoyageEmbeddingResponse(string response)
     {
         using var doc = JsonDocument.Parse(response);
-        if (doc.RootElement.TryGetProperty("data", out var dataArray) && dataArray.ValueKind == JsonValueKind.Array)
-        {
-            var firstEmbedding = dataArray.EnumerateArray().FirstOrDefault();
+        if (!doc.RootElement.TryGetProperty("data", out var dataArray) || dataArray.ValueKind != JsonValueKind.Array)
+            return new List<float>();
 
-            if (firstEmbedding.TryGetProperty("embedding", out var embeddingArray) && embeddingArray.ValueKind == JsonValueKind.Array)
-            {
-                return embeddingArray.EnumerateArray()
-                    .Select(x => x.GetSingle())
-                    .ToList();
-            }
+        var firstEmbedding = dataArray.EnumerateArray().FirstOrDefault();
+
+        if (firstEmbedding.TryGetProperty("embedding", out var embeddingArray) && embeddingArray.ValueKind == JsonValueKind.Array)
+        {
+            return embeddingArray.EnumerateArray()
+                .Select(x => x.GetSingle())
+                .ToList();
         }
 
         return new List<float>();

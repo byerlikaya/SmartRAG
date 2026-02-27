@@ -55,7 +55,7 @@ public class SqliteConversationRepository : IConversationRepository, IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting conversation history");
+            RepositoryLogMessages.LogConversationGetHistoryFailed(_logger, ex);
             return string.Empty;
         }
         finally
@@ -109,7 +109,7 @@ public class SqliteConversationRepository : IConversationRepository, IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error adding to conversation");
+            RepositoryLogMessages.LogConversationAddFailed(_logger, ex);
         }
         finally
         {
@@ -134,7 +134,7 @@ public class SqliteConversationRepository : IConversationRepository, IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error clearing conversation");
+            RepositoryLogMessages.LogConversationClearFailed(_logger, ex);
         }
         finally
         {
@@ -180,7 +180,7 @@ public class SqliteConversationRepository : IConversationRepository, IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error appending sources for turn");
+            RepositoryLogMessages.LogConversationAppendSourcesFailed(_logger, ex);
         }
         finally
         {
@@ -204,7 +204,7 @@ public class SqliteConversationRepository : IConversationRepository, IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting sources for session");
+            RepositoryLogMessages.LogConversationGetSourcesFailed(_logger, ex);
             return string.Empty;
         }
         finally
@@ -228,7 +228,7 @@ public class SqliteConversationRepository : IConversationRepository, IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error checking session existence");
+            RepositoryLogMessages.LogConversationCheckSessionFailed(_logger, ex);
             return false;
         }
         finally
@@ -254,7 +254,7 @@ public class SqliteConversationRepository : IConversationRepository, IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error setting conversation history");
+            RepositoryLogMessages.LogConversationSetHistoryFailed(_logger, ex);
         }
         finally
         {
@@ -274,11 +274,11 @@ public class SqliteConversationRepository : IConversationRepository, IDisposable
             cmd = _connection.CreateCommand();
             cmd.CommandText = "DELETE FROM ConversationSources";
             await cmd.ExecuteNonQueryAsync(cancellationToken);
-            _logger.LogInformation("Cleared all conversations from SQLite");
+            RepositoryLogMessages.LogSqliteConversationsCleared(_logger, null);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error clearing all conversations from SQLite");
+            RepositoryLogMessages.LogSqliteConversationsClearFailed(_logger, ex);
             throw;
         }
         finally
@@ -307,7 +307,7 @@ public class SqliteConversationRepository : IConversationRepository, IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting session timestamps");
+            RepositoryLogMessages.LogConversationGetTimestampsFailed(_logger, ex);
             return (null, null);
         }
         finally
@@ -339,7 +339,7 @@ public class SqliteConversationRepository : IConversationRepository, IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error listing conversation sessions from SQLite");
+            RepositoryLogMessages.LogConversationListSessionsFailed(_logger, "SQLite", ex);
             return Array.Empty<string>();
         }
         finally

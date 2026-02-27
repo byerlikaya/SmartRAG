@@ -331,19 +331,15 @@ public class CustomProvider : BaseAIProvider
     /// Determine if endpoint uses messages format
     /// </summary>
     private static bool IsMessagesFormat(string endpoint)
-    {
-        return endpoint.Contains("/chat") || endpoint.Contains("messages") || endpoint.Contains("completions");
-    }
+        => endpoint.Contains("/chat") || endpoint.Contains("messages") || endpoint.Contains("completions");
 
     /// <summary>
     /// Ollama native /api/embed uses "input"; OpenAI-compatible /api/embeddings uses "prompt".
     /// </summary>
-    private static bool IsOllamaNativeEmbedEndpoint(string endpoint)
-    {
-        return !string.IsNullOrEmpty(endpoint) &&
-            endpoint.Contains("/api/embed", StringComparison.OrdinalIgnoreCase) &&
-            !endpoint.Contains("/api/embeddings", StringComparison.OrdinalIgnoreCase);
-    }
+    private static bool IsOllamaNativeEmbedEndpoint(string endpoint) =>
+        !string.IsNullOrEmpty(endpoint) &&
+        endpoint.Contains("/api/embed", StringComparison.OrdinalIgnoreCase) &&
+        !endpoint.Contains("/api/embeddings", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Gets the embedding endpoint, either from config or derived from main endpoint
@@ -398,27 +394,7 @@ public class CustomProvider : BaseAIProvider
     /// </summary>
     private static object CreatePayload(string prompt, AIProviderConfig config, bool useMessagesFormat)
     {
-        if (useMessagesFormat)
-        {
-            var messages = new List<object>();
-
-            if (!string.IsNullOrEmpty(config.SystemMessage))
-            {
-                messages.Add(new { role = SystemRole, content = config.SystemMessage });
-            }
-
-            messages.Add(new { role = UserRole, content = prompt });
-
-            return new
-            {
-                model = config.Model,
-                messages = messages.ToArray(),
-                max_tokens = config.MaxTokens,
-                temperature = config.Temperature
-            };
-        }
-        else
-        {
+        if (!useMessagesFormat)
             return new
             {
                 prompt,
@@ -426,7 +402,24 @@ public class CustomProvider : BaseAIProvider
                 temperature = config.Temperature,
                 model = config.Model
             };
+
+        var messages = new List<object>();
+
+        if (!string.IsNullOrEmpty(config.SystemMessage))
+        {
+            messages.Add(new { role = SystemRole, content = config.SystemMessage });
         }
+
+        messages.Add(new { role = UserRole, content = prompt });
+
+        return new
+        {
+            model = config.Model,
+            messages = messages.ToArray(),
+            max_tokens = config.MaxTokens,
+            temperature = config.Temperature
+        };
+
     }
 
     /// <summary>

@@ -31,7 +31,9 @@ public static class ServiceCollectionExtensions
     /// For Web API: IHost automatically starts hosted services.
     /// For Console: Use UseSmartRag() instead - returns IServiceProvider with auto-started services.
     /// </summary>
-    public static IServiceCollection AddSmartRag(this IServiceCollection services, IConfiguration configuration, Action<SmartRagOptions> configureOptions)
+    public static IServiceCollection AddSmartRag(this IServiceCollection services,
+        IConfiguration configuration,
+        Action<SmartRagOptions> configureOptions)
     {
         WhisperNativeBootstrap.EnsureMacOsWhisperNativeLibraries();
 
@@ -80,7 +82,9 @@ public static class ServiceCollectionExtensions
         return services.BuildServiceProviderWithSmartRag();
     }
 
-    private static void RegisterConfiguration(IServiceCollection services, IConfiguration configuration, Action<SmartRagOptions> configureOptions)
+    private static void RegisterConfiguration(IServiceCollection services,
+        IConfiguration configuration,
+        Action<SmartRagOptions> configureOptions)
     {
         services.Configure<SmartRagOptions>(options =>
         {
@@ -123,9 +127,7 @@ public static class ServiceCollectionExtensions
     }
 
     private static void RegisterHealthServices(IServiceCollection services)
-    {
-        services.AddScoped<IHealthCheckService, HealthCheckService>();
-    }
+        => services.AddScoped<IHealthCheckService, HealthCheckService>();
 
     private static void RegisterCoreServices(IServiceCollection services)
     {

@@ -26,10 +26,7 @@ public class AIConfigurationService : IAIConfigurationService
     /// <summary>
     /// Gets AI provider configuration
     /// </summary>
-    public AIProviderConfig? GetAIProviderConfig()
-    {
-        return GetProviderConfig(_options.AIProvider);
-    }
+    public AIProviderConfig? GetAIProviderConfig() => GetProviderConfig(_options.AIProvider);
 
     /// <summary>
     /// Gets AI provider configuration for a specific provider

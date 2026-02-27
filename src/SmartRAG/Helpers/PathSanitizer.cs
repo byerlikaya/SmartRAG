@@ -65,5 +65,3 @@ public static class PathSanitizer
             normalizedFullPath;
     }
 }
-
-

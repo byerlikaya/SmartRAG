@@ -20,7 +20,7 @@ public class AzureOpenAIProvider : BaseAIProvider, IDisposable
     private const int DefaultMaxRetries = 3;
     private const int DefaultMinIntervalMs = 60000;
 
-    private readonly SemaphoreSlim _rateLimitSemaphore = new SemaphoreSlim(1, 1);
+    private readonly SemaphoreSlim _rateLimitSemaphore = new(1, 1);
     private DateTime _lastRequestTime = DateTime.MinValue;
 
     public override AIProvider ProviderType => AIProvider.AzureOpenAI;
@@ -168,9 +168,7 @@ public class AzureOpenAIProvider : BaseAIProvider, IDisposable
     /// Azure OpenAI URL builder
     /// </summary>
     private static string BuildAzureUrl(string endpoint, string deployment, string operation, string apiVersion)
-    {
-        return $"{endpoint.TrimEnd('/')}/openai/deployments/{deployment}/{operation}?api-version={apiVersion}";
-    }
+        => $"{endpoint.TrimEnd('/')}/openai/deployments/{deployment}/{operation}?api-version={apiVersion}";
 
     /// <summary>
     /// Azure OpenAI S0 tier custom rate limiting (3 RPM)

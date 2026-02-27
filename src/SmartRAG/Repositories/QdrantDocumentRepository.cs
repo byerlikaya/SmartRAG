@@ -358,7 +358,6 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
             var allCollections = await _client.ListCollectionsAsync(cancellationToken);
             if (!allCollections.Contains(documentCollectionName))
             {
-                Logger.LogDebug("Document collection {Collection} not found for document {DocumentId}", documentCollectionName, id);
                 return null;
             }
 
@@ -366,7 +365,6 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
 
             if (result.Result.Count == 0)
             {
-                Logger.LogDebug("No chunks found in collection {Collection} for document {DocumentId}", documentCollectionName, id);
                 return null;
             }
 
@@ -376,7 +374,7 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
 
             if (metadata.Id == Guid.Empty)
             {
-                Logger.LogWarning("Invalid metadata for document {DocumentId}", id);
+                RepositoryLogMessages.LogQdrantInvalidMetadata(Logger, id, null);
                 return null;
             }
 
@@ -389,14 +387,11 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
                 document.Chunks.Add(chunk);
             }
 
-            Logger.LogDebug("Retrieved document {DocumentId} with {ChunkCount} chunks from collection {Collection}",
-                id, document.Chunks.Count, documentCollectionName);
-
             return document;
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Failed to retrieve document {DocumentId}", id);
+            RepositoryLogMessages.LogDocumentRetrievalFailed(Logger, id, ex);
             return null;
         }
     }
@@ -452,7 +447,7 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to retrieve document from collection: {Collection}", docCollection);
+                    RepositoryLogMessages.LogQdrantDocumentRetrieveFromCollectionFailed(_logger, docCollection, ex);
                 }
             }
 
@@ -460,7 +455,7 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to retrieve all documents");
+            RepositoryLogMessages.LogDocumentsRetrievalFailed(Logger, ex);
             return new List<Document>();
         }
     }
@@ -504,7 +499,7 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to delete document collection: {Collection}", docCollection);
+                    RepositoryLogMessages.LogQdrantDocumentCollectionDeleteFailed(_logger, docCollection, ex);
                 }
             }
 
@@ -514,7 +509,7 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to clear all documents from Qdrant");
+            RepositoryLogMessages.LogQdrantClearAllFailed(_logger, ex);
             return false;
         }
     }
@@ -555,7 +550,7 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
             var queryEmbedding = await _aiService.GenerateEmbeddingsAsync(normalizedQuery, cancellationToken);
             if (queryEmbedding.Count == 0)
             {
-                _logger.LogWarning("AI embedding generation failed, falling back to text search");
+                RepositoryLogMessages.LogQdrantEmbeddingFallback(_logger, null);
                 var embeddingFallback = await _searchService.FallbackTextSearchAsync(query, maxResults, cancellationToken);
                 RepositoryLogMessages.LogQdrantFinalResultsReturned(Logger, embeddingFallback.Count, null);
                 return embeddingFallback;
@@ -582,7 +577,7 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Vector search failed, falling back to text search");
+            RepositoryLogMessages.LogQdrantVectorSearchFallback(_logger, ex);
             var errorFallback = await _searchService.FallbackTextSearchAsync(query, maxResults, cancellationToken);
             RepositoryLogMessages.LogQdrantFinalResultsReturned(Logger, errorFallback.Count, null);
             return errorFallback;

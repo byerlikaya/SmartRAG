@@ -178,5 +178,145 @@ public static class RepositoryLogMessages
         "Redis will still work for document storage and text search. " +
         "To enable vector search, install Redis with RediSearch module: " +
         "docker run -d -p 6379:6379 redis/redis-stack-server:latest");
+
+    public static readonly Action<ILogger, Exception> LogConversationGetHistoryFailed = LoggerMessage.Define(
+        LogLevel.Error,
+        new EventId(36001, "ConversationGetHistoryFailed"),
+        "Error getting conversation history");
+
+    public static readonly Action<ILogger, Exception> LogConversationAddFailed = LoggerMessage.Define(
+        LogLevel.Error,
+        new EventId(36002, "ConversationAddFailed"),
+        "Error adding to conversation");
+
+    public static readonly Action<ILogger, Exception> LogConversationClearFailed = LoggerMessage.Define(
+        LogLevel.Error,
+        new EventId(36003, "ConversationClearFailed"),
+        "Error clearing conversation");
+
+    public static readonly Action<ILogger, Exception> LogConversationAppendSourcesFailed = LoggerMessage.Define(
+        LogLevel.Error,
+        new EventId(36004, "ConversationAppendSourcesFailed"),
+        "Error appending sources for turn");
+
+    public static readonly Action<ILogger, Exception> LogConversationGetSourcesFailed = LoggerMessage.Define(
+        LogLevel.Error,
+        new EventId(36005, "ConversationGetSourcesFailed"),
+        "Error getting sources for session");
+
+    public static readonly Action<ILogger, Exception> LogConversationCheckSessionFailed = LoggerMessage.Define(
+        LogLevel.Error,
+        new EventId(36006, "ConversationCheckSessionFailed"),
+        "Error checking session existence");
+
+    public static readonly Action<ILogger, Exception> LogConversationSetHistoryFailed = LoggerMessage.Define(
+        LogLevel.Error,
+        new EventId(36007, "ConversationSetHistoryFailed"),
+        "Error setting conversation history");
+
+    public static readonly Action<ILogger, Exception> LogConversationGetTimestampsFailed = LoggerMessage.Define(
+        LogLevel.Error,
+        new EventId(36008, "ConversationGetTimestampsFailed"),
+        "Error getting session timestamps");
+
+    public static readonly Action<ILogger, string, Exception> LogConversationListSessionsFailed = LoggerMessage.Define<string>(
+        LogLevel.Error,
+        new EventId(36009, "ConversationListSessionsFailed"),
+        "Error listing conversation sessions from {Source}");
+
+    public static readonly Action<ILogger, Exception?> LogSqliteConversationsCleared = LoggerMessage.Define(
+        LogLevel.Information,
+        new EventId(36101, "SqliteConversationsCleared"),
+        "Cleared all conversations from SQLite");
+
+    public static readonly Action<ILogger, Exception> LogSqliteConversationsClearFailed = LoggerMessage.Define(
+        LogLevel.Error,
+        new EventId(36102, "SqliteConversationsClearFailed"),
+        "Error clearing all conversations from SQLite");
+
+    public static readonly Action<ILogger, Exception?> LogRedisNoEndpointsClear = LoggerMessage.Define(
+        LogLevel.Warning,
+        new EventId(36201, "RedisNoEndpointsClear"),
+        "No Redis endpoints available for clearing conversations");
+
+    public static readonly Action<ILogger, Exception?> LogRedisConversationsCleared = LoggerMessage.Define(
+        LogLevel.Information,
+        new EventId(36202, "RedisConversationsCleared"),
+        "Cleared all conversation history from Redis");
+
+    public static readonly Action<ILogger, Exception> LogRedisConversationsClearFailed = LoggerMessage.Define(
+        LogLevel.Error,
+        new EventId(36203, "RedisConversationsClearFailed"),
+        "Error clearing all conversations from Redis");
+
+    public static readonly Action<ILogger, Exception?> LogRedisNoEndpointsList = LoggerMessage.Define(
+        LogLevel.Warning,
+        new EventId(36204, "RedisNoEndpointsList"),
+        "No Redis endpoints available for listing conversations");
+
+    public static readonly Action<ILogger, Exception> LogFileSystemConversationsClearFailed = LoggerMessage.Define(
+        LogLevel.Error,
+        new EventId(36301, "FileSystemConversationsClearFailed"),
+        "Error clearing all conversations from file system");
+
+    public static readonly Action<ILogger, Guid, Exception> LogRedisChunkEmbeddingFailed = LoggerMessage.Define<Guid>(
+        LogLevel.Warning,
+        new EventId(35020, "RedisChunkEmbeddingFailed"),
+        "Failed to generate embedding for chunk {ChunkId}");
+
+    public static readonly Action<ILogger, Exception> LogRedisDocumentsFromChunksRetrievalFailed = LoggerMessage.Define(
+        LogLevel.Warning,
+        new EventId(35021, "RedisDocumentsFromChunksRetrievalFailed"),
+        "Failed to retrieve documents from chunks");
+
+    public static readonly Action<ILogger, Exception?> LogRedisNoEndpointsChunkRetrieval = LoggerMessage.Define(
+        LogLevel.Warning,
+        new EventId(35022, "RedisNoEndpointsChunkRetrieval"),
+        "No Redis endpoints available for chunk key retrieval");
+
+    public static readonly Action<ILogger, int, Exception> LogRedisChunksCleared = LoggerMessage.Define<int>(
+        LogLevel.Information,
+        new EventId(35023, "RedisChunksCleared"),
+        "Cleared {Count} chunks from Redis");
+
+    public static readonly Action<ILogger, Exception> LogRedisChunksClearFailed = LoggerMessage.Define(
+        LogLevel.Warning,
+        new EventId(35024, "RedisChunksClearFailed"),
+        "Failed to clear chunks from Redis");
+
+    public static readonly Action<ILogger, Exception> LogRedisClearAllFailed = LoggerMessage.Define(
+        LogLevel.Error,
+        new EventId(35025, "RedisClearAllFailed"),
+        "Failed to clear all documents from Redis");
+
+    public static readonly Action<ILogger, Guid, Exception> LogQdrantInvalidMetadata = LoggerMessage.Define<Guid>(
+        LogLevel.Warning,
+        new EventId(34030, "QdrantInvalidMetadata"),
+        "Invalid metadata for document {DocumentId}");
+
+    public static readonly Action<ILogger, string, Exception> LogQdrantDocumentRetrieveFromCollectionFailed = LoggerMessage.Define<string>(
+        LogLevel.Warning,
+        new EventId(34031, "QdrantDocumentRetrieveFromCollectionFailed"),
+        "Failed to retrieve document from collection: {Collection}");
+
+    public static readonly Action<ILogger, string, Exception> LogQdrantDocumentCollectionDeleteFailed = LoggerMessage.Define<string>(
+        LogLevel.Warning,
+        new EventId(34032, "QdrantDocumentCollectionDeleteFailed"),
+        "Failed to delete document collection: {Collection}");
+
+    public static readonly Action<ILogger, Exception> LogQdrantClearAllFailed = LoggerMessage.Define(
+        LogLevel.Error,
+        new EventId(34033, "QdrantClearAllFailed"),
+        "Failed to clear all documents from Qdrant");
+
+    public static readonly Action<ILogger, Exception?> LogQdrantEmbeddingFallback = LoggerMessage.Define(
+        LogLevel.Warning,
+        new EventId(34034, "QdrantEmbeddingFallback"),
+        "AI embedding generation failed, falling back to text search");
+
+    public static readonly Action<ILogger, Exception> LogQdrantVectorSearchFallback = LoggerMessage.Define(
+        LogLevel.Error,
+        new EventId(34035, "QdrantVectorSearchFallback"),
+        "Vector search failed, falling back to text search");
 }
 

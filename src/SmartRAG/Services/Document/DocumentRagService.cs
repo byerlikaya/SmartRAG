@@ -695,7 +695,10 @@ public class DocumentRagService : IRagAnswerGeneratorService, IRagContextAnswerG
     }
 
     /// <inheritdoc />
-    public async Task<RagResponse?> TryAnswerFromFilenameMatchAsync(string query, SearchOptions searchOptions, string? conversationHistory, CancellationToken cancellationToken = default)
+    public async Task<RagResponse?> TryAnswerFromFilenameMatchAsync(string query,
+        SearchOptions searchOptions,
+        string? conversationHistory,
+        CancellationToken cancellationToken = default)
     {
         if (!searchOptions.EnableDocumentSearch && !searchOptions.EnableImageSearch && !searchOptions.EnableAudioSearch)
             return null;

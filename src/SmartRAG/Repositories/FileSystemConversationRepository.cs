@@ -32,7 +32,7 @@ public class FileSystemConversationRepository : IConversationRepository
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting conversation history");
+            RepositoryLogMessages.LogConversationGetHistoryFailed(_logger, ex);
             return string.Empty;
         }
     }
@@ -66,7 +66,7 @@ public class FileSystemConversationRepository : IConversationRepository
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error adding to conversation");
+            RepositoryLogMessages.LogConversationAddFailed(_logger, ex);
         }
     }
 
@@ -87,7 +87,7 @@ public class FileSystemConversationRepository : IConversationRepository
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error clearing conversation");
+            RepositoryLogMessages.LogConversationClearFailed(_logger, ex);
         }
 
         return Task.CompletedTask;
@@ -125,7 +125,7 @@ public class FileSystemConversationRepository : IConversationRepository
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error appending sources for turn");
+            RepositoryLogMessages.LogConversationAppendSourcesFailed(_logger, ex);
         }
     }
 
@@ -143,7 +143,7 @@ public class FileSystemConversationRepository : IConversationRepository
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting sources for session");
+            RepositoryLogMessages.LogConversationGetSourcesFailed(_logger, ex);
             return string.Empty;
         }
     }
@@ -161,7 +161,7 @@ public class FileSystemConversationRepository : IConversationRepository
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error checking session existence");
+            RepositoryLogMessages.LogConversationCheckSessionFailed(_logger, ex);
             return Task.FromResult(false);
         }
     }
@@ -178,7 +178,7 @@ public class FileSystemConversationRepository : IConversationRepository
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error setting conversation history");
+            RepositoryLogMessages.LogConversationSetHistoryFailed(_logger, ex);
         }
     }
 
@@ -203,7 +203,7 @@ public class FileSystemConversationRepository : IConversationRepository
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error clearing all conversations from file system");
+            RepositoryLogMessages.LogFileSystemConversationsClearFailed(_logger, ex);
             throw;
         }
 
@@ -227,7 +227,7 @@ public class FileSystemConversationRepository : IConversationRepository
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting session timestamps");
+            RepositoryLogMessages.LogConversationGetTimestampsFailed(_logger, ex);
             return Task.FromResult<(DateTime? CreatedAt, DateTime? LastUpdated)>((null, null));
         }
     }
@@ -252,20 +252,14 @@ public class FileSystemConversationRepository : IConversationRepository
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error listing conversation sessions from file system");
+            RepositoryLogMessages.LogConversationListSessionsFailed(_logger, "file system", ex);
             return Task.FromResult(Array.Empty<string>());
         }
     }
 
-    private string GetConversationFilePath(string sessionId)
-    {
-        return Path.Combine(_conversationsPath, $"{sessionId}.txt");
-    }
+    private string GetConversationFilePath(string sessionId) => Path.Combine(_conversationsPath, $"{sessionId}.txt");
 
-    private string GetSourcesFilePath(string sessionId)
-    {
-        return Path.Combine(_conversationsPath, $"{sessionId}.sources.json");
-    }
+    private string GetSourcesFilePath(string sessionId) => Path.Combine(_conversationsPath, $"{sessionId}.sources.json");
 
     private static string TruncateConversation(string conversation)
     {
