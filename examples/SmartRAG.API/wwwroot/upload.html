@@ -91,6 +91,19 @@
 				}
 			}
 		}
+
+		function clearResult() {
+			while (result.firstChild) {
+				result.removeChild(result.firstChild);
+			}
+		}
+
+		function createMessageElement(text, color) {
+			const container = document.createElement('div');
+			container.style.color = color;
+			container.textContent = text;
+			return container;
+		}
 		
 		// Clear logs
 		clearLogsBtn.onclick = () => {
@@ -191,7 +204,8 @@
 		btn.onclick = async () => {
 			const files = input.files;
 			if (!files || files.length === 0) { 
-				result.innerHTML = '<div style="color: #dc2626;">❌ Please select files.</div>'; 
+				clearResult();
+				result.appendChild(createMessageElement('❌ Please select files.', '#dc2626'));
 				addLog('No files selected', 'error');
 				return; 
 			}
@@ -201,7 +215,8 @@
 			// Disable button and show loading
 			btn.disabled = true;
 			btn.textContent = 'Uploading...';
-			result.innerHTML = `<div style="color: #059669;">⏳ ${files.length} files uploading...</div>`;
+			clearResult();
+			result.appendChild(createMessageElement(`⏳ ${files.length} files uploading...`, '#059669'));
 			
 			const form = new FormData();
 			for (const f of files) {
@@ -218,32 +233,58 @@
 					const data = await res.json();
 					addLog(`✅ ${files.length} files uploaded successfully!`, 'success');
 					
-					result.innerHTML = `
-						<div style="color: #059669; margin-bottom: 12px;">✅ ${files.length} files uploaded successfully!</div>
-						<div style="margin-bottom: 8px;"><strong>Uploaded Files:</strong></div>
-						<ul style="margin: 0; padding-left: 20px;">
-							${data.map(doc => `<li>${doc.fileName} (ID: ${doc.id})</li>`).join('')}
-						</ul>
-					`;
+					clearResult();
 					
-					// Log each uploaded document
+					const successMessage = createMessageElement(`✅ ${files.length} files uploaded successfully!`, '#059669');
+					successMessage.style.marginBottom = '12px';
+					result.appendChild(successMessage);
+					
+					const uploadedFilesLabel = document.createElement('div');
+					uploadedFilesLabel.style.marginBottom = '8px';
+					const uploadedFilesStrong = document.createElement('strong');
+					uploadedFilesStrong.textContent = 'Uploaded Files:';
+					uploadedFilesLabel.appendChild(uploadedFilesStrong);
+					result.appendChild(uploadedFilesLabel);
+					
+					const list = document.createElement('ul');
+					list.style.margin = '0';
+					list.style.paddingLeft = '20px';
+					
 					data.forEach(doc => {
+						const listItem = document.createElement('li');
+						listItem.textContent = `${doc.fileName} (ID: ${doc.id})`;
+						list.appendChild(listItem);
+						
 						addLog(`📄 ${doc.fileName} uploaded (ID: ${doc.id})`, 'success');
 					});
+					
+					result.appendChild(list);
 					
 				} else {
 					const errorText = await res.text();
 					addLog(`❌ API Error: ${res.status} ${res.statusText}`, 'error');
 					addLog(`Error Details: ${errorText}`, 'error');
 					
-					result.innerHTML = `
-						<div style="color: #dc2626;">❌ Error: ${res.status} ${res.statusText}</div>
-						<pre style="background: #fef2f2; color: #dc2626; padding: 8px; border-radius: 4px; margin-top: 8px;">${errorText}</pre>
-					`;
+					clearResult();
+					
+					const errorMessage = createMessageElement(`❌ Error: ${res.status} ${res.statusText}`, '#dc2626');
+					result.appendChild(errorMessage);
+					
+					if (errorText) {
+						const errorDetails = document.createElement('pre');
+						errorDetails.style.background = '#fef2f2';
+						errorDetails.style.color = '#dc2626';
+						errorDetails.style.padding = '8px';
+						errorDetails.style.borderRadius = '4px';
+						errorDetails.style.marginTop = '8px';
+						errorDetails.textContent = errorText;
+						result.appendChild(errorDetails);
+					}
 				}
 			} catch (e) { 
 				addLog(`❌ Network Error: ${e.message}`, 'error');
-				result.innerHTML = `<div style="color: #dc2626;">❌ Upload failed: ${e.message}</div>`; 
+				clearResult();
+				result.appendChild(createMessageElement(`❌ Upload failed: ${e.message}`, '#dc2626'));
 			} finally {
 				// Re-enable button
 				btn.disabled = false;
