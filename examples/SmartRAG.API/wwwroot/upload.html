@@ -60,12 +60,19 @@
 			logEntry.style.marginBottom = '4px';
 			logEntry.setAttribute('data-category', category);
 			
-			let color = '#e2e8f0'; // default
+			let color = '#e2e8f0';
 			if (type === 'error') color = '#fca5a5';
 			else if (type === 'warning') color = '#fcd34d';
 			else if (type === 'success') color = '#86efac';
 			
-			logEntry.innerHTML = `<span style="color: #94a3b8;">[${timestamp}]</span> <span style="color: ${color};">${message}</span>`;
+			const timeSpan = document.createElement('span');
+			timeSpan.style.color = '#94a3b8';
+			timeSpan.textContent = '[' + timestamp + '] ';
+			const msgSpan = document.createElement('span');
+			msgSpan.style.color = color;
+			msgSpan.textContent = message;
+			logEntry.appendChild(timeSpan);
+			logEntry.appendChild(msgSpan);
 			consoleLogs.appendChild(logEntry);
 			
 			// Performans optimizasyonu: Eski logları temizle

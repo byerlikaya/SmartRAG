@@ -371,10 +371,10 @@ public static class DatabaseLogMessages
         new EventId(36072, "ExecutingSqlForDatabase"),
         "Executing SQL for database {DatabaseName}");
 
-    public static readonly Action<ILogger, string, string, Exception> LogExecutingSqlWithQuery = LoggerMessage.Define<string, string>(
+    public static readonly Action<ILogger, string, Exception> LogExecutingSqlWithQuery = LoggerMessage.Define<string>(
         LogLevel.Debug,
         new EventId(36092, "ExecutingSqlWithQuery"),
-        "[DEBUG] Executing SQL for {DatabaseName}: {Sql}");
+        "Executing SQL for database {DatabaseName}");
 
     public static readonly Action<ILogger, string, Exception> LogQueryExecutionFailed = LoggerMessage.Define<string>(
         LogLevel.Error,

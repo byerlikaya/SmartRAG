@@ -397,7 +397,7 @@ public class RedisDocumentRepository : IDocumentRepository, IDisposable
             var aiConfig = _aiConfigurationService.GetAIProviderConfig();
             if (aiConfig == null)
             {
-                RepositoryLogMessages.LogRedisVectorSearchFailed(Logger, query, new InvalidOperationException("AI provider configuration not available"));
+                RepositoryLogMessages.LogRedisVectorSearchFailed(Logger, new InvalidOperationException("AI provider configuration not available"));
                 return await FallbackTextSearchAsync(query, maxResults, cancellationToken);
             }
 
@@ -464,7 +464,7 @@ public class RedisDocumentRepository : IDocumentRepository, IDisposable
         }
         catch (Exception ex)
         {
-            RepositoryLogMessages.LogRedisVectorSearchFailed(Logger, query, ex);
+            RepositoryLogMessages.LogRedisVectorSearchFailed(Logger, ex);
             return await FallbackTextSearchAsync(query, maxResults, cancellationToken);
         }
     }
@@ -497,7 +497,7 @@ public class RedisDocumentRepository : IDocumentRepository, IDisposable
         }
         catch (Exception ex)
         {
-            RepositoryLogMessages.LogRedisSearchFailed(Logger, query, ex);
+            RepositoryLogMessages.LogRedisSearchFailed(Logger, ex);
             return new List<DocumentChunk>();
         }
     }

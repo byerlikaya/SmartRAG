@@ -158,7 +158,7 @@ public class InMemoryDocumentRepository : IDocumentRepository
             }
             catch (Exception ex)
             {
-                RepositoryLogMessages.LogSearchFailed(Logger, query, ex);
+                RepositoryLogMessages.LogSearchFailed(Logger, ex);
                 throw;
             }
         }

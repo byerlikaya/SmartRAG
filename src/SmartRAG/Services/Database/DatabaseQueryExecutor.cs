@@ -137,7 +137,7 @@ public class DatabaseQueryExecutor : IDatabaseQueryExecutor
             }
 
             DatabaseLogMessages.LogExecutingSqlForDatabase(_logger, dbQuery.DatabaseName, null!);
-            DatabaseLogMessages.LogExecutingSqlWithQuery(_logger, dbQuery.DatabaseName, queryToExecute, null!);
+            DatabaseLogMessages.LogExecutingSqlWithQuery(_logger, dbQuery.DatabaseName, null!);
 
             var configMaxRows = connection.MaxRowsPerQuery > 0 ? connection.MaxRowsPerQuery : DefaultMaxRows;
             var maxRows = maxResultsOverride.HasValue ? Math.Min(maxResultsOverride.Value, configMaxRows) : configMaxRows;
