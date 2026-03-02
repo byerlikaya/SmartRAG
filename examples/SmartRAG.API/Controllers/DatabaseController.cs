@@ -300,99 +300,40 @@ public class DatabaseController : ControllerBase
     }
 
     /// <summary>
-    /// Executes custom SQL queries with advanced security and performance features
+    /// Executes custom SQL queries.
     /// </summary>
     /// <remarks>
-    /// Executes custom SQL queries on connected databases with comprehensive safety and optimization including:
-    /// - **SQL Injection Prevention**: Parameterized queries and input sanitization
-    /// - **Query Optimization**: Automatic query analysis and performance optimization
-    /// - **Result Processing**: Intelligent result formatting and data type handling
-    /// - **Security Controls**: Query validation, permission checking, audit logging
-    /// - **Performance Monitoring**: Execution time tracking, resource usage analysis
-    /// - **Error Handling**: Detailed error reporting with troubleshooting guidance
-    /// 
-    /// Security features:
-    /// - **Query Validation**: Prevents dangerous operations (DROP, DELETE without WHERE)
-    /// - **Permission Checking**: Validates user permissions for query execution
-    /// - **Input Sanitization**: Comprehensive SQL injection prevention
-    /// - **Audit Logging**: Complete query execution logging for compliance
-    /// - **Rate Limiting**: Prevents query abuse and resource exhaustion
-    /// 
-    /// Performance optimizations:
-    /// - **Query Caching**: Intelligent caching of query results
-    /// - **Connection Pooling**: Efficient database connection management
-    /// - **Result Streaming**: Memory-efficient handling of large result sets
-    /// - **Timeout Management**: Configurable query timeouts and cancellation
-    /// - **Resource Monitoring**: CPU and memory usage tracking
-    /// 
-    /// Supported query types:
-    /// - **SELECT Queries**: Data retrieval with filtering, sorting, aggregation
-    /// - **JOIN Operations**: Complex multi-table queries with relationship analysis
-    /// - **Aggregate Functions**: Statistical analysis and data summarization
-    /// - **Window Functions**: Advanced analytical queries and reporting
-    /// 
-    /// Query results are automatically formatted for AI consumption and can be used for:
-    /// - **Natural Language Insights**: Ask questions about query results
-    /// - **Data Analysis**: AI-powered analysis of query results
-    /// - **Report Generation**: Automatic report creation from query data
-    /// - **Trend Analysis**: Identify patterns and trends in query results
+    /// For security reasons, direct execution of arbitrary SQL over HTTP is disabled in the demo API.
+    /// Use SmartRAG's multi-database integration and RAG features, or your own server-side code,
+    /// to execute and control SQL queries safely.
     /// </remarks>
-    /// <param name="request">SQL query execution configuration with security and performance options</param>
-    /// <returns>Query execution results with performance metrics and data insights</returns>
+    /// <param name="request">SQL query execution configuration (validated but not executed by this endpoint)</param>
+    /// <returns>A validation result explaining that this operation is not allowed over HTTP</returns>
     [HttpPost("execute-query")]
     [ProducesResponseType(typeof(DatabaseResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<DatabaseResponse>> ExecuteQuery([FromBody] QueryExecutionApiRequest request)
+    public Task<ActionResult<DatabaseResponse>> ExecuteQuery([FromBody] QueryExecutionApiRequest request)
     {
         if (request == null)
-            return BadRequest("Request body is required");
+        {
+            return Task.FromResult<ActionResult<DatabaseResponse>>(BadRequest("Request body is required"));
+        }
 
         if (!ModelState.IsValid)
-            return BadRequest(ModelState);
-
-        var stopwatch = Stopwatch.StartNew();
-
-        try
         {
-            var isValidConnection = await _databaseParserService.ValidateConnectionAsync(
-                request.ConnectionString, 
-                request.DatabaseType,
-                HttpContext.RequestAborted);
-
-            if (!isValidConnection)
-            {
-                return BadRequest($"Cannot connect to {request.DatabaseType} database");
-            }
-
-            var result = await _databaseParserService.ExecuteQueryAsync(
-                request.ConnectionString,
-                request.Query,
-                request.DatabaseType,
-                request.MaxRows,
-                HttpContext.RequestAborted);
-
-            stopwatch.Stop();
-
-            return Ok(new DatabaseResponse
-            {
-                Success = true,
-                Message = "SQL query executed successfully",
-                Content = result,
-                DatabaseType = request.DatabaseType,
-                ProcessingTimeMs = stopwatch.ElapsedMilliseconds
-            });
+            return Task.FromResult<ActionResult<DatabaseResponse>>(BadRequest(ModelState));
         }
-        catch (Exception ex)
+
+        var response = new DatabaseResponse
         {
-            stopwatch.Stop();
-            return StatusCode(500, new DatabaseResponse
-            {
-                Success = false,
-                Message = $"Error executing query: {ex.Message}",
-                DatabaseType = request.DatabaseType,
-                ProcessingTimeMs = stopwatch.ElapsedMilliseconds
-            });
-        }
+            Success = false,
+            Message = "Direct execution of custom SQL queries via HTTP API is disabled for security reasons. " +
+                      "Use configured database connections and RAG features, or execute SQL on the server side " +
+                      "under your own access control.",
+            DatabaseType = request.DatabaseType
+        };
+
+        return Task.FromResult<ActionResult<DatabaseResponse>>(BadRequest(response));
     }
 
     /// <summary>

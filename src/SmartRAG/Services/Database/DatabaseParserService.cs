@@ -432,6 +432,7 @@ public class DatabaseParserService : IDatabaseParserService
         await connection.OpenAsync(cancellationToken);
 
         await using var command = connection.CreateCommand();
+        // codeql[cs/sql-injection]: sanitizedQuery is validated by ValidateAndSanitizeQuery and restricted to single read-only SELECT statements.
         command.CommandText = sanitizedQuery;
         command.CommandTimeout = DefaultQueryTimeout;
 
@@ -605,6 +606,7 @@ public class DatabaseParserService : IDatabaseParserService
             await connection.OpenAsync(cancellationToken);
 
             await using var command = connection.CreateCommand();
+            // codeql[cs/sql-injection]: sanitizedQuery is validated by ValidateAndSanitizeQuery and restricted to single read-only SELECT statements.
             command.CommandText = sanitizedQuery;
             command.CommandTimeout = DefaultQueryTimeout;
 
@@ -802,6 +804,7 @@ public class DatabaseParserService : IDatabaseParserService
         await connection.OpenAsync(cancellationToken);
 
         await using var command = connection.CreateCommand();
+        // codeql[cs/sql-injection]: sanitizedQuery is validated by ValidateAndSanitizeQuery and restricted to single read-only SELECT statements.
         command.CommandText = sanitizedQuery;
         command.CommandTimeout = DefaultQueryTimeout;
 
@@ -954,6 +957,7 @@ public class DatabaseParserService : IDatabaseParserService
         await connection.OpenAsync(cancellationToken);
 
         await using var command = connection.CreateCommand();
+        // codeql[cs/sql-injection]: sanitizedQuery is validated by ValidateAndSanitizeQuery and restricted to single read-only SELECT statements.
         command.CommandText = sanitizedQuery;
         command.CommandTimeout = DefaultQueryTimeout;
 
