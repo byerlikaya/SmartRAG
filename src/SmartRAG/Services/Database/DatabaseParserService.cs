@@ -143,13 +143,13 @@ public class DatabaseParserService : IDatabaseParserService
 
         return databaseType switch
         {
-            DatabaseType.SQLite => await ExecuteSQLiteQueryAsync(connectionString, sanitizedQuery, maxRows,
+            DatabaseType.SQLite => await ExecuteSQLiteQueryInternalAsync(connectionString, sanitizedQuery, maxRows,
                 cancellationToken),
-            DatabaseType.SqlServer => await ExecuteSqlServerQueryAsync(connectionString, sanitizedQuery, maxRows,
+            DatabaseType.SqlServer => await ExecuteSqlServerQueryInternalAsync(connectionString, sanitizedQuery, maxRows,
                 cancellationToken),
-            DatabaseType.MySQL => await ExecuteMySqlQueryAsync(connectionString, sanitizedQuery, maxRows,
+            DatabaseType.MySQL => await ExecuteMySqlQueryInternalAsync(connectionString, sanitizedQuery, maxRows,
                 cancellationToken),
-            DatabaseType.PostgreSQL => await ExecutePostgreSqlQueryAsync(connectionString, sanitizedQuery, maxRows,
+            DatabaseType.PostgreSQL => await ExecutePostgreSqlQueryInternalAsync(connectionString, sanitizedQuery, maxRows,
                 cancellationToken),
             _ => throw new NotSupportedException($"Database type {databaseType} is not supported")
         };
@@ -192,31 +192,62 @@ public class DatabaseParserService : IDatabaseParserService
         if (string.IsNullOrWhiteSpace(query))
             throw new ArgumentException("Query cannot be null or empty", nameof(query));
 
-        var upperQuery = query.ToUpperInvariant();
-        var dangerousKeywords = new[] { "DROP", "DELETE", "TRUNCATE", "ALTER", "CREATE", "EXEC", "EXECUTE", "SP_", "XP_" };
+        var trimmed = query.Trim();
+        if (trimmed.Length == 0)
+            throw new ArgumentException("Query cannot be empty or whitespace", nameof(query));
+
+        var upper = trimmed.ToUpperInvariant();
+
+        if (!upper.StartsWith("SELECT ", StringComparison.Ordinal) &&
+            !upper.StartsWith("SELECT\n", StringComparison.Ordinal) &&
+            !upper.StartsWith("SELECT\t", StringComparison.Ordinal) &&
+            !upper.Equals("SELECT", StringComparison.Ordinal))
+        {
+            throw new ArgumentException("Only single SELECT statements are allowed", nameof(query));
+        }
+
+        var dangerousKeywords = new[]
+        {
+            "INSERT", "UPDATE", "DELETE", "DROP", "TRUNCATE", "ALTER",
+            "CREATE", "REPLACE", "EXEC", "EXECUTE", "MERGE",
+            "GRANT", "REVOKE", "SP_", "XP_"
+        };
 
         foreach (var keyword in dangerousKeywords)
         {
-            var pattern = keyword.EndsWith("_")
+            var pattern = keyword.EndsWith("_", StringComparison.Ordinal)
                 ? $@"\b{Regex.Escape(keyword)}"
                 : $@"\b{Regex.Escape(keyword)}\b";
 
-            if (Regex.IsMatch(upperQuery, pattern, RegexOptions.IgnoreCase))
+            if (Regex.IsMatch(upper, pattern, RegexOptions.IgnoreCase))
             {
                 throw new ArgumentException($"Query contains dangerous keyword: {keyword}", nameof(query));
             }
         }
 
-        var sanitized = query.Trim();
-
-        if (sanitized.Contains(";--", StringComparison.Ordinal) ||
-            sanitized.Contains(";/*", StringComparison.Ordinal) ||
-            sanitized.Contains("UNION", StringComparison.OrdinalIgnoreCase))
+        if (upper.Contains(";--", StringComparison.Ordinal) ||
+            upper.Contains(";/*", StringComparison.Ordinal))
         {
-            throw new ArgumentException("Query contains potentially dangerous SQL patterns", nameof(query));
+            throw new ArgumentException("Query contains potentially dangerous SQL comment patterns", nameof(query));
         }
 
-        return sanitized;
+        var semicolonIndex = trimmed.IndexOf(';');
+        if (semicolonIndex >= 0)
+        {
+            var after = trimmed[(semicolonIndex + 1)..].Trim();
+            if (after.Length > 0)
+            {
+                throw new ArgumentException("Only a single SQL statement is allowed", nameof(query));
+            }
+            trimmed = trimmed[..semicolonIndex].TrimEnd();
+        }
+
+        if (upper.Contains(" UNION ", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException("Query contains potentially dangerous SQL pattern: UNION", nameof(query));
+        }
+
+        return trimmed;
     }
 
     private static string SanitizeTableName(string tableName)
@@ -394,9 +425,8 @@ public class DatabaseParserService : IDatabaseParserService
         return await GetTableDataInternalAsync(command, config, cancellationToken);
     }
 
-    private async Task<string> ExecuteSQLiteQueryAsync(string connectionString, string query, int maxRows, CancellationToken cancellationToken = default)
+    private async Task<string> ExecuteSQLiteQueryInternalAsync(string connectionString, string sanitizedQuery, int maxRows, CancellationToken cancellationToken = default)
     {
-        var sanitizedQuery = ValidateAndSanitizeQuery(query);
         var sanitizedConnectionString = ValidateAndSanitizeSQLiteConnectionString(connectionString);
         await using var connection = new SqliteConnection(sanitizedConnectionString);
         await connection.OpenAsync(cancellationToken);
@@ -566,7 +596,7 @@ public class DatabaseParserService : IDatabaseParserService
         return await GetTableDataInternalAsync(command, config, cancellationToken);
     }
 
-    private async Task<string> ExecuteSqlServerQueryAsync(string connectionString, string query, int maxRows, CancellationToken cancellationToken = default)
+    private async Task<string> ExecuteSqlServerQueryInternalAsync(string connectionString, string sanitizedQuery, int maxRows, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -574,7 +604,6 @@ public class DatabaseParserService : IDatabaseParserService
             await using var connection = new SqlConnection(sanitizedConnectionString);
             await connection.OpenAsync(cancellationToken);
 
-            var sanitizedQuery = ValidateAndSanitizeQuery(query);
             await using var command = connection.CreateCommand();
             command.CommandText = sanitizedQuery;
             command.CommandTimeout = DefaultQueryTimeout;
@@ -766,13 +795,12 @@ public class DatabaseParserService : IDatabaseParserService
         return await GetTableDataInternalAsync(command, config, cancellationToken);
     }
 
-    private async Task<string> ExecuteMySqlQueryAsync(string connectionString, string query, int maxRows, CancellationToken cancellationToken = default)
+    private async Task<string> ExecuteMySqlQueryInternalAsync(string connectionString, string sanitizedQuery, int maxRows, CancellationToken cancellationToken = default)
     {
         var sanitizedConnectionString = ValidateAndSanitizeMySqlConnectionString(connectionString);
         await using var connection = new MySqlConnection(sanitizedConnectionString);
         await connection.OpenAsync(cancellationToken);
 
-        var sanitizedQuery = ValidateAndSanitizeQuery(query);
         await using var command = connection.CreateCommand();
         command.CommandText = sanitizedQuery;
         command.CommandTimeout = DefaultQueryTimeout;
@@ -919,13 +947,12 @@ public class DatabaseParserService : IDatabaseParserService
         return await GetTableDataInternalAsync(command, config, cancellationToken);
     }
 
-    private async Task<string> ExecutePostgreSqlQueryAsync(string connectionString, string query, int maxRows, CancellationToken cancellationToken = default)
+    private async Task<string> ExecutePostgreSqlQueryInternalAsync(string connectionString, string sanitizedQuery, int maxRows, CancellationToken cancellationToken = default)
     {
         var sanitizedConnectionString = ValidateAndSanitizePostgreSqlConnectionString(connectionString);
         await using var connection = new NpgsqlConnection(sanitizedConnectionString);
         await connection.OpenAsync(cancellationToken);
 
-        var sanitizedQuery = ValidateAndSanitizeQuery(query);
         await using var command = connection.CreateCommand();
         command.CommandText = sanitizedQuery;
         command.CommandTimeout = DefaultQueryTimeout;
