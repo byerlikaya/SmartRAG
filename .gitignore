@@ -361,6 +361,10 @@ models/
 !src/SmartRAG/Models/
 !src/SmartRAG/Models/**
 
+# Allow Dashboard response/request models (Dashboard is merged into SmartRAG package)
+!src/SmartRAG/Dashboard/Models/
+!src/SmartRAG/Dashboard/Models/**
+
 **/ggml-*.bin
 **/ggml-large-v3.bin
 
