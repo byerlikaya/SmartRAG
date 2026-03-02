@@ -11,6 +11,95 @@ All releases and changes to SmartRAG are documented here.
 
 <div class="accordion mt-4" id="versionAccordion">
     <div class="accordion-item">
+        <h2 class="accordion-header" id="headingversion400">
+            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseversion400" aria-expanded="true" aria-controls="collapseversion400">
+                <strong>v4.0.0</strong> - 2026-02-06
+            </button>
+        </h2>
+        <div id="collapseversion400" class="accordion-collapse collapse show" aria-labelledby="headingversion400" >
+            <div class="accordion-body">
+{% capture version_content %}
+
+### Framework Migration & Built‑in Dashboard
+
+<div class="alert alert-warning">
+    <h4><i class="fas fa-exclamation-triangle me-2"></i> MAJOR Release</h4>
+    <p class="mb-0">
+        This release migrates SmartRAG to .NET 6, merges the Dashboard project into the main package, and completes the v3 deprecation plan (legacy RAG and orchestration APIs removed).
+    </p>
+</div>
+
+### ⚠️ Breaking Changes
+
+- **.NET Standard → .NET 6**  
+  - Target framework updated from .NET Standard 2.1 to .NET 6  
+  - Projects must now target **.NET 6 or higher**  
+  - .NET Core 3.0, .NET 5, and .NET Standard 2.1 are no longer supported
+
+- **Deprecated APIs Removed**  
+  - `IDocumentSearchService.GenerateRagAnswerAsync(...)` → use `QueryIntelligenceAsync(...)`  
+  - `IRagAnswerGeneratorService.GenerateBasicRagAnswerAsync(string, int, ...)` → use `GenerateBasicRagAnswerAsync(GenerateRagAnswerRequest)`  
+  - `IQueryStrategyExecutorService` overloads with many individual parameters → use `QueryStrategyRequest` overloads  
+  - `IDocumentService.UploadDocumentAsync(Stream, string, ...)` → use `UploadDocumentAsync(UploadDocumentRequest)`  
+  - `IMultiDatabaseQueryCoordinator.AnalyzeQueryIntentAsync(...)` → use `IQueryIntentAnalyzer.AnalyzeQueryIntentAsync(...)`
+
+- **Project Layout**  
+  - `SmartRAG.Dashboard` was previously a separate project inside the solution (never a NuGet package)  
+  - It is now merged into the **SmartRAG** package – remove any `<ProjectReference>` to `SmartRAG.Dashboard`
+
+### ✨ Added
+
+- **Built‑in Dashboard in the NuGet Package**
+  - Document management and chat UI shipped directly in the SmartRAG package  
+  - Same API surface as before:
+
+```csharp
+builder.Services.AddSmartRag(builder.Configuration);
+builder.Services.AddSmartRagDashboard(options => { options.Path = "/smartrag"; });
+
+app.UseSmartRagDashboard("/smartrag");
+app.MapSmartRagDashboard("/smartrag");
+```
+
+- **Health Check Service**
+  - New `IHealthCheckService` and `HealthCheckResult`/`HealthStatus` models for library‑level health reporting  
+  - Designed for dashboards and example APIs to surface SmartRAG health in a consistent, testable way
+
+### 🔧 Improved
+
+- **Query Source Handler Architecture**
+  - New handler abstraction for document, database, and MCP sources (`IQuerySourceHandler`, `QuerySourceHandlerRequest`)  
+  - New services such as `DocumentRagService`, `DocumentRagSourceHandler`, `DatabaseQuerySourceHandler`, `McpSearchHandler`  
+  - Cleaner separation between “how to execute a query” and “where the data comes from”, improving extensibility
+
+- **Safer and More Robust AI & Storage Integration**
+  - All AI providers and storage services updated for .NET 6 (global usings, nullable reference types, file‑scoped namespaces)  
+  - Better `CancellationToken` flow through AI, database, search, parser, and MCP services  
+  - Refined schema‑aware SQL generation (optional schema parameter for PostgreSQL identifier quoting, column listing fixes)
+
+- **Security Hardening**
+  - CodeQL‑driven fixes for:
+    - SQL prompts and schema column handling in SQL generation  
+    - Path and URL sanitization for web/Dashboard scenarios  
+    - Safer MCP request validation and response handling  
+  - Logging tightened to avoid leaking sensitive data while still keeping diagnostics useful
+
+- **Logging via LoggerMessage Delegates**
+  - All remaining direct `_logger.LogX(...)` usages migrated to centralized `*LogMessages` delegates  
+  - New `DatabaseLogMessages` and `StartupLogMessages` classes align database and startup logs with the project‑wide logging standard
+
+### 📝 Notes
+
+- **Migration Help**: See the [Migration Guides]({{ site.baseurl }}/en/changelog/migration-guides#migrating-from-v3x-to-v400) and [Deprecation Notices]({{ site.baseurl }}/en/changelog/deprecation) pages for code‑level examples  
+- **Changelog Scope**: Only core library changes under `src/SmartRAG/` are listed here (example projects are intentionally excluded)
+
+---
+{% endcapture %}
+{{ version_content | markdownify }}
+            </div>
+        </div>
+    </div>
+    <div class="accordion-item">
         <h2 class="accordion-header" id="headingversion390">
             <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseversion390" aria-expanded="true" aria-controls="collapseversion390">
                 <strong>v3.9.0</strong> - 2026-02-05
@@ -1513,6 +1602,11 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
             </tr>
         </thead>
         <tbody>
+            <tr>
+                <td><strong>4.0.0</strong></td>
+                <td>2026-02-06</td>
+                <td>.NET 6 migration, built‑in Dashboard, deprecated API removals</td>
+            </tr>
             <tr>
                 <td><strong>3.1.0</strong></td>
                 <td>2025-11-11</td>

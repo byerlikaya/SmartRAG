@@ -11,6 +11,95 @@ SmartRAG'deki tüm sürümler ve değişiklikler burada belgelenmiştir.
 
 <div class="accordion mt-4" id="versionAccordion">
     <div class="accordion-item">
+        <h2 class="accordion-header" id="headingversion400">
+            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseversion400" aria-expanded="true" aria-controls="collapseversion400">
+                <strong>v4.0.0</strong> - 2026-02-06
+            </button>
+        </h2>
+        <div id="collapseversion400" class="accordion-collapse collapse show" aria-labelledby="headingversion400" >
+            <div class="accordion-body">
+{% capture version_content %}
+
+### Framework Göçü ve Yerleşik Dashboard
+
+<div class="alert alert-warning">
+    <h4><i class="fas fa-exclamation-triangle me-2"></i> MAJOR Sürüm</h4>
+    <p class="mb-0">
+        Bu sürüm SmartRAG'ı .NET 6'ya taşıyor, Dashboard projesini ana pakete birleştiriyor ve v3 serisindeki deprecatation planını tamamlıyor (eski RAG ve orkestrasyon API'leri kaldırıldı).
+    </p>
+</div>
+
+### ⚠️ Kırıcı Değişiklikler
+
+- **.NET Standard → .NET 6**  
+  - Hedef framework .NET Standard 2.1'den **.NET 6**'ya güncellendi  
+  - Projeler artık **.NET 6 veya üzerini** hedeflemelidir  
+  - .NET Core 3.0, .NET 5 ve .NET Standard 2.1 artık desteklenmiyor
+
+- **Kaldırılan Eski API'ler**  
+  - `IDocumentSearchService.GenerateRagAnswerAsync(...)` → yerine `QueryIntelligenceAsync(...)` kullanın  
+  - `IRagAnswerGeneratorService.GenerateBasicRagAnswerAsync(string, int, ...)` → yerine `GenerateBasicRagAnswerAsync(GenerateRagAnswerRequest)` kullanın  
+  - `IQueryStrategyExecutorService` için ayrı parametreli overload'lar → `QueryStrategyRequest` overload'larını kullanın  
+  - `IDocumentService.UploadDocumentAsync(Stream, string, ...)` → yerine `UploadDocumentAsync(UploadDocumentRequest)` kullanın  
+  - `IMultiDatabaseQueryCoordinator.AnalyzeQueryIntentAsync(...)` → yerine `IQueryIntentAnalyzer.AnalyzeQueryIntentAsync(...)` kullanın
+
+- **Proje Yapısı**  
+  - `SmartRAG.Dashboard` daha önce solution içinde ayrı bir projeydi (hiçbir zaman NuGet paketi olmadı)  
+  - Artık **SmartRAG** paketi içine birleştirildi – `SmartRAG.Dashboard` için `<ProjectReference>` kullanıyorsanız kaldırın
+
+### ✨ Eklenenler
+
+- **NuGet Paketi İçinde Yerleşik Dashboard**
+  - Doküman yönetimi ve chat arayüzü artık doğrudan SmartRAG paketi ile geliyor  
+  - Kullanım API'si değişmedi:
+
+```csharp
+builder.Services.AddSmartRag(builder.Configuration);
+builder.Services.AddSmartRagDashboard(options => { options.Path = "/smartrag"; });
+
+app.UseSmartRagDashboard("/smartrag");
+app.MapSmartRagDashboard("/smartrag");
+```
+
+- **Health Check Servisi**
+  - Kütüphane seviyesinde sağlık raporlamak için yeni `IHealthCheckService` ve `HealthCheckResult`/`HealthStatus` modelleri  
+  - Dashboard ve örnek API'lerin SmartRAG sağlık durumunu tutarlı ve test edilebilir şekilde göstermesi için tasarlandı
+
+### 🔧 İyileştirmeler
+
+- **Query Source Handler Mimarisi**
+  - Doküman, veritabanı ve MCP kaynakları için yeni handler soyutlaması (`IQuerySourceHandler`, `QuerySourceHandlerRequest`)  
+  - `DocumentRagService`, `DocumentRagSourceHandler`, `DatabaseQuerySourceHandler`, `McpSearchHandler` gibi yeni servisler  
+  - “Sorgu nasıl çalıştırılır?” ile “veri nereden gelir?” sorularını ayırarak genişletilebilirliği artırır
+
+- **Daha Güvenli ve Dayanıklı AI & Depolama Entegrasyonu**
+  - Tüm AI provider'ları ve depolama servisleri .NET 6 için güncellendi (global using'ler, nullable reference types, file‑scoped namespace'ler)  
+  - AI, veritabanı, arama, parser ve MCP servisleri boyunca `CancellationToken` akışı iyileştirildi  
+  - Şema-farkındalıklı SQL üretimi rafine edildi (PostgreSQL identifier quoting için opsiyonel şema parametresi, kolon listeleme düzeltmeleri)
+
+- **Güvenlik Sertleştirmesi**
+  - CodeQL analizlerine dayalı düzeltmeler:
+    - SQL prompt'ları ve şema kolon işleme kuralları  
+    - Web/Dashboard senaryoları için path ve URL sanitizasyonu  
+    - MCP istek doğrulaması ve yanıt işleme için daha güvenli kontroller  
+  - Loglama, hassas verileri sızdırmayacak şekilde sıkılaştırıldı ancak tanılama için yeterince bilgi bırakıldı
+
+- **LoggerMessage ile Merkezi Loglama**
+  - Kalan tüm doğrudan `_logger.LogX(...)` kullanımları merkezi `*LogMessages` delegate'lerine taşındı  
+  - `DatabaseLogMessages` ve `StartupLogMessages` gibi yeni sınıflar, veritabanı ve başlangıç log'larını proje genelindeki log standardı ile hizalar
+
+### 📝 Notlar
+
+- **Taşınma Yardımı**: Kod örnekleri için [Taşınma Kılavuzları]({{ site.baseurl }}/tr/changelog/migration-guides#v3xten-v400a-taşınma) ve [Kullanımdan Kaldırma Bildirimleri]({{ site.baseurl }}/tr/changelog/deprecation) sayfalarına bakın  
+- **Changelog Kapsamı**: Burada yalnızca `src/SmartRAG/` altındaki ana kütüphane değişiklikleri listelenir (examples projeleri bilinçli olarak hariç tutulur)
+
+---
+{% endcapture %}
+{{ version_content | markdownify }}
+            </div>
+        </div>
+    </div>
+    <div class="accordion-item">
         <h2 class="accordion-header" id="headingversion390">
             <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseversion390" aria-expanded="true" aria-controls="collapseversion390">
                 <strong>v3.9.0</strong> - 2026-02-05
@@ -1514,6 +1603,11 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
             </tr>
         </thead>
         <tbody>
+            <tr>
+                <td><strong>4.0.0</strong></td>
+                <td>2026-02-06</td>
+                <td>.NET 6 geçişi, yerleşik Dashboard, kaldırılan eski API'ler</td>
+            </tr>
             <tr>
                 <td><strong>3.1.0</strong></td>
                 <td>2025-11-11</td>
