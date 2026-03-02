@@ -13,7 +13,7 @@ SmartRAG'deki tüm sürümler ve değişiklikler burada belgelenmiştir.
     <div class="accordion-item">
         <h2 class="accordion-header" id="headingversion400">
             <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseversion400" aria-expanded="true" aria-controls="collapseversion400">
-                <strong>v4.0.0</strong> - 2026-02-06
+                <strong>v4.0.0</strong> - 2026-03-02
             </button>
         </h2>
         <div id="collapseversion400" class="accordion-collapse collapse show" aria-labelledby="headingversion400" >
@@ -1605,7 +1605,7 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
         <tbody>
             <tr>
                 <td><strong>4.0.0</strong></td>
-                <td>2026-02-06</td>
+                <td>2026-03-02</td>
                 <td>.NET 6 geçişi, yerleşik Dashboard, kaldırılan eski API'ler</td>
             </tr>
             <tr>

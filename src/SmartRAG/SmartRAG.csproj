@@ -22,7 +22,7 @@
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <PackageReleaseNotes>Release 4.0.0: .NET 6 target, Dashboard merged (MAJOR - 2026-02-06)
+    <PackageReleaseNotes>Release 4.0.0: .NET 6 target, Dashboard merged (MAJOR - 2026-03-02)
 
 BREAKING: Target framework netstandard2.1 → net6.0. SmartRAG.Dashboard project merged into SmartRAG; Dashboard is now included. Projects must target .NET 6+.
 
