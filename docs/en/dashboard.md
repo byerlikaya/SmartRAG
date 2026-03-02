@@ -54,6 +54,41 @@ app.Run();
 - **EnableInDevelopmentOnly**: When `true`, the dashboard returns 404 in non-Development environments. Set to `false` only if you explicitly want the dashboard in production and will protect it yourself.
 - **AuthorizationFilter**: Optional `Func<HttpContext, bool>`. When set, the dashboard calls it for each request; if it returns `false`, the response is 403.
 
+## Dashboard Options
+
+<div class="table-responsive">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Option</th>
+                <th>Type</th>
+                <th>Default</th>
+                <th>Description</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>Path</code></td>
+                <td><code>string</code></td>
+                <td><code>"/smartrag"</code></td>
+                <td>Base path for the dashboard UI and all API endpoints.</td>
+            </tr>
+            <tr>
+                <td><code>EnableInDevelopmentOnly</code></td>
+                <td><code>bool</code></td>
+                <td><code>true</code></td>
+                <td>When <code>true</code>, the dashboard returns 404 in non-development environments.</td>
+            </tr>
+            <tr>
+                <td><code>AuthorizationFilter</code></td>
+                <td><code>Func&lt;HttpContext, bool&gt;</code></td>
+                <td><code>null</code></td>
+                <td>Optional filter that runs for every dashboard request; return <code>false</code> to block access with HTTP 403.</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
 ## Security and Production
 
 - The dashboard has **no built-in authentication**. Anyone who can reach the URL can list, upload, delete documents and use the chat.
@@ -115,3 +150,46 @@ Placeholder images (replace with actual screenshots from SmartRAG.API or Demo):
 ![Dashboard Documents](assets/images/dashboard-documents.png)
 ![Dashboard Chat](assets/images/dashboard-chat.png)
 ![Dashboard Settings](assets/images/dashboard-settings.png)
+
+## Next Steps
+
+<div class="row g-4 mt-4">
+    <div class="col-md-4">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
+                <i class="fas fa-sliders-h"></i>
+            </div>
+            <h3>Basic Configuration</h3>
+            <p>Core SmartRAG options for AI providers, storage, and features.</p>
+            <a href="{{ site.baseurl }}/en/configuration/basic" class="btn btn-outline-primary btn-sm mt-3">
+                Basic Configuration
+            </a>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
+                <i class="fas fa-server"></i>
+            </div>
+            <h3>Database Configuration</h3>
+            <p>Configure multi-database connections and schema analysis.</p>
+            <a href="{{ site.baseurl }}/en/configuration/database" class="btn btn-outline-primary btn-sm mt-3">
+                Database Configuration
+            </a>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
+                <i class="fas fa-folder-open"></i>
+            </div>
+            <h3>File Watcher</h3>
+            <p>Automatically index documents from watched folders.</p>
+            <a href="{{ site.baseurl }}/en/configuration/file-watcher" class="btn btn-outline-primary btn-sm mt-3">
+                File Watcher Configuration
+            </a>
+        </div>
+    </div>
+</div>
