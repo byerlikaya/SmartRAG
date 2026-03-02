@@ -6,7 +6,7 @@ SmartRAG'deki tüm önemli değişiklikler bu dosyada belgelenecektir.
 Format [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)'a dayanmaktadır
 ve bu proje [Semantic Versioning](https://semver.org/spec/v2.0.0.html)'a uymaktadır.
 
-## [4.0.0] - 2026-02-06
+## [4.0.0] - 2026-03-02
 
 ### Kırıcı Değişiklikler
 - **Hedef Framework**: .NET Standard 2.1'den .NET 6'ya geçiş. Projeler .NET 6 veya üzerini hedeflemelidir.
