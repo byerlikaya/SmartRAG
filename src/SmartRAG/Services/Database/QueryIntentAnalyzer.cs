@@ -1,3 +1,4 @@
+using SmartRAG.Services.Shared;
 
 namespace SmartRAG.Services.Database;
 
@@ -45,7 +46,7 @@ public class QueryIntentAnalyzer : IQueryIntentAnalyzer
 
             if (schemas.Count == 0)
             {
-                _logger.LogWarning("No database schemas available for query analysis");
+                DatabaseLogMessages.LogNoDatabaseSchemasAvailable(_logger, null);
                 queryIntent.Confidence = MinimumConfidence;
                 return queryIntent;
             }
@@ -63,7 +64,7 @@ public class QueryIntentAnalyzer : IQueryIntentAnalyzer
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error analyzing query intent");
+            ServiceLogMessages.LogQueryIntentAnalysisError(_logger, ex);
             queryIntent.Confidence = MinimumConfidence;
         }
 
@@ -481,7 +482,7 @@ public class QueryIntentAnalyzer : IQueryIntentAnalyzer
 
         if (string.IsNullOrWhiteSpace(aiResponse))
         {
-            _logger.LogWarning("AI response is empty");
+            DatabaseLogMessages.LogAIResponseEmpty(_logger, null);
             return queryIntent;
         }
 
@@ -492,7 +493,7 @@ public class QueryIntentAnalyzer : IQueryIntentAnalyzer
 
             if (jsonStart < 0 || jsonEnd < jsonStart)
             {
-                _logger.LogWarning("Could not find JSON in AI response");
+                DatabaseLogMessages.LogCouldNotFindJsonInAiResponse(_logger, null);
                 return queryIntent;
             }
 
@@ -546,7 +547,7 @@ public class QueryIntentAnalyzer : IQueryIntentAnalyzer
 
                         if (targetSchema == null)
                         {
-                            _logger.LogWarning("Schema not found for database");
+                            DatabaseLogMessages.LogSchemaNotFoundForDatabase(_logger, null);
                             continue;
                         }
 
@@ -563,8 +564,7 @@ public class QueryIntentAnalyzer : IQueryIntentAnalyzer
                             if (exactName != null)
                                 dbQuery.RequiredTables.Add(exactName);
                             else
-                                _logger.LogWarning("AI attempted to add table '{Table}' to '{Database}', but it doesn't exist there. Skipping.",
-                                    tableName, dbQuery.DatabaseName);
+                                DatabaseLogMessages.LogAiAttemptedAddTableToDatabase(_logger, tableName, dbQuery.DatabaseName, null);
                         }
 
                         ExpandTablesWithForeignKeyDependencies(dbQuery, targetSchema);
@@ -587,19 +587,19 @@ public class QueryIntentAnalyzer : IQueryIntentAnalyzer
                     }
                     else
                     {
-                        _logger.LogWarning("AI selected non-existent database");
+                        DatabaseLogMessages.LogAiSelectedNonExistentDatabase(_logger, null);
                     }
                 }
             }
         }
         catch (JsonException ex)
         {
-            _logger.LogError(ex, "Error parsing AI response JSON");
+            DatabaseLogMessages.LogErrorParsingAiResponseJson(_logger, ex);
             queryIntent = CreateFallbackQueryIntent(originalQuery, schemas);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Unexpected error parsing AI response");
+            DatabaseLogMessages.LogUnexpectedErrorParsingAiResponse(_logger, ex);
             queryIntent = CreateFallbackQueryIntent(originalQuery, schemas);
         }
 
@@ -625,7 +625,7 @@ public class QueryIntentAnalyzer : IQueryIntentAnalyzer
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to retrieve cross-database mappings");
+            DatabaseLogMessages.LogFailedToRetrieveCrossDatabaseMappings(_logger, ex);
         }
 
         return mappings;

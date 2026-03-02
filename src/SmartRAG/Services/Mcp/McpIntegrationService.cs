@@ -1,3 +1,4 @@
+using SmartRAG.Services.Shared;
 
 namespace SmartRAG.Services.Mcp;
 
@@ -45,7 +46,7 @@ public class McpIntegrationService : IMcpIntegrationService
 
         if (connectedServers.Count == 0)
         {
-            _logger.LogDebug("No MCP servers connected");
+            ServiceLogMessages.LogMcpIntegrationNoServersConnected(_logger, null);
             return results;
         }
 
@@ -88,7 +89,7 @@ public class McpIntegrationService : IMcpIntegrationService
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "Error calling tool on server");
+                        ServiceLogMessages.LogMcpIntegrationErrorCallingToolOnServer(_logger, ex);
                         results.Add(new McpToolResult
                         {
                             ServerId = serverId,
@@ -101,7 +102,7 @@ public class McpIntegrationService : IMcpIntegrationService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error querying MCP server");
+                ServiceLogMessages.LogMcpIntegrationErrorQueryingServer(_logger, ex);
             }
         }
 
@@ -115,7 +116,7 @@ public class McpIntegrationService : IMcpIntegrationService
         {
             if (_mcpClient.GetConnectedServers().Count > 0)
                 return;
-            _logger.LogInformation("No MCP servers connected; attempting on-demand connect for MCP-tagged request.");
+            ServiceLogMessages.LogMcpIntegrationNoServersAttemptingOnDemand(_logger, null);
             await _mcpConnectionManager.ConnectAllAsync().ConfigureAwait(false);
         }
         finally
@@ -176,7 +177,7 @@ public class McpIntegrationService : IMcpIntegrationService
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Error parsing InputSchema for tool, using default parameters");
+                ServiceLogMessages.LogMcpIntegrationErrorParsingInputSchema(_logger, ex);
             }
         }
 
@@ -285,7 +286,7 @@ public class McpIntegrationService : IMcpIntegrationService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error discovering tools");
+                ServiceLogMessages.LogMcpIntegrationErrorDiscoveringTools(_logger, ex);
             }
         }
 
@@ -328,7 +329,7 @@ public class McpIntegrationService : IMcpIntegrationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error calling MCP tool");
+            ServiceLogMessages.LogMcpIntegrationErrorCallingMcpTool(_logger, ex);
             return new McpToolResult
             {
                 ServerId = serverId,

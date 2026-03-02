@@ -1,3 +1,4 @@
+using SmartRAG.Services.Shared;
 
 namespace SmartRAG.Services.Document;
 
@@ -88,7 +89,7 @@ public class QueryStrategyExecutorService : IQueryStrategyExecutorService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Database query failed, falling back to document query");
+            ServiceLogMessages.LogQueryStrategyDatabaseQueryFailedFallback(_logger, ex);
             var fallbackRequest = new QueryStrategyRequest
             {
                 Query = request.Query,
@@ -149,7 +150,7 @@ public class QueryStrategyExecutorService : IQueryStrategyExecutorService
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Database query failed in hybrid mode, continuing with document query only");
+                ServiceLogMessages.LogQueryStrategyDatabaseQueryFailedInHybridMode(_logger, ex);
             }
         }
 

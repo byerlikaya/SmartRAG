@@ -118,7 +118,7 @@ public class ConversationManagerService : IConversationManagerService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting conversation history");
+            ServiceLogMessages.LogConversationHistoryGetFailed(_logger, ex);
             return string.Empty;
         }
     }
@@ -151,7 +151,7 @@ public class ConversationManagerService : IConversationManagerService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error adding to conversation");
+            ServiceLogMessages.LogConversationAddFailed(_logger, ex);
         }
     }
 
@@ -218,11 +218,11 @@ public class ConversationManagerService : IConversationManagerService
         {
             _conversationCache.Clear();
             await _conversationRepository.ClearAllConversationsAsync(cancellationToken);
-            _logger.LogInformation("Cleared all conversation history");
+            ServiceLogMessages.LogConversationClearedAll(_logger, null);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to clear all conversation history");
+            ServiceLogMessages.LogConversationClearAllFailed(_logger, ex);
             throw;
         }
     }
@@ -245,7 +245,7 @@ public class ConversationManagerService : IConversationManagerService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Error handling general conversation");
+            ServiceLogMessages.LogGeneralConversationError(_logger, ex);
             return ChatUnavailableMessage;
         }
     }

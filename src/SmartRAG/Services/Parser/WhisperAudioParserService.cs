@@ -1,6 +1,8 @@
 using Whisper.net;
 using Whisper.net.Ggml;
 
+using SmartRAG.Services.Shared;
+
 namespace SmartRAG.Services.Parser;
 
 
@@ -51,7 +53,7 @@ public class WhisperAudioParserService : IAudioParserService
                     Metadata = new Dictionary<string, object> { ["TranscriptionService"] = "Whisper.net (unavailable)" }
                 };
             _whisperUnavailableLogged = true;
-            _logger.LogWarning("Whisper is unavailable; returning empty transcription for audio files. Check native libraries and model path.");
+            ServiceLogMessages.LogWhisperUnavailable(_logger, null);
             return new AudioTranscriptionResult
             {
                 Language = language ?? _config?.DefaultLanguage,
@@ -63,8 +65,7 @@ public class WhisperAudioParserService : IAudioParserService
 
         try
         {
-            _logger.LogInformation("Starting Whisper transcription for {FileName} ({Size} bytes)",
-                SanitizeFileName(fileName), audioStream.Length);
+            ServiceLogMessages.LogWhisperTranscriptionStarting(_logger, SanitizeFileName(fileName), audioStream.Length, null);
 
             ValidateAudioStream(audioStream);
 
@@ -72,14 +73,13 @@ public class WhisperAudioParserService : IAudioParserService
 
             var result = await PerformTranscriptionAsync(audioStream, fileName, language);
 
-            _logger.LogInformation("Whisper transcription completed: {Length} characters with {Confidence} confidence",
-                result.Text?.Length ?? 0, result.Confidence);
+            ServiceLogMessages.LogWhisperTranscriptionCompleted(_logger, result.Text?.Length ?? 0, result.Confidence, null);
 
             return result;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Whisper transcription failed for {FileName}", SanitizeFileName(fileName));
+            ServiceLogMessages.LogWhisperTranscriptionFailed(_logger, SanitizeFileName(fileName), ex);
             throw;
         }
     }
@@ -112,7 +112,7 @@ public class WhisperAudioParserService : IAudioParserService
             Services.Startup.WhisperNativeBootstrap.EnsureMacOsWhisperNativeLibraries();
 
             var resolvedPath = ResolveModelPath(_config.ModelPath);
-            _logger.LogInformation("Initializing Whisper factory with model: {ModelPath}", resolvedPath);
+            ServiceLogMessages.LogWhisperFactoryInitializing(_logger, resolvedPath, null);
 
             await EnsureModelExistsAsync(resolvedPath);
 
@@ -133,11 +133,11 @@ public class WhisperAudioParserService : IAudioParserService
             var factoryOptions = new WhisperFactoryOptions { UseGpu = useGpu };
             if (useGpu)
             {
-                _logger.LogInformation("Whisper GPU acceleration enabled. Ensure the host app references the matching runtime (CUDA on Windows/Linux, CoreML on macOS).");
+                ServiceLogMessages.LogWhisperGpuEnabled(_logger, null);
             }
             else
             {
-                _logger.LogDebug("Whisper using CPU. Set WhisperConfig.UseGpu to true and add the GPU runtime package for acceleration.");
+                ServiceLogMessages.LogWhisperUsingCpu(_logger, null);
             }
 
             const long twoGb = 2L * 1024 * 1024 * 1024;
@@ -146,19 +146,19 @@ public class WhisperAudioParserService : IAudioParserService
             if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX) && !usePathOnMac)
             {
                 var modelBytes = await File.ReadAllBytesAsync(resolvedPath).ConfigureAwait(false);
-                _logger.LogDebug("Loaded model into memory ({Size} bytes), initializing Whisper from buffer.", modelBytes.Length);
+                ServiceLogMessages.LogWhisperModelLoadedToMemory(_logger, modelBytes.Length, null);
                 _whisperFactory = WhisperFactory.FromBuffer(modelBytes, factoryOptions);
             }
             else
             {
-                _logger.LogDebug("Initializing Whisper from path ({Size} bytes).", fileInfo.Length);
+                ServiceLogMessages.LogWhisperInitializingFromPath(_logger, fileInfo.Length, null);
                 _whisperFactory = WhisperFactory.FromPath(resolvedPath, factoryOptions);
             }
         }
         catch (Exception ex)
         {
             var path = ResolveModelPath(_config.ModelPath);
-            _logger.LogError(ex, "Failed to load Whisper model from {ModelPath}. Ensure the file exists and Whisper native libraries (e.g. ggml) are available.", path);
+            ServiceLogMessages.LogWhisperModelLoadFailed(_logger, path, ex);
             throw new InvalidOperationException(
                 $"Failed to load the Whisper model at '{path}'. Check that the file exists and that Whisper native runtime libraries are installed and loadable.",
                 ex);
@@ -187,17 +187,17 @@ public class WhisperAudioParserService : IAudioParserService
                 var length = new FileInfo(resolvedPath).Length;
                 if (length >= minSize)
                 {
-                    _logger.LogDebug("Whisper model found at {ModelPath} ({Size} bytes)", resolvedPath, length);
+                    ServiceLogMessages.LogWhisperModelFound(_logger, resolvedPath, length, null);
                     return;
                 }
                 try
                 {
                     File.Delete(resolvedPath);
-                    _logger.LogInformation("Removing truncated Whisper model file ({Size} bytes, expected at least {MinSize} bytes). Re-downloading.", length, minSize);
+                    ServiceLogMessages.LogWhisperRemovingTruncatedModel(_logger, length, minSize, null);
                 }
                 catch (IOException ex)
                 {
-                    _logger.LogWarning(ex, "Could not remove truncated model file. Another process may be writing. Will retry on next request.");
+                    ServiceLogMessages.LogWhisperCouldNotRemoveTruncatedModel(_logger, ex);
                     return;
                 }
             }
@@ -206,7 +206,7 @@ public class WhisperAudioParserService : IAudioParserService
             if (!string.IsNullOrEmpty(modelDirectory) && !Directory.Exists(modelDirectory))
             {
                 Directory.CreateDirectory(modelDirectory);
-                _logger.LogDebug("Created model directory: {Directory}", modelDirectory);
+                ServiceLogMessages.LogWhisperCreatedModelDirectory(_logger, modelDirectory, null);
             }
 
             var tempPath = resolvedPath + ".tmp";
@@ -217,7 +217,7 @@ public class WhisperAudioParserService : IAudioParserService
                     try { File.Delete(tempPath); } catch { }
                 }
 
-                _logger.LogInformation("Downloading Whisper model: {ModelType} to {ModelPath}", modelType, resolvedPath);
+                ServiceLogMessages.LogWhisperDownloadingModel(_logger, modelType.ToString(), resolvedPath, null);
 
                 await using (var modelStream = await WhisperGgmlDownloader.Default.GetGgmlModelAsync(modelType).ConfigureAwait(false))
                 await using (var fileWriter = File.Create(tempPath))
@@ -244,7 +244,7 @@ public class WhisperAudioParserService : IAudioParserService
                     File.Delete(resolvedPath);
                 File.Move(tempPath, resolvedPath);
 
-                _logger.LogInformation("Whisper model downloaded successfully to {ModelPath}", resolvedPath);
+                ServiceLogMessages.LogWhisperModelDownloaded(_logger, resolvedPath, null);
             }
             finally
             {
@@ -338,9 +338,7 @@ public class WhisperAudioParserService : IAudioParserService
                 _whisperUnavailable = true;
                 var resolvedPath = ResolveModelPath(_config.ModelPath);
                 var modelFileSize = File.Exists(resolvedPath) ? new FileInfo(resolvedPath).Length : 0L;
-                _logger.LogError(ex,
-                    "Whisper CreateBuilder failed. Model file size: {ModelSize} bytes. If this is much smaller than expected for the model type (e.g. large-v3 ~2.9 GB), the file may be corrupted or truncated. Re-download the model or use ggml-base.bin / ggml-tiny.bin for testing. Native libraries may also be missing.",
-                    modelFileSize);
+                ServiceLogMessages.LogWhisperCreateBuilderFailed(_logger, modelFileSize, ex);
                 return new AudioTranscriptionResult
                 {
                     Language = language,
@@ -376,7 +374,7 @@ public class WhisperAudioParserService : IAudioParserService
             {
                 if (needsConversion)
                 {
-                    _logger.LogDebug("Converting audio file to WAV format: {FileName}", SanitizeFileName(fileName));
+                    ServiceLogMessages.LogWhisperConvertingToWav(_logger, SanitizeFileName(fileName), null);
                     var (convertedStream, _) = await _audioConversionService.ConvertToCompatibleFormatAsync(audioStream, fileName);
                     waveStream = convertedStream;
                 }
@@ -397,7 +395,7 @@ public class WhisperAudioParserService : IAudioParserService
                 await TranscriptionLock.WaitAsync().ConfigureAwait(false);
                 try
                 {
-                    _logger.LogInformation("Whisper inference started for {FileName} (large models on CPU may take 1-3 min for ~1 min of audio).", SanitizeFileName(fileName));
+                    ServiceLogMessages.LogWhisperInferenceStarted(_logger, SanitizeFileName(fileName), null);
 
                     var segments = processor.ProcessAsync(waveStream);
                     var enumerator = segments.GetAsyncEnumerator();
@@ -458,8 +456,7 @@ public class WhisperAudioParserService : IAudioParserService
                             });
                         }
 
-                        _logger.LogInformation("Whisper processing completed: {SegmentCount} segments processed, {SkippedLowConf} low-confidence skipped, {SkippedDup} duplicates skipped",
-                            segmentCount, skippedLowConfidence, skippedDuplicates);
+                        ServiceLogMessages.LogWhisperProcessingCompleted(_logger, segmentCount, skippedLowConfidence, skippedDuplicates, null);
                     }
                     finally
                     {
@@ -476,8 +473,7 @@ public class WhisperAudioParserService : IAudioParserService
 
                 if (!(result.Confidence < _config.MinConfidenceThreshold))
                     return result;
-                _logger.LogWarning("Transcription confidence {Confidence} below threshold {Threshold}",
-                    result.Confidence, _config.MinConfidenceThreshold);
+                ServiceLogMessages.LogWhisperConfidenceBelowThreshold(_logger, result.Confidence, _config.MinConfidenceThreshold, null);
                 result.Text = string.Empty;
                 result.Confidence = 0.0;
 
@@ -493,7 +489,7 @@ public class WhisperAudioParserService : IAudioParserService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Whisper transcription processing failed");
+            ServiceLogMessages.LogWhisperTranscriptionProcessingFailed(_logger, ex);
             throw;
         }
     }

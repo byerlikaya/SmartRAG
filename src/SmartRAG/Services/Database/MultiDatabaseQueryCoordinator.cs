@@ -102,7 +102,7 @@ public class MultiDatabaseQueryCoordinator : IMultiDatabaseQueryCoordinator
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error processing multi-database query");
+            DatabaseLogMessages.LogErrorProcessingMultiDatabaseQuery(_logger, ex);
             return CreateExceptionResponse(ex);
         }
     }
@@ -226,7 +226,7 @@ public class MultiDatabaseQueryCoordinator : IMultiDatabaseQueryCoordinator
 
             if (invalidTables.Count > 0)
             {
-                _logger.LogWarning("AI selected invalid tables: {InvalidTables}", string.Join(", ", invalidTables));
+                DatabaseLogMessages.LogAiSelectedInvalidTables(_logger, string.Join(", ", invalidTables), null);
             }
 
             if (validTables.Count > 0)
@@ -236,7 +236,7 @@ public class MultiDatabaseQueryCoordinator : IMultiDatabaseQueryCoordinator
             }
             else
             {
-                _logger.LogWarning("No valid tables, removing");
+                DatabaseLogMessages.LogNoValidTablesRemoving(_logger, null);
             }
         }
 
@@ -259,7 +259,7 @@ public class MultiDatabaseQueryCoordinator : IMultiDatabaseQueryCoordinator
             }
             if (correctSchema == null || exactTableName == null)
             {
-                _logger.LogWarning("Table '{Table}' not found in any database", tableName);
+                DatabaseLogMessages.LogTableNotFoundInAnyDatabase(_logger, tableName, null);
                 continue;
             }
             if (validQueries.Any(q => q.DatabaseId == correctSchema.DatabaseId))

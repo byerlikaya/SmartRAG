@@ -1,3 +1,4 @@
+using SmartRAG.Services.Shared;
 
 namespace SmartRAG.Services.Document.Parsers;
 
@@ -29,7 +30,7 @@ public class AudioFileParser : IFileParser
     public async Task<FileParserResult> ParseAsync(Stream fileStream, string fileName, string? language = null)
     {
         var detectedLanguage = DetectAudioLanguage(language, fileName);
-        _logger.LogDebug("AudioFileParser: Language detected");
+        ServiceLogMessages.LogAudioFileParserLanguageDetected(_logger, null);
         var transcriptionResult = await _audioParserService.TranscribeAudioAsync(fileStream, fileName, detectedLanguage);
 
         var result = new FileParserResult
@@ -62,7 +63,7 @@ public class AudioFileParser : IFileParser
             var languageCode = match.Groups[1].Value;
             if (languageCode.Length != 2 || !char.IsLetter(languageCode[0]) ||
                 !char.IsLetter(languageCode[1])) continue;
-            _logger.LogDebug("Detected language from filename: {Language}", languageCode);
+            ServiceLogMessages.LogAudioFileParserLanguageFromFilename(_logger, languageCode, null);
             return languageCode;
         }
 
@@ -72,12 +73,12 @@ public class AudioFileParser : IFileParser
             var code = configDefault.Length >= 2 ? configDefault.Substring(0, 2).ToLowerInvariant() : configDefault;
             if (code.Length == 2 && char.IsLetter(code[0]) && char.IsLetter(code[1]))
             {
-                _logger.LogDebug("Using WhisperConfig.DefaultLanguage for transcription: {Language}", code);
+                ServiceLogMessages.LogAudioFileParserUsingDefaultLanguage(_logger, code, null);
                 return code;
             }
         }
 
-        _logger.LogDebug("No language specified; using auto-detect so Whisper transcribes in the detected language (no translation).");
+        ServiceLogMessages.LogAudioFileParserNoLanguageAutoDetect(_logger, null);
         return "auto";
     }
 }

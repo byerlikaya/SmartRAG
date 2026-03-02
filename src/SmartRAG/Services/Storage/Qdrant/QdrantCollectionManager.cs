@@ -1,6 +1,8 @@
 using Qdrant.Client;
 using Qdrant.Client.Grpc;
 
+using SmartRAG.Services.Shared;
+
 namespace SmartRAG.Services.Storage.Qdrant;
 
 
@@ -61,7 +63,7 @@ public class QdrantCollectionManager : IQdrantCollectionManager
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to initialize Qdrant collection");
+                ServiceLogMessages.LogQdrantCollectionInitFailed(_logger, ex);
             }
         });
     }
@@ -87,16 +89,15 @@ public class QdrantCollectionManager : IQdrantCollectionManager
                 Distance = GetDistanceMetric(_config.DistanceMetric)
             };
 
-            _logger.LogInformation("Creating Qdrant collection: {CollectionName} with dimension: {Dimension}",
-                collectionName, vectorDimension);
+            ServiceLogMessages.LogQdrantCollectionCreating(_logger, collectionName, vectorDimension, null);
 
             await _client.CreateCollectionAsync(collectionName, vectorParams, cancellationToken: cancellationToken);
             await _client.CreatePayloadIndexAsync(collectionName, "content", PayloadSchemaType.Text, cancellationToken: cancellationToken);
-            _logger.LogInformation("Created text index for 'content' field in collection: {CollectionName}", collectionName);
+            ServiceLogMessages.LogQdrantCollectionCreatedTextIndex(_logger, collectionName, null);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to create Qdrant collection: {CollectionName}", collectionName);
+            ServiceLogMessages.LogQdrantCollectionCreateFailed(_logger, collectionName, ex);
             throw;
         }
     }
@@ -126,7 +127,7 @@ public class QdrantCollectionManager : IQdrantCollectionManager
                 if (firstChunkWithEmbedding != null)
                 {
                     vectorDimension = firstChunkWithEmbedding.Embedding.Count;
-                    _logger.LogDebug("Using embedding dimension {Dimension} from document chunk for collection {CollectionName}", vectorDimension, collectionName);
+                    ServiceLogMessages.LogQdrantCollectionUsingEmbeddingDimension(_logger, vectorDimension, collectionName, null);
                 }
                 else
                 {
@@ -142,7 +143,7 @@ public class QdrantCollectionManager : IQdrantCollectionManager
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to ensure document collection exists: {CollectionName}", collectionName);
+            ServiceLogMessages.LogQdrantCollectionEnsureFailed(_logger, collectionName, ex);
             throw;
         }
     }
@@ -186,7 +187,7 @@ public class QdrantCollectionManager : IQdrantCollectionManager
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to detect vector dimension, using default");
+            ServiceLogMessages.LogQdrantCollectionDetectDimensionFailed(_logger, ex);
             return DefaultVectorDimension;
         }
     }
@@ -260,7 +261,7 @@ public class QdrantCollectionManager : IQdrantCollectionManager
         try
         {
             await _client.DeleteCollectionAsync(collectionName, cancellationToken: cancellationToken);
-            _logger.LogInformation("Deleted Qdrant collection: {CollectionName}", collectionName);
+            ServiceLogMessages.LogQdrantCollectionDeleted(_logger, collectionName, null);
 
             if (collectionName == _collectionName)
             {
@@ -269,7 +270,7 @@ public class QdrantCollectionManager : IQdrantCollectionManager
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to delete collection: {CollectionName}", collectionName);
+            ServiceLogMessages.LogQdrantCollectionDeleteFailed(_logger, collectionName, ex);
             throw;
         }
     }
@@ -285,11 +286,11 @@ public class QdrantCollectionManager : IQdrantCollectionManager
             var vectorDimension = await GetVectorDimensionAsync(cancellationToken);
             await CreateCollectionAsync(collectionName, vectorDimension, cancellationToken);
 
-            _logger.LogInformation("Recreated Qdrant collection: {CollectionName}", collectionName);
+            ServiceLogMessages.LogQdrantCollectionRecreated(_logger, collectionName, null);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to recreate collection: {CollectionName}", collectionName);
+            ServiceLogMessages.LogQdrantCollectionRecreateFailed(_logger, collectionName, ex);
             throw;
         }
     }

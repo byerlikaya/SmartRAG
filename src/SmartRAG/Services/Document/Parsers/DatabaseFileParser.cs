@@ -1,3 +1,4 @@
+using SmartRAG.Services.Shared;
 
 namespace SmartRAG.Services.Document.Parsers;
 
@@ -35,12 +36,12 @@ public class DatabaseFileParser : IFileParser
                 return new FileParserResult { Content = string.Empty };
             }
 
-            _logger.LogInformation("Database document upload successful: {FileName}, Content length: {ContentLength}", fileName, content.Length);
+            ServiceLogMessages.LogDatabaseDocumentUploadSuccess(_logger, fileName, content.Length, null);
             return new FileParserResult { Content = content };
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to parse database document");
+            ServiceLogMessages.LogDatabaseDocumentParseFailed(_logger, ex);
             return new FileParserResult { Content = string.Empty };
         }
     }

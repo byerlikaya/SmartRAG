@@ -1,3 +1,4 @@
+using SmartRAG.Services.Shared;
 
 namespace SmartRAG.Services.Document.Parsers;
 
@@ -39,7 +40,7 @@ public class ImageFileParser : IFileParser
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to parse image document with OCR");
+            ServiceLogMessages.LogImageOcrFailed(_logger, ex);
             return new FileParserResult { Content = string.Empty };
         }
     }

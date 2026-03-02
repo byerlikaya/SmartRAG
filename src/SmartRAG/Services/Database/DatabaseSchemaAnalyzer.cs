@@ -81,7 +81,7 @@ public class DatabaseSchemaAnalyzer : IDatabaseSchemaAnalyzer
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error analyzing schema for database");
+            DatabaseLogMessages.LogErrorAnalyzingSchemaForDatabase(_logger, ex);
             schemaInfo.Status = SchemaAnalysisStatus.Failed;
             schemaInfo.ErrorMessage = ex.Message;
             _schemaCache[databaseId] = schemaInfo;
@@ -106,7 +106,7 @@ public class DatabaseSchemaAnalyzer : IDatabaseSchemaAnalyzer
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to analyze schema for configured database connection");
+                DatabaseLogMessages.LogFailedToAnalyzeSchemaForConnection(_logger, ex);
             }
         }
 
@@ -211,14 +211,14 @@ public class DatabaseSchemaAnalyzer : IDatabaseSchemaAnalyzer
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Could not open connection to extract database name, using connection string info");
+                DatabaseLogMessages.LogCouldNotOpenConnectionToExtractDbName(_logger, ex);
             }
 
             return config.Name;
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Could not extract database name from connection string");
+            DatabaseLogMessages.LogCouldNotExtractDatabaseNameFromConnection(_logger, ex);
             return config.Name;
         }
     }
@@ -290,15 +290,15 @@ public class DatabaseSchemaAnalyzer : IDatabaseSchemaAnalyzer
         {
             if (sqlEx.Number == 4060 || sqlEx.Message.Contains("Cannot open database"))
             {
-                _logger.LogWarning("SQL Server database does not exist yet for table {TableName}", tableName);
+                DatabaseLogMessages.LogSqlServerDatabaseNotExistForTable(_logger, tableName, null);
                 return tableInfo; // Return empty table info
             }
 
-            _logger.LogWarning(sqlEx, "Error analyzing SQL Server table {TableName}", tableName);
+            DatabaseLogMessages.LogErrorAnalyzingSqlServerTable(_logger, tableName, sqlEx);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Error analyzing table {TableName}", tableName);
+            DatabaseLogMessages.LogErrorAnalyzingTable(_logger, tableName, ex);
         }
 
         return tableInfo;
@@ -410,7 +410,7 @@ public class DatabaseSchemaAnalyzer : IDatabaseSchemaAnalyzer
         }
         catch (Exception ex)
         {
-            _logger.LogDebug(ex, "Could not retrieve primary key information for table {TableName}", tableName);
+            DatabaseLogMessages.LogCouldNotRetrievePrimaryKeyForTable(_logger, tableName, ex);
         }
 
         return Task.FromResult(columns);
@@ -440,7 +440,7 @@ public class DatabaseSchemaAnalyzer : IDatabaseSchemaAnalyzer
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Error getting SQLite columns for table {TableName}", tableName);
+            DatabaseLogMessages.LogErrorGettingSqliteColumnsForTable(_logger, tableName, ex);
         }
 
         return Task.FromResult(columns);
@@ -556,7 +556,7 @@ public class DatabaseSchemaAnalyzer : IDatabaseSchemaAnalyzer
         }
         catch (Exception ex)
         {
-            _logger.LogDebug(ex, "Could not retrieve foreign keys for table {TableName}", tableName);
+            DatabaseLogMessages.LogCouldNotRetrieveForeignKeysForTable(_logger, tableName, ex);
         }
 
         return Task.FromResult(foreignKeys);
@@ -589,7 +589,7 @@ public class DatabaseSchemaAnalyzer : IDatabaseSchemaAnalyzer
         }
         catch (Exception ex)
         {
-            _logger.LogDebug(ex, "Could not retrieve SQLite foreign keys for table {TableName}", tableName);
+            DatabaseLogMessages.LogCouldNotRetrieveSqliteForeignKeysForTable(_logger, tableName, ex);
         }
 
         return Task.FromResult(foreignKeys);
@@ -643,7 +643,7 @@ public class DatabaseSchemaAnalyzer : IDatabaseSchemaAnalyzer
         }
         catch (Exception ex)
         {
-            _logger.LogDebug(ex, "Could not get row count for table {TableName}", tableName);
+            DatabaseLogMessages.LogCouldNotGetRowCountForTable(_logger, tableName, ex);
             return 0;
         }
     }
@@ -721,7 +721,7 @@ public class DatabaseSchemaAnalyzer : IDatabaseSchemaAnalyzer
         }
         catch (Exception ex)
         {
-            _logger.LogDebug(ex, "Could not get sample data for table {TableName}", tableName);
+            DatabaseLogMessages.LogCouldNotGetSampleDataForTable(_logger, tableName, ex);
             return string.Empty;
         }
     }

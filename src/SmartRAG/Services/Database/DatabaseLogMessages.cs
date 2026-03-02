@@ -466,4 +466,349 @@ public static class DatabaseLogMessages
         new EventId(36090, "InjectNoMatchSkipped"),
         "[INS] Inject: no IN clause match, mapping skipped");
 
+    public static readonly Action<ILogger, string, Exception> LogDatabaseFileParsingStarted = LoggerMessage.Define<string>(
+        LogLevel.Information,
+        new EventId(36093, "DatabaseFileParsingStarted"),
+        "Starting database file parsing for: {FileName}");
+
+    public static readonly Action<ILogger, string, Exception> LogDatabaseFileParsingCompleted = LoggerMessage.Define<string>(
+        LogLevel.Information,
+        new EventId(36094, "DatabaseFileParsingCompleted"),
+        "Database file parsing completed for: {FileName}");
+
+    public static readonly Action<ILogger, string, Exception> LogDatabaseFileParsingFailed = LoggerMessage.Define<string>(
+        LogLevel.Error,
+        new EventId(36095, "DatabaseFileParsingFailed"),
+        "Error parsing database file: {FileName}");
+
+    public static readonly Action<ILogger, string, Exception> LogTempFileDeleteFailed = LoggerMessage.Define<string>(
+        LogLevel.Warning,
+        new EventId(36096, "TempFileDeleteFailed"),
+        "Failed to delete temporary file: {TempPath}");
+
+    public static readonly Action<ILogger, string, Exception> LogDatabaseConnectionParsingStarted = LoggerMessage.Define<string>(
+        LogLevel.Information,
+        new EventId(36097, "DatabaseConnectionParsingStarted"),
+        "Starting database connection parsing for type: {DatabaseType}");
+
+    public static readonly Action<ILogger, string, Exception> LogDatabaseConnectionParsingFailed = LoggerMessage.Define<string>(
+        LogLevel.Error,
+        new EventId(36098, "DatabaseConnectionParsingFailed"),
+        "Error parsing database connection for type: {DatabaseType}");
+
+    public static readonly Action<ILogger, string, Exception> LogDatabaseConnectionValidationFailed = LoggerMessage.Define<string>(
+        LogLevel.Warning,
+        new EventId(36099, "DatabaseConnectionValidationFailed"),
+        "Database connection validation failed for type: {DatabaseType}");
+
+    public static readonly Action<ILogger, int, Exception> LogProcessingTablesSqlite = LoggerMessage.Define<int>(
+        LogLevel.Information,
+        new EventId(36100, "ProcessingTablesSqlite"),
+        "Processing {TableCount} tables from SQLite database");
+
+    public static readonly Action<ILogger, string, Exception> LogErrorProcessingTable = LoggerMessage.Define<string>(
+        LogLevel.Warning,
+        new EventId(36101, "ErrorProcessingTable"),
+        "Error processing table: {TableName}");
+
+    public static readonly Action<ILogger, int, Exception> LogProcessingTablesSqlServer = LoggerMessage.Define<int>(
+        LogLevel.Information,
+        new EventId(36102, "ProcessingTablesSqlServer"),
+        "Processing {TableCount} tables from SQL Server database");
+
+    public static readonly Action<ILogger, Exception> LogSqlServerDatabaseNotExistYet = LoggerMessage.Define(
+        LogLevel.Warning,
+        new EventId(36103, "SqlServerDatabaseNotExistYet"),
+        "SQL Server database does not exist yet");
+
+    public static readonly Action<ILogger, Exception> LogSqlServerParsingFailed = LoggerMessage.Define(
+        LogLevel.Error,
+        new EventId(36104, "SqlServerParsingFailed"),
+        "Error parsing SQL Server database");
+
+    public static readonly Action<ILogger, Exception> LogDatabaseNotExistEmptyTableList = LoggerMessage.Define(
+        LogLevel.Information,
+        new EventId(36105, "DatabaseNotExistEmptyTableList"),
+        "Database does not exist yet, returning empty table list");
+
+    public static readonly Action<ILogger, Exception> LogSqlServerTableNamesFailed = LoggerMessage.Define(
+        LogLevel.Error,
+        new EventId(36106, "SqlServerTableNamesFailed"),
+        "Error getting SQL Server table names");
+
+    public static readonly Action<ILogger, Exception> LogSqlServerQueryExecutionNotExist = LoggerMessage.Define(
+        LogLevel.Warning,
+        new EventId(36107, "SqlServerQueryExecutionNotExist"),
+        "SQL Server database does not exist yet for query execution");
+
+    public static readonly Action<ILogger, Exception> LogSqlServerQueryExecutionFailed = LoggerMessage.Define(
+        LogLevel.Error,
+        new EventId(36108, "SqlServerQueryExecutionFailed"),
+        "Error executing SQL Server query");
+
+    public static readonly Action<ILogger, string, Exception> LogSqlServerAccessibleDbNotExist = LoggerMessage.Define<string>(
+        LogLevel.Information,
+        new EventId(36109, "SqlServerAccessibleDbNotExist"),
+        "SQL Server is accessible but database '{TargetDatabase}' does not exist yet. This is expected for first-time setup.");
+
+    public static readonly Action<ILogger, Exception> LogSqlServerValidationNotAccessible = LoggerMessage.Define(
+        LogLevel.Warning,
+        new EventId(36110, "SqlServerValidationNotAccessible"),
+        "SQL Server validation failed - server not accessible");
+
+    public static readonly Action<ILogger, int, string, Exception> LogSqlServerConnectionValidationFailed = LoggerMessage.Define<int, string>(
+        LogLevel.Warning,
+        new EventId(36111, "SqlServerConnectionValidationFailed"),
+        "SQL Server connection validation failed with error {ErrorNumber}: {ErrorMessage}");
+
+    public static readonly Action<ILogger, Exception> LogSqlServerConnectionValidationFailedGeneric = LoggerMessage.Define(
+        LogLevel.Warning,
+        new EventId(36112, "SqlServerConnectionValidationFailedGeneric"),
+        "SQL Server connection validation failed");
+
+    public static readonly Action<ILogger, int, Exception> LogProcessingTablesMySql = LoggerMessage.Define<int>(
+        LogLevel.Information,
+        new EventId(36113, "ProcessingTablesMySql"),
+        "Processing {TableCount} tables from MySQL database");
+
+    public static readonly Action<ILogger, int, Exception> LogProcessingTablesPostgres = LoggerMessage.Define<int>(
+        LogLevel.Information,
+        new EventId(36114, "ProcessingTablesPostgres"),
+        "Processing {TableCount} tables from PostgreSQL database");
+
+    public static readonly Action<ILogger, Exception> LogNoSchemasToMigrate = LoggerMessage.Define(
+        LogLevel.Information,
+        new EventId(36115, "NoSchemasToMigrate"),
+        "No schemas found to migrate");
+
+    public static readonly Action<ILogger, string, string, Exception> LogSchemaChunksExistSkipping = LoggerMessage.Define<string, string>(
+        LogLevel.Debug,
+        new EventId(36116, "SchemaChunksExistSkipping"),
+        "Schema chunks already exist for database {DatabaseName} ({DatabaseId}), skipping");
+
+    public static readonly Action<ILogger, string, string, Exception> LogMigratingSchema = LoggerMessage.Define<string, string>(
+        LogLevel.Information,
+        new EventId(36117, "MigratingSchema"),
+        "Migrating schema for database {DatabaseName} ({DatabaseId})");
+
+    public static readonly Action<ILogger, string, string, Exception> LogNoChunksGenerated = LoggerMessage.Define<string, string>(
+        LogLevel.Warning,
+        new EventId(36118, "NoChunksGenerated"),
+        "No chunks generated for database {DatabaseName} ({DatabaseId})");
+
+    public static readonly Action<ILogger, string, string, int, Exception> LogSuccessfullyMigratedSchema = LoggerMessage.Define<string, string, int>(
+        LogLevel.Information,
+        new EventId(36119, "SuccessfullyMigratedSchema"),
+        "Successfully migrated schema for database {DatabaseName} ({DatabaseId}) - {ChunkCount} chunks");
+
+    public static readonly Action<ILogger, string, string, Exception> LogFailedToMigrateSchema = LoggerMessage.Define<string, string>(
+        LogLevel.Error,
+        new EventId(36120, "FailedToMigrateSchema"),
+        "Failed to migrate schema for database {DatabaseName} ({DatabaseId})");
+
+    public static readonly Action<ILogger, int, int, Exception> LogSchemaMigrationCompletedCount = LoggerMessage.Define<int, int>(
+        LogLevel.Information,
+        new EventId(36121, "SchemaMigrationCompletedCount"),
+        "Schema migration completed: {MigratedCount} out of {TotalCount} schemas migrated");
+
+    public static readonly Action<ILogger, Exception> LogFailedToMigrateSchemas = LoggerMessage.Define(
+        LogLevel.Error,
+        new EventId(36122, "FailedToMigrateSchemas"),
+        "Failed to migrate schemas");
+
+    public static readonly Action<ILogger, string, Exception> LogFailedToCheckSchemaExists = LoggerMessage.Define<string>(
+        LogLevel.Error,
+        new EventId(36123, "FailedToCheckSchemaExists"),
+        "Failed to check if schema exists for database {DatabaseId}");
+
+    public static readonly Action<ILogger, string, string, Exception> LogCrossDatabaseTableReference = LoggerMessage.Define<string, string>(
+        LogLevel.Warning,
+        new EventId(36124, "CrossDatabaseTableReference"),
+        "Detected cross-database table reference: {Reference} in database {Database}");
+
+    public static readonly Action<ILogger, string, string, string, Exception> LogCrossDatabaseReferenceDetected = LoggerMessage.Define<string, string, string>(
+        LogLevel.Warning,
+        new EventId(36125, "CrossDatabaseReferenceDetected"),
+        "Detected potential cross-database reference: {Reference} in database {Database}, possibly referencing {OtherDatabase}");
+
+    public static readonly Action<ILogger, string, string, Exception> LogTableNotInRequiredList = LoggerMessage.Define<string, string>(
+        LogLevel.Warning,
+        new EventId(36126, "TableNotInRequiredList"),
+        "Table '{Table}' exists in database '{Database}' but was not in the required tables list.");
+
+    public static readonly Action<ILogger, string, string, Exception> LogTableNotInRequiredListAllowProceed = LoggerMessage.Define<string, string>(
+        LogLevel.Warning,
+        new EventId(36127, "TableNotInRequiredListAllowProceed"),
+        "Table '{Table}' exists in database '{Database}' but was not in the required tables list. Allowing query to proceed. This may indicate QueryIntentAnalyzer needs improvement.");
+
+    public static readonly Action<ILogger, Exception> LogNoDatabaseSchemasAvailable = LoggerMessage.Define(
+        LogLevel.Warning,
+        new EventId(36128, "NoDatabaseSchemasAvailable"),
+        "No database schemas available for query analysis");
+
+    public static readonly Action<ILogger, Exception> LogCouldNotFindJsonInAiResponse = LoggerMessage.Define(
+        LogLevel.Warning,
+        new EventId(36129, "CouldNotFindJsonInAiResponse"),
+        "Could not find JSON in AI response");
+
+    public static readonly Action<ILogger, Exception> LogLessThanTwoDatabasesNoMappings = LoggerMessage.Define(
+        LogLevel.Information,
+        new EventId(36130, "LessThanTwoDatabasesNoMappings"),
+        "Less than 2 databases configured, no cross-database mappings to detect");
+
+    public static readonly Action<ILogger, Exception> LogLessThanTwoSchemasNoMappings = LoggerMessage.Define(
+        LogLevel.Information,
+        new EventId(36131, "LessThanTwoSchemasNoMappings"),
+        "Less than 2 schemas available, no cross-database mappings to detect");
+
+    public static readonly Action<ILogger, int, Exception> LogDetectedCrossDatabaseMappings = LoggerMessage.Define<int>(
+        LogLevel.Information,
+        new EventId(36132, "DetectedCrossDatabaseMappings"),
+        "Detected {Count} cross-database mappings");
+
+    public static readonly Action<ILogger, string, string, string, string, string, string, Exception> LogDetectedMapping = LoggerMessage.Define<string, string, string, string, string, string>(
+        LogLevel.Debug,
+        new EventId(36133, "DetectedMapping"),
+        "Detected mapping: {SourceDB}.{SourceTable}.{SourceColumn} -> {TargetDB}.{TargetTable}.{TargetColumn}");
+
+    public static readonly Action<ILogger, string, string, string, string, string, string, Exception> LogDetectedFkMapping = LoggerMessage.Define<string, string, string, string, string, string>(
+        LogLevel.Debug,
+        new EventId(36134, "DetectedFkMapping"),
+        "Detected FK mapping: {SourceDB}.{SourceTable}.{SourceColumn} -> {TargetDB}.{TargetTable}.{TargetColumn}");
+
+    public static readonly Action<ILogger, Exception> LogSchemaNotFoundForDatabase = LoggerMessage.Define(
+        LogLevel.Warning,
+        new EventId(36135, "SchemaNotFoundForDatabase"),
+        "Schema not found for database");
+
+    public static readonly Action<ILogger, string, string, Exception> LogAiAttemptedAddTableToDatabase = LoggerMessage.Define<string, string>(
+        LogLevel.Warning,
+        new EventId(36136, "AiAttemptedAddTableToDatabase"),
+        "AI attempted to add table '{Table}' to '{Database}', but it doesn't exist there. Skipping.");
+
+    public static readonly Action<ILogger, Exception> LogAiSelectedNonExistentDatabase = LoggerMessage.Define(
+        LogLevel.Warning,
+        new EventId(36137, "AiSelectedNonExistentDatabase"),
+        "AI selected non-existent database");
+
+    public static readonly Action<ILogger, Exception> LogErrorParsingAiResponseJson = LoggerMessage.Define(
+        LogLevel.Error,
+        new EventId(36138, "ErrorParsingAiResponseJson"),
+        "Error parsing AI response JSON");
+
+    public static readonly Action<ILogger, Exception> LogUnexpectedErrorParsingAiResponse = LoggerMessage.Define(
+        LogLevel.Error,
+        new EventId(36139, "UnexpectedErrorParsingAiResponse"),
+        "Unexpected error parsing AI response");
+
+    public static readonly Action<ILogger, Exception> LogFailedToRetrieveCrossDatabaseMappings = LoggerMessage.Define(
+        LogLevel.Warning,
+        new EventId(36140, "FailedToRetrieveCrossDatabaseMappings"),
+        "Failed to retrieve cross-database mappings");
+
+    public static readonly Action<ILogger, Exception> LogErrorProcessingMultiDatabaseQuery = LoggerMessage.Define(
+        LogLevel.Error,
+        new EventId(36141, "ErrorProcessingMultiDatabaseQuery"),
+        "Error processing multi-database query");
+
+    public static readonly Action<ILogger, string, Exception> LogAiSelectedInvalidTables = LoggerMessage.Define<string>(
+        LogLevel.Warning,
+        new EventId(36142, "AiSelectedInvalidTables"),
+        "AI selected invalid tables: {InvalidTables}");
+
+    public static readonly Action<ILogger, Exception> LogNoValidTablesRemoving = LoggerMessage.Define(
+        LogLevel.Warning,
+        new EventId(36143, "NoValidTablesRemoving"),
+        "No valid tables, removing");
+
+    public static readonly Action<ILogger, string, Exception> LogTableNotFoundInAnyDatabase = LoggerMessage.Define<string>(
+        LogLevel.Warning,
+        new EventId(36144, "TableNotFoundInAnyDatabase"),
+        "Table '{Table}' not found in any database");
+
+    public static readonly Action<ILogger, string, Exception> LogSchemaNoTablesToConvert = LoggerMessage.Define<string>(
+        LogLevel.Warning,
+        new EventId(36145, "SchemaNoTablesToConvert"),
+        "Schema {DatabaseName} has no tables to convert");
+
+    public static readonly Action<ILogger, int, string, Exception> LogCreatedSchemaChunks = LoggerMessage.Define<int, string>(
+        LogLevel.Information,
+        new EventId(36146, "CreatedSchemaChunks"),
+        "Created {Count} schema chunks for database {DatabaseName}");
+
+    public static readonly Action<ILogger, int, int, Exception> LogSchemaChunksEmbeddingMismatch = LoggerMessage.Define<int, int>(
+        LogLevel.Error,
+        new EventId(36147, "SchemaChunksEmbeddingMismatch"),
+        "Failed to generate embeddings for schema chunks. Expected {Expected}, got {Actual}");
+
+    public static readonly Action<ILogger, int, Exception> LogGeneratedEmbeddingsForSchemaChunks = LoggerMessage.Define<int>(
+        LogLevel.Information,
+        new EventId(36148, "GeneratedEmbeddingsForSchemaChunks"),
+        "Generated embeddings for {Count} schema chunks");
+
+    public static readonly Action<ILogger, Exception> LogErrorAnalyzingSchemaForDatabase = LoggerMessage.Define(
+        LogLevel.Error,
+        new EventId(36149, "ErrorAnalyzingSchemaForDatabase"),
+        "Error analyzing schema for database");
+
+    public static readonly Action<ILogger, Exception> LogFailedToAnalyzeSchemaForConnection = LoggerMessage.Define(
+        LogLevel.Warning,
+        new EventId(36150, "FailedToAnalyzeSchemaForConnection"),
+        "Failed to analyze schema for configured database connection");
+
+    public static readonly Action<ILogger, Exception> LogCouldNotOpenConnectionToExtractDbName = LoggerMessage.Define(
+        LogLevel.Warning,
+        new EventId(36151, "CouldNotOpenConnectionToExtractDbName"),
+        "Could not open connection to extract database name, using connection string info");
+
+    public static readonly Action<ILogger, Exception> LogCouldNotExtractDatabaseNameFromConnection = LoggerMessage.Define(
+        LogLevel.Warning,
+        new EventId(36152, "CouldNotExtractDatabaseNameFromConnection"),
+        "Could not extract database name from connection string");
+
+    public static readonly Action<ILogger, string, Exception> LogSqlServerDatabaseNotExistForTable = LoggerMessage.Define<string>(
+        LogLevel.Warning,
+        new EventId(36153, "SqlServerDatabaseNotExistForTable"),
+        "SQL Server database does not exist yet for table {TableName}");
+
+    public static readonly Action<ILogger, string, Exception> LogErrorAnalyzingSqlServerTable = LoggerMessage.Define<string>(
+        LogLevel.Warning,
+        new EventId(36154, "ErrorAnalyzingSqlServerTable"),
+        "Error analyzing SQL Server table {TableName}");
+
+    public static readonly Action<ILogger, string, Exception> LogErrorAnalyzingTable = LoggerMessage.Define<string>(
+        LogLevel.Warning,
+        new EventId(36155, "ErrorAnalyzingTable"),
+        "Error analyzing table {TableName}");
+
+    public static readonly Action<ILogger, string, Exception> LogCouldNotRetrievePrimaryKeyForTable = LoggerMessage.Define<string>(
+        LogLevel.Debug,
+        new EventId(36156, "CouldNotRetrievePrimaryKeyForTable"),
+        "Could not retrieve primary key information for table {TableName}");
+
+    public static readonly Action<ILogger, string, Exception> LogErrorGettingSqliteColumnsForTable = LoggerMessage.Define<string>(
+        LogLevel.Warning,
+        new EventId(36157, "ErrorGettingSqliteColumnsForTable"),
+        "Error getting SQLite columns for table {TableName}");
+
+    public static readonly Action<ILogger, string, Exception> LogCouldNotRetrieveForeignKeysForTable = LoggerMessage.Define<string>(
+        LogLevel.Debug,
+        new EventId(36158, "CouldNotRetrieveForeignKeysForTable"),
+        "Could not retrieve foreign keys for table {TableName}");
+
+    public static readonly Action<ILogger, string, Exception> LogCouldNotRetrieveSqliteForeignKeysForTable = LoggerMessage.Define<string>(
+        LogLevel.Debug,
+        new EventId(36159, "CouldNotRetrieveSqliteForeignKeysForTable"),
+        "Could not retrieve SQLite foreign keys for table {TableName}");
+
+    public static readonly Action<ILogger, string, Exception> LogCouldNotGetRowCountForTable = LoggerMessage.Define<string>(
+        LogLevel.Debug,
+        new EventId(36160, "CouldNotGetRowCountForTable"),
+        "Could not get row count for table {TableName}");
+
+    public static readonly Action<ILogger, string, Exception> LogCouldNotGetSampleDataForTable = LoggerMessage.Define<string>(
+        LogLevel.Debug,
+        new EventId(36161, "CouldNotGetSampleDataForTable"),
+        "Could not get sample data for table {TableName}");
+
 }

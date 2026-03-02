@@ -1,6 +1,8 @@
 using Tesseract;
 using SkiaSharp;
 
+using SmartRAG.Services.Shared;
+
 namespace SmartRAG.Services.Parser;
 
 
@@ -262,7 +264,7 @@ public class ImageParserService : IImageParserService, IDisposable
             using var skImage = SKImage.FromEncodedData(imageStream);
             if (skImage == null)
             {
-                _logger.LogWarning("Failed to decode WebP image with SkiaSharp");
+                ServiceLogMessages.LogImageParserFailedToDecodeWebP(_logger, null);
                 imageStream.Position = 0;
                 return imageStream;
             }
@@ -273,7 +275,7 @@ public class ImageParserService : IImageParserService, IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to convert WebP image format with SkiaSharp, using original stream");
+            ServiceLogMessages.LogImageParserFailedToConvertWebP(_logger, ex);
             imageStream.Position = 0;
             return imageStream;
         }
@@ -293,16 +295,16 @@ public class ImageParserService : IImageParserService, IDisposable
 
             if (ReverseLanguageCodeMapping.TryGetValue(twoLetterCode, out var threeLetterCode))
             {
-                _logger.LogInformation("[OCR Language Detection] System locale: {Code}", threeLetterCode);
+                ServiceLogMessages.LogImageParserOcrSystemLocale(_logger, threeLetterCode, null);
                 return threeLetterCode;
             }
 
-            _logger.LogWarning("[OCR Language Detection] No mapping for locale, defaulting to 'eng'");
+            ServiceLogMessages.LogImageParserOcrNoMappingDefaultingEng(_logger, null);
             return DefaultLanguage;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[OCR Language Detection] Failed to detect system locale, defaulting to 'eng'");
+            ServiceLogMessages.LogImageParserOcrFailedDetectLocale(_logger, ex);
             return DefaultLanguage;
         }
     }
@@ -324,7 +326,7 @@ public class ImageParserService : IImageParserService, IDisposable
             return tesseractCode;
         }
 
-        _logger.LogWarning("Unknown language code, falling back to default");
+        ServiceLogMessages.LogImageParserUnknownLanguageCode(_logger, null);
         return DefaultLanguage;
     }
 
@@ -344,7 +346,7 @@ public class ImageParserService : IImageParserService, IDisposable
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to create tessdata directory: {Path}", tessdataPath);
+                ServiceLogMessages.LogImageParserFailedToCreateTessdataDirectory(_logger, tessdataPath, ex);
             }
         }
 
@@ -354,12 +356,12 @@ public class ImageParserService : IImageParserService, IDisposable
             return requestedLanguage;
         }
 
-        _logger.LogInformation("Tesseract data not found. Attempting to download...");
+        ServiceLogMessages.LogImageParserTesseractDataNotFound(_logger, null);
         var downloaded = await TryDownloadTesseractDataAsync(requestedLanguage, tessdataPath, cancellationToken);
 
         if (downloaded)
         {
-            _logger.LogInformation("Successfully downloaded Tesseract data");
+            ServiceLogMessages.LogImageParserSuccessfullyDownloadedTesseractData(_logger, null);
             return requestedLanguage;
         }
 
@@ -372,17 +374,17 @@ public class ImageParserService : IImageParserService, IDisposable
                 return DefaultLanguage;
             }
 
-            _logger.LogInformation("Attempting to download fallback language...");
+            ServiceLogMessages.LogImageParserAttemptingDownloadFallbackLanguage(_logger, null);
             var fallbackDownloaded = await TryDownloadTesseractDataAsync(DefaultLanguage, tessdataPath, cancellationToken);
 
             if (fallbackDownloaded)
             {
-                _logger.LogInformation("Successfully downloaded fallback Tesseract data");
+                ServiceLogMessages.LogImageParserSuccessfullyDownloadedFallbackTesseractData(_logger, null);
                 return DefaultLanguage;
             }
         }
 
-        _logger.LogWarning("No Tesseract language data available and download failed. OCR will be skipped.");
+        ServiceLogMessages.LogImageParserNoTesseractDataDownloadFailed(_logger, null);
         return null;
     }
 
@@ -399,7 +401,7 @@ public class ImageParserService : IImageParserService, IDisposable
             var targetPath = Path.Combine(tessdataPath, fileName);
             var downloadUrl = $"https://github.com/tesseract-ocr/tessdata/raw/main/{fileName}";
 
-            _logger.LogDebug("Downloading Tesseract data from: {Url}", downloadUrl);
+            ServiceLogMessages.LogImageParserDownloadingTesseractDataFrom(_logger, downloadUrl, null);
 
             using var httpClient = new HttpClient();
             httpClient.Timeout = TimeSpan.FromSeconds(60);
@@ -408,29 +410,29 @@ public class ImageParserService : IImageParserService, IDisposable
 
             if (!response.IsSuccessStatusCode)
             {
-                _logger.LogWarning("Failed to download Tesseract data: HTTP {StatusCode}", response.StatusCode);
+                ServiceLogMessages.LogImageParserFailedToDownloadTesseractDataHttp(_logger, (int)response.StatusCode, null);
                 return false;
             }
 
             var content = await response.Content.ReadAsByteArrayAsync(cancellationToken);
             await File.WriteAllBytesAsync(targetPath, content, cancellationToken);
 
-            _logger.LogDebug("Downloaded Tesseract data: {File} ({Size} bytes)", fileName, content.Length);
+            ServiceLogMessages.LogImageParserDownloadedTesseractData(_logger, fileName, content.Length, null);
             return true;
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogWarning(ex, "Network error while downloading Tesseract data. OCR will use fallback.");
+            ServiceLogMessages.LogImageParserNetworkErrorDownloadingTesseractData(_logger, ex);
             return false;
         }
         catch (TaskCanceledException ex)
         {
-            _logger.LogWarning(ex, "Download timeout for Tesseract data. OCR will use fallback.");
+            ServiceLogMessages.LogImageParserDownloadTimeoutTesseractData(_logger, ex);
             return false;
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to download Tesseract data. OCR will use fallback.");
+            ServiceLogMessages.LogImageParserFailedToDownloadTesseractData(_logger, ex);
             return false;
         }
     }
@@ -446,17 +448,17 @@ public class ImageParserService : IImageParserService, IDisposable
 
         if (string.IsNullOrEmpty(availableLanguage))
         {
-            _logger.LogWarning("No Tesseract language data available. OCR cannot be performed. Skipping OCR.");
+            ServiceLogMessages.LogImageParserNoTesseractDataOcrSkipped(_logger, null);
             return (string.Empty, 0f);
         }
 
         if (availableLanguage != tesseractLanguageCode)
         {
-            _logger.LogInformation("Tesseract data not found. Using fallback instead.");
+            ServiceLogMessages.LogImageParserTesseractDataNotFoundUsingFallback(_logger, null);
         }
         else
         {
-            _logger.LogDebug("Using Tesseract language");
+            ServiceLogMessages.LogImageParserUsingTesseractLanguage(_logger, null);
         }
 
         cancellationToken.ThrowIfCancellationRequested();

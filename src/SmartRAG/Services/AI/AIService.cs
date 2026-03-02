@@ -1,3 +1,4 @@
+using SmartRAG.Services.Shared;
 
 namespace SmartRAG.Services.AI;
 
@@ -48,7 +49,7 @@ public class AIService : IAIService
             }
             catch (Exception fallbackEx)
             {
-                _logger.LogError(fallbackEx, "Fallback providers failed");
+                ServiceLogMessages.LogAIServiceFallbackProvidersFailed(_logger, fallbackEx);
             }
 
             return ErrorMessage;
@@ -66,7 +67,7 @@ public class AIService : IAIService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error generating embeddings");
+            ServiceLogMessages.LogAIServiceErrorGeneratingEmbeddings(_logger, ex);
             throw;
         }
     }
@@ -143,7 +144,7 @@ public class AIService : IAIService
             }
         }
 
-        _logger.LogWarning("All fallback providers failed");
+        ServiceLogMessages.LogAIServiceAllFallbackProvidersFailed(_logger, null);
         return FallbackUnavailableMessage;
     }
 }

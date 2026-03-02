@@ -1,6 +1,8 @@
 using FFMpegCore;
 using Xabe.FFmpeg.Downloader;
 
+using SmartRAG.Services.Shared;
+
 namespace SmartRAG.Services.Parser;
 
 
@@ -41,7 +43,7 @@ public class AudioConversionService
 
         try
         {
-            _logger.LogInformation("Starting audio conversion: {Extension} → Compatible Format", extension);
+            ServiceLogMessages.LogAudioConversionStarting(_logger, extension, null);
 
             await EnsureFfmpegInitializedAsync();
 
@@ -50,11 +52,11 @@ public class AudioConversionService
                 await audioStream.CopyToAsync(tempFileStream).ConfigureAwait(false);
             }
 
-            _logger.LogDebug("Input file saved: {InputFile} ({Size} bytes)", tempInputFile, new FileInfo(tempInputFile).Length);
+            ServiceLogMessages.LogAudioConversionInputSaved(_logger, tempInputFile, new FileInfo(tempInputFile).Length, null);
 
             try
             {
-                _logger.LogInformation("Running FFmpeg conversion: {InputFile} → {OutputFile}", tempInputFile, tempOutputFile);
+                ServiceLogMessages.LogAudioConversionFfmpegRunning(_logger, tempInputFile, tempOutputFile, null);
 
                 var conversionStrategies = new[]
                 {
@@ -71,7 +73,7 @@ public class AudioConversionService
                     try
                     {
                         var strategyOutputFile = Path.GetTempFileName() + strategy.Ext;
-                        _logger.LogInformation("Trying conversion strategy: {Strategy} ({Codec})", strategy.Name, strategy.Codec);
+                        ServiceLogMessages.LogAudioConversionStrategyTrying(_logger, strategy.Name, strategy.Codec, null);
 
                         await FFMpegArguments
                             .FromFileInput(tempInputFile)
@@ -84,19 +86,19 @@ public class AudioConversionService
                         var fileInfo = new FileInfo(strategyOutputFile);
                         if (fileInfo.Exists && fileInfo.Length > 0)
                         {
-                            _logger.LogInformation("✓ Conversion successful: {Strategy} ({Size} bytes)", strategy.Name, fileInfo.Length);
+                            ServiceLogMessages.LogAudioConversionStrategySuccess(_logger, strategy.Name, fileInfo.Length, null);
                             finalOutputFile = strategyOutputFile;
                             conversionSuccessful = true;
                             break;
                         }
 
-                        _logger.LogWarning("✗ Conversion failed: {Strategy} - Empty or missing file", strategy.Name);
+                        ServiceLogMessages.LogAudioConversionStrategyEmptyFile(_logger, strategy.Name, null);
                         if (File.Exists(strategyOutputFile))
                             File.Delete(strategyOutputFile);
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning("✗ Conversion strategy {Strategy} failed: {Error}", strategy.Name, ex.Message);
+                        ServiceLogMessages.LogAudioConversionStrategyFailed(_logger, strategy.Name, ex.Message, null);
                     }
                 }
 
@@ -106,11 +108,11 @@ public class AudioConversionService
                 }
 
                 tempOutputFile = finalOutputFile; var outputFileInfo = new FileInfo(tempOutputFile);
-                _logger.LogInformation("Converted file created: {Size} bytes, Path: {Path}", outputFileInfo.Length, tempOutputFile);
+                ServiceLogMessages.LogAudioConversionConvertedFileCreated(_logger, outputFileInfo.Length, tempOutputFile, null);
             }
             catch (Exception ffmpegEx)
             {
-                _logger.LogError(ffmpegEx, "FFmpeg conversion failed. Is FFmpeg installed?");
+                ServiceLogMessages.LogAudioConversionFfmpegFailed(_logger, ffmpegEx);
                 throw new InvalidOperationException(
                     $"FFmpeg is required for audio format conversion but not found or failed to execute. " +
                     $"Please install FFmpeg from {FfmpegDownloadUrl} or convert your audio to WAV format manually.",
@@ -125,14 +127,13 @@ public class AudioConversionService
 
             outputStream.Position = 0;
 
-            _logger.LogDebug("Audio conversion completed: {InputSize} → {OutputSize} bytes",
-                new FileInfo(tempInputFile).Length, outputStream.Length);
+            ServiceLogMessages.LogAudioConversionCompleted(_logger, new FileInfo(tempInputFile).Length, outputStream.Length, null);
 
             return (outputStream, tempOutputFile);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Audio format conversion failed for {FileName}", SanitizeFileName(fileName));
+            ServiceLogMessages.LogAudioConversionFailed(_logger, SanitizeFileName(fileName), ex);
             throw;
         }
         finally
@@ -188,11 +189,11 @@ public class AudioConversionService
                 GlobalFFOptions.Configure(new FFOptions { BinaryFolder = ffmpegDir });
 
                 _ffmpegInitialized = true;
-                _logger.LogInformation("FFmpeg initialized successfully at {Path}", ffmpegDir);
+                ServiceLogMessages.LogFfmpegInitialized(_logger, ffmpegDir, null);
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "FFmpeg auto-download failed. Falling back to system FFmpeg.");
+                ServiceLogMessages.LogFfmpegAutoDownloadFailed(_logger, ex);
                 _ffmpegInitialized = true;
             }
         }

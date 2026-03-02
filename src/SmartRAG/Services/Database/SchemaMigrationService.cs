@@ -36,7 +36,7 @@ public class SchemaMigrationService : ISchemaMigrationService
             var schemas = await _schemaAnalyzer.GetAllSchemasAsync(cancellationToken);
             if (schemas.Count == 0)
             {
-                _logger.LogInformation("No schemas found to migrate");
+                DatabaseLogMessages.LogNoSchemasToMigrate(_logger, null);
                 return 0;
             }
 
@@ -50,42 +50,36 @@ public class SchemaMigrationService : ISchemaMigrationService
                     var exists = await SchemaExistsAsync(schema.DatabaseId, cancellationToken);
                     if (exists)
                     {
-                        _logger.LogDebug("Schema chunks already exist for database {DatabaseName} ({DatabaseId}), skipping",
-                            schema.DatabaseName, schema.DatabaseId);
+                        DatabaseLogMessages.LogSchemaChunksExistSkipping(_logger, schema.DatabaseName, schema.DatabaseId, null);
                         continue;
                     }
 
-                    _logger.LogInformation("Migrating schema for database {DatabaseName} ({DatabaseId})",
-                        schema.DatabaseName, schema.DatabaseId);
+                    DatabaseLogMessages.LogMigratingSchema(_logger, schema.DatabaseName, schema.DatabaseId, null);
 
                     var document = await _schemaChunkService.ConvertSchemaToDocumentAsync(schema, cancellationToken);
                     if (document == null || document.Chunks.Count == 0)
                     {
-                        _logger.LogWarning("No chunks generated for database {DatabaseName} ({DatabaseId})",
-                            schema.DatabaseName, schema.DatabaseId);
+                        DatabaseLogMessages.LogNoChunksGenerated(_logger, schema.DatabaseName, schema.DatabaseId, null);
                         continue;
                     }
 
                     await _documentRepository.AddAsync(document, cancellationToken);
 
                     migratedCount++;
-                    _logger.LogInformation("Successfully migrated schema for database {DatabaseName} ({DatabaseId}) - {ChunkCount} chunks",
-                        schema.DatabaseName, schema.DatabaseId, document.Chunks.Count);
+                    DatabaseLogMessages.LogSuccessfullyMigratedSchema(_logger, schema.DatabaseName, schema.DatabaseId, document.Chunks.Count, null);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to migrate schema for database {DatabaseName} ({DatabaseId})",
-                        schema.DatabaseName, schema.DatabaseId);
+                    DatabaseLogMessages.LogFailedToMigrateSchema(_logger, schema.DatabaseName, schema.DatabaseId, ex);
                 }
             }
 
-            _logger.LogInformation("Schema migration completed: {MigratedCount} out of {TotalCount} schemas migrated",
-                migratedCount, schemas.Count);
+            DatabaseLogMessages.LogSchemaMigrationCompletedCount(_logger, migratedCount, schemas.Count, null);
             return migratedCount;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to migrate schemas");
+            DatabaseLogMessages.LogFailedToMigrateSchemas(_logger, ex);
             throw;
         }
     }
@@ -99,7 +93,7 @@ public class SchemaMigrationService : ISchemaMigrationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to check if schema exists for database {DatabaseId}", databaseId);
+            DatabaseLogMessages.LogFailedToCheckSchemaExists(_logger, databaseId, ex);
             return false;
         }
     }

@@ -1,3 +1,4 @@
+using SmartRAG.Services.Shared;
 
 namespace SmartRAG.Services.FileWatcher;
 
@@ -72,7 +73,7 @@ public class FileWatcherService : IFileWatcherService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to create directory: {FolderPath}", sanitizedPath);
+                ServiceLogMessages.LogFileWatcherCreateDirectoryFailed(_logger, sanitizedPath, ex);
                 throw new DirectoryNotFoundException($"Folder does not exist and could not be created: {sanitizedPath}", ex);
             }
         }
@@ -103,7 +104,7 @@ public class FileWatcherService : IFileWatcherService
         _watchers[sanitizedPath] = watcher;
         _configs[sanitizedPath] = config;
 
-        _logger.LogInformation("Started watching folder: {FolderPath}", sanitizedPath);
+        ServiceLogMessages.LogFileWatcherStarted(_logger, sanitizedPath, null);
 
         if (config.AutoUpload)
         {
@@ -123,7 +124,7 @@ public class FileWatcherService : IFileWatcherService
         }
         _watchers.Clear();
         _configs.Clear();
-        _logger.LogInformation("Stopped watching all folders");
+        ServiceLogMessages.LogFileWatcherStopped(_logger, null);
         return Task.CompletedTask;
     }
 
@@ -141,13 +142,13 @@ public class FileWatcherService : IFileWatcherService
 
             if (GetConfigForPathSync(e.FullPath) is { AutoUpload: true } config)
             {
-                _logger.LogInformation("Auto-uploading file: {FilePath}", e.FullPath);
+                ServiceLogMessages.LogFileWatcherAutoUploading(_logger, e.FullPath, null);
                 await UploadFileAsync(e.FullPath, config);
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error handling file created event for {FilePath}", e.FullPath);
+            ServiceLogMessages.LogFileWatcherFileCreatedError(_logger, e.FullPath, ex);
         }
     }
 
@@ -166,7 +167,7 @@ public class FileWatcherService : IFileWatcherService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error handling file changed event for {FilePath}", e.FullPath);
+            ServiceLogMessages.LogFileWatcherFileChangedError(_logger, e.FullPath, ex);
         }
     }
 
@@ -178,13 +179,13 @@ public class FileWatcherService : IFileWatcherService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error handling file deleted event for {FilePath}", e.FullPath);
+            ServiceLogMessages.LogFileWatcherFileDeletedError(_logger, e.FullPath, ex);
         }
     }
 
     private void OnError(object sender, ErrorEventArgs e)
     {
-        _logger.LogError(e.GetException(), "File watcher error occurred");
+        ServiceLogMessages.LogFileWatcherError(_logger, e.GetException());
     }
 
     private bool IsFileAllowed(string filePath)
@@ -254,7 +255,7 @@ public class FileWatcherService : IFileWatcherService
             {
                 if (!File.Exists(filePath))
                 {
-                    _logger.LogWarning("File no longer exists: {FilePath}", filePath);
+                    ServiceLogMessages.LogFileWatcherFileNoLongerExists(_logger, filePath, null);
                     return;
                 }
 
@@ -272,8 +273,7 @@ public class FileWatcherService : IFileWatcherService
 
                     if (!hasFileHash || existingHashStr != fileHash)
                         continue;
-                    _logger.LogInformation("Skipping duplicate file: {FileName} (size: {Size} bytes, hash: {Hash}) - Found duplicate with ID: {DuplicateId}",
-                        fileName, fileInfo.Length, fileHash, doc.Id);
+                    ServiceLogMessages.LogFileWatcherSkippingDuplicate(_logger, fileName, fileInfo.Length, fileHash, doc.Id.ToString(), null);
                     return;
                 }
 
@@ -297,23 +297,23 @@ public class FileWatcherService : IFileWatcherService
                 };
                 await documentService.UploadDocumentAsync(uploadRequest);
 
-                _logger.LogInformation("Auto-uploaded file: {FilePath} (size: {Size} bytes, hash: {Hash})", filePath, fileInfo.Length, fileHash);
+                ServiceLogMessages.LogFileWatcherAutoUploaded(_logger, filePath, fileInfo.Length, fileHash, null);
                 return;
             }
             catch (Exceptions.DocumentSkippedException ex)
             {
-                _logger.LogInformation("Skipping file (no content to index): {FilePath}. {Message}", filePath, ex.Message);
+                ServiceLogMessages.LogFileWatcherSkippingNoContent(_logger, filePath, ex.Message, null);
                 return;
             }
             catch (Exception ex)
             {
                 if (attempt == MaxRetryAttempts - 1)
                 {
-                    _logger.LogError(ex, "Failed to upload file after {RetryCount} attempts: {FilePath}", MaxRetryAttempts, filePath);
+                    ServiceLogMessages.LogFileWatcherUploadFailedAfterRetries(_logger, MaxRetryAttempts, filePath, ex);
                     throw;
                 }
 
-                _logger.LogWarning(ex, "Error uploading file (attempt {RetryCount}/{MaxRetries}): {FilePath}", attempt + 1, MaxRetryAttempts, filePath);
+                ServiceLogMessages.LogFileWatcherUploadRetryError(_logger, attempt + 1, MaxRetryAttempts, filePath, ex);
                 await Task.Delay(RetryDelayMs * (attempt + 1));
             }
         }
@@ -360,7 +360,7 @@ public class FileWatcherService : IFileWatcherService
 
                     if (existingHashSet.Contains(fileHash))
                     {
-                        _logger.LogInformation("Skipping duplicate file: {FileName} (size: {Size} bytes, hash: {Hash})", fileName, fileInfo.Length, fileHash);
+                        ServiceLogMessages.LogFileWatcherSkippingDuplicateSimple(_logger, fileName, fileInfo.Length, fileHash, null);
                         duplicateCount++;
                         continue;
                     }
@@ -370,17 +370,16 @@ public class FileWatcherService : IFileWatcherService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to process existing file: {FilePath}", filePath);
+                    ServiceLogMessages.LogFileWatcherProcessExistingFailed(_logger, filePath, ex);
                     skippedCount++;
                 }
             }
 
-            _logger.LogInformation("Initial scan completed for folder: {FolderPath}. Processed: {ProcessedCount}, Skipped: {SkippedCount}, Duplicates: {DuplicateCount}",
-                folderPath, processedCount, skippedCount, duplicateCount);
+            ServiceLogMessages.LogFileWatcherInitialScanCompleted(_logger, folderPath, processedCount, skippedCount, duplicateCount, null);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error scanning existing files in folder: {FolderPath}", folderPath);
+            ServiceLogMessages.LogFileWatcherScanError(_logger, folderPath, ex);
         }
     }
 

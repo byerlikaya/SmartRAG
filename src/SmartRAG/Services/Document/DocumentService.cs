@@ -1,3 +1,4 @@
+using SmartRAG.Services.Shared;
 
 namespace SmartRAG.Services.Document;
 
@@ -73,7 +74,7 @@ public class DocumentService : IDocumentService
                     if (!existing.Metadata.TryGetValue("FileHash", out var existingHash) || existingHash == null ||
                         !string.Equals(existingHash.ToString(), hashStr, StringComparison.OrdinalIgnoreCase))
                         continue;
-                    _logger.LogInformation("Skipping duplicate upload (same file hash): {FileName} - returning existing document Id: {DocumentId}", request.FileName, existing.Id);
+                    ServiceLogMessages.LogDocumentServiceSkippingDuplicateUpload(_logger, request.FileName, existing.Id.ToString(), null);
                     return existing;
                 }
             }

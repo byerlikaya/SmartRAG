@@ -1,3 +1,4 @@
+using SmartRAG.Services.Database;
 
 namespace SmartRAG.Services.Database.Validation;
 
@@ -75,9 +76,7 @@ public class SqlValidator : ISqlValidator
                 if (schema.DatabaseName.Equals(databaseName, StringComparison.OrdinalIgnoreCase))
                     continue;
                 errors.Add($"Cross-database reference not allowed: '{fullTableName}'. Use only tables from '{schema.DatabaseName}' database.");
-                _logger.LogWarning(
-                    "Detected cross-database table reference: {Reference} in database {Database}",
-                    fullTableName, schema.DatabaseName);
+                DatabaseLogMessages.LogCrossDatabaseTableReference(_logger, fullTableName, schema.DatabaseName, null);
             }
         }
 
@@ -128,9 +127,7 @@ public class SqlValidator : ISqlValidator
                         continue;
 
                     errors.Add($"Cross-database reference detected: '{tableNameRaw}' appears to reference schema or database '{otherDbName}', but you are querying '{schema.DatabaseName}' database. Use ONLY tables from '{schema.DatabaseName}' database.");
-                    _logger.LogWarning(
-                        "Detected potential cross-database reference: {Reference} in database {Database}, possibly referencing {OtherDatabase}",
-                        tableNameRaw, schema.DatabaseName, otherDbName);
+                    DatabaseLogMessages.LogCrossDatabaseReferenceDetected(_logger, tableNameRaw, schema.DatabaseName, otherDbName, null);
                     break;
                 }
             }
@@ -143,9 +140,7 @@ public class SqlValidator : ISqlValidator
                     var exactTableName = exactMatch.TableName;
                     if (!requiredTables.Any(t => t.Equals(exactTableName, StringComparison.OrdinalIgnoreCase)))
                     {
-                        _logger.LogWarning(
-                            "Table '{Table}' exists in database '{Database}' but was not in the required tables list.",
-                            exactTableName, schema.DatabaseName);
+                    DatabaseLogMessages.LogTableNotInRequiredList(_logger, exactTableName, schema.DatabaseName, null);
                     }
                     continue;
                 }
@@ -176,10 +171,7 @@ public class SqlValidator : ISqlValidator
 
             if (!requiredTables.Contains(tableNameForRequiredCheck, StringComparer.OrdinalIgnoreCase))
             {
-                _logger.LogWarning(
-                    "Table '{Table}' exists in database '{Database}' but was not in the required tables list. " +
-                    "Allowing query to proceed. This may indicate QueryIntentAnalyzer needs improvement.",
-                    tableNameForRequiredCheck, schema.DatabaseName);
+                DatabaseLogMessages.LogTableNotInRequiredListAllowProceed(_logger, tableNameForRequiredCheck, schema.DatabaseName, null);
 
             }
         }

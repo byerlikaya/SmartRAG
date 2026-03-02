@@ -1,3 +1,4 @@
+using SmartRAG.Services.Shared;
 
 namespace SmartRAG.Services.Storage.Qdrant;
 
@@ -63,7 +64,7 @@ public class QdrantEmbeddingService : IQdrantEmbeddingService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to generate embedding for text");
+            ServiceLogMessages.LogQdrantEmbeddingGenerateFailed(_logger, ex);
             return new List<float>();
         }
     }
@@ -77,7 +78,7 @@ public class QdrantEmbeddingService : IQdrantEmbeddingService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to get vector dimension, using default");
+            ServiceLogMessages.LogQdrantVectorDimensionFailed(_logger, ex);
             return Task.FromResult(DefaultVectorDimension);
         }
     }

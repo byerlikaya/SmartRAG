@@ -36,7 +36,7 @@ public class SchemaChunkService
 
         if (schema.Tables.Count == 0)
         {
-            _logger.LogWarning("Schema {DatabaseName} has no tables to convert", schema.DatabaseName);
+            DatabaseLogMessages.LogSchemaNoTablesToConvert(_logger, schema.DatabaseName, null);
             return null;
         }
 
@@ -49,15 +49,14 @@ public class SchemaChunkService
             chunks.Add(chunk);
         }
 
-        _logger.LogInformation("Created {Count} schema chunks for database {DatabaseName}", chunks.Count, schema.DatabaseName);
+        DatabaseLogMessages.LogCreatedSchemaChunks(_logger, chunks.Count, schema.DatabaseName, null);
 
         var chunkContents = chunks.Select(c => c.Content).ToList();
         var embeddings = await _aiService.GenerateEmbeddingsBatchAsync(chunkContents, cancellationToken);
 
         if (embeddings.Count != chunks.Count)
         {
-            _logger.LogError("Failed to generate embeddings for schema chunks. Expected {Expected}, got {Actual}",
-                chunks.Count, embeddings.Count);
+            DatabaseLogMessages.LogSchemaChunksEmbeddingMismatch(_logger, chunks.Count, embeddings.Count, null);
             throw new InvalidOperationException("Failed to generate embeddings for schema chunks");
         }
 
@@ -66,7 +65,7 @@ public class SchemaChunkService
             chunks[i].Embedding = embeddings[i];
         }
 
-        _logger.LogInformation("Generated embeddings for {Count} schema chunks", chunks.Count);
+        DatabaseLogMessages.LogGeneratedEmbeddingsForSchemaChunks(_logger, chunks.Count, null);
 
         var content = string.Join("\n\n", chunks.Select(c => c.Content));
         var fileSize = Encoding.UTF8.GetByteCount(content);

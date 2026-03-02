@@ -5,6 +5,8 @@ using iText.Kernel.Pdf.Xobject;
 using SkiaSharp;
 using PDFtoImage;
 
+using SmartRAG.Services.Shared;
+
 namespace SmartRAG.Services.Document.Parsers;
 
 
@@ -46,7 +48,7 @@ public class PdfFileParser : IFileParser
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to parse PDF document: {FileName}", fileName);
+            ServiceLogMessages.LogPdfParserFailedToParseDocument(_logger, fileName, ex);
             return new FileParserResult { Content = string.Empty };
         }
     }
@@ -93,12 +95,7 @@ public class PdfFileParser : IFileParser
             {
                 var correctedText = _imageParserService.CorrectCurrencySymbols(text);
                 textBuilder.AppendLine(correctedText);
-                _logger.LogDebug(
-                    "PDF page {PageNumber} has substantial extracted text, using text extraction only (length: {Length}, encodingIssues: {EncodingIssues}, hasImages: {HasImages})",
-                    i,
-                    text.Length,
-                    hasEncodingIssues,
-                    hasEmbeddedImages);
+                ServiceLogMessages.LogPdfParserPageSubstantialText(_logger, i, text.Length, hasEncodingIssues, hasEmbeddedImages, null);
             }
             else
             {
@@ -107,12 +104,7 @@ public class PdfFileParser : IFileParser
                     // No substantial text but we either have images (scanned page)
                     // or serious encoding issues: try OCR as a fallback.
                     shouldUseOcr = true;
-                    _logger.LogDebug(
-                        "PDF page {PageNumber} has no substantial text; attempting OCR (length: {Length}, encodingIssues: {EncodingIssues}, hasImages: {HasImages})",
-                        i,
-                        text?.Length ?? 0,
-                        hasEncodingIssues,
-                        hasEmbeddedImages);
+                    ServiceLogMessages.LogPdfParserPageNoSubstantialTextOcr(_logger, i, text?.Length ?? 0, hasEncodingIssues, hasEmbeddedImages, null);
                 }
                 else if (!string.IsNullOrWhiteSpace(text))
                 {
@@ -120,10 +112,7 @@ public class PdfFileParser : IFileParser
                     // than risking worse OCR output.
                     var correctedText = _imageParserService.CorrectCurrencySymbols(text);
                     textBuilder.AppendLine(correctedText);
-                    _logger.LogDebug(
-                        "PDF page {PageNumber} has limited extracted text, using text extraction (length: {Length})",
-                        i,
-                        text.Length);
+                    ServiceLogMessages.LogPdfParserPageLimitedText(_logger, i, text.Length, null);
                 }
             }
 
@@ -139,12 +128,11 @@ public class PdfFileParser : IFileParser
                     if (!string.IsNullOrWhiteSpace(ocrText))
                     {
                         textBuilder.AppendLine(ocrText);
-                        _logger.LogDebug("Used OCR for PDF page {PageNumber} from embedded image (extracted text length: {Length} chars)",
-                            i, ocrText.Length);
+                        ServiceLogMessages.LogPdfParserUsedOcrForPage(_logger, i, ocrText.Length, null);
                     }
                     else
                     {
-                        _logger.LogWarning("OCR failed to extract text from embedded image on PDF page {PageNumber}, using extracted text fallback", i);
+                        ServiceLogMessages.LogPdfParserOcrFailedEmbeddedImage(_logger, i, null);
                         if (!string.IsNullOrWhiteSpace(text))
                         {
                             var correctedText = _imageParserService.CorrectCurrencySymbols(text);
@@ -154,7 +142,7 @@ public class PdfFileParser : IFileParser
                 }
                 else
                 {
-                    _logger.LogWarning("PDF page {PageNumber} was expected to have embedded images but none were found, using extracted text", i);
+                    ServiceLogMessages.LogPdfParserPageExpectedEmbeddedImagesNoneFound(_logger, i, null);
                     if (!string.IsNullOrWhiteSpace(text))
                     {
                         var correctedText = _imageParserService.CorrectCurrencySymbols(text);
@@ -164,7 +152,7 @@ public class PdfFileParser : IFileParser
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to extract text via OCR for PDF page {PageNumber}, using extracted text fallback", i);
+                ServiceLogMessages.LogPdfParserFailedToExtractTextViaOcrForPage(_logger, i, ex);
                 if (!string.IsNullOrWhiteSpace(text))
                 {
                     var correctedText = _imageParserService.CorrectCurrencySymbols(text);
@@ -207,7 +195,7 @@ public class PdfFileParser : IFileParser
         }
         catch (Exception ex)
         {
-            _logger.LogDebug(ex, "Failed to check for embedded images in PDF page");
+            ServiceLogMessages.LogPdfParserFailedToCheckEmbeddedImages(_logger, ex);
             return false;
         }
     }
@@ -240,8 +228,7 @@ public class PdfFileParser : IFileParser
                 continue;
 
             hasBrokenSpacing = true;
-            _logger.LogDebug("Detected broken spacing at position {Position}: '{Before}{Char1}{Char2}{After}' (count: {Count})",
-                i, before, text[i], text[i + 1], after, brokenSpacingCount);
+            ServiceLogMessages.LogPdfParserDetectedBrokenSpacing(_logger, i, before.ToString(), text[i].ToString(), (text[i + 1]).ToString(), after.ToString(), brokenSpacingCount, null);
             break;
         }
 
@@ -262,8 +249,7 @@ public class PdfFileParser : IFileParser
                 if (!char.IsLetter(before) || !char.IsLetter(after))
                     continue;
                 hasUnusualConsonantClusters = true;
-                _logger.LogDebug("Detected unusual consonant cluster: {Count} consecutive ASCII consonants at position {Position}",
-                    consecutiveConsonants, i);
+                ServiceLogMessages.LogPdfParserDetectedConsonantCluster(_logger, consecutiveConsonants, i, null);
                 break;
             }
 
@@ -280,8 +266,7 @@ public class PdfFileParser : IFileParser
 
         if (hasFewSpecialChars)
         {
-            _logger.LogDebug("Detected very few non-ASCII characters with broken words: {NonAscii}/{Total} = {Ratio:P2} (threshold: 1.5%)",
-                nonAsciiCharCount, totalCharCount, (double)nonAsciiCharCount / totalCharCount);
+            ServiceLogMessages.LogPdfParserDetectedFewNonAscii(_logger, nonAsciiCharCount, totalCharCount, (double)nonAsciiCharCount / totalCharCount, null);
         }
 
         // Check for suspicious character frequency (common in encoding mismatches)
@@ -297,8 +282,7 @@ public class PdfFileParser : IFileParser
             if (ratio > 0.01) // >1% suspicious characters
             {
                 hasSuspiciousCharacters = true;
-                _logger.LogDebug("Detected high frequency of suspicious characters: {Count}/{Total} = {Ratio:P2} (threshold: 1%)",
-                    suspiciousCharCount, totalCharCount, ratio);
+                ServiceLogMessages.LogPdfParserDetectedSuspiciousChars(_logger, suspiciousCharCount, totalCharCount, ratio, null);
             }
         }
 
@@ -306,8 +290,7 @@ public class PdfFileParser : IFileParser
 
         if (hasIssue)
         {
-            _logger.LogDebug("Encoding issue detected - BrokenSpacing: {BrokenSpacing}, ConsonantClusters: {Clusters}, FewSpecialChars: {FewChars}, BrokenWords: {BrokenWords}, SuspiciousChars: {SuspiciousChars}",
-                hasBrokenSpacing, hasUnusualConsonantClusters, hasFewSpecialChars, hasBrokenWordPatterns, hasSuspiciousCharacters);
+            ServiceLogMessages.LogPdfParserEncodingIssueDetected(_logger, hasBrokenSpacing, hasUnusualConsonantClusters, hasFewSpecialChars, hasBrokenWordPatterns, hasSuspiciousCharacters, null);
         }
 
         return hasIssue;
@@ -329,7 +312,7 @@ public class PdfFileParser : IFileParser
 
                 if (embeddedImageResult != null)
                 {
-                    _logger.LogDebug("Extracted embedded image from PDF page {PageIndex} for OCR", pageIndex + 1);
+                    ServiceLogMessages.LogPdfParserExtractedEmbeddedImageForOcr(_logger, pageIndex + 1, null);
                     return embeddedImageResult;
                 }
 
@@ -339,17 +322,17 @@ public class PdfFileParser : IFileParser
                     var renderedResult = RenderTextBasedPdfPageToImage(pdfBytes, pageIndex);
                     if (renderedResult != null)
                     {
-                        _logger.LogDebug("Rendered text-based PDF page {PageIndex} to bitmap for OCR", pageIndex + 1);
+                        ServiceLogMessages.LogPdfParserRenderedTextBasedPageToBitmap(_logger, pageIndex + 1, null);
                         return renderedResult;
                     }
                 }
 
-                _logger.LogDebug("No embedded images found and page rendering unavailable for PDF page {PageIndex}", pageIndex + 1);
+                ServiceLogMessages.LogPdfParserNoEmbeddedImagesPageRenderingUnavailable(_logger, pageIndex + 1, null);
                 return null;
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to render PDF page {PageIndex} to image for OCR", pageIndex + 1);
+                ServiceLogMessages.LogPdfParserFailedToRenderPageToImageForOcr(_logger, pageIndex + 1, ex);
                 return null;
             }
         });
@@ -390,7 +373,7 @@ public class PdfFileParser : IFileParser
         }
         catch (Exception ex)
         {
-            _logger.LogDebug(ex, "Failed to render PDF page using embedded images");
+            ServiceLogMessages.LogPdfParserFailedToRenderPageUsingEmbeddedImages(_logger, ex);
             return null;
         }
     }
@@ -451,7 +434,7 @@ public class PdfFileParser : IFileParser
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogDebug(ex, "Failed to extract image from PDF page");
+                    ServiceLogMessages.LogPdfParserFailedToExtractImageFromPage(_logger, ex);
                 }
             }
 
@@ -459,7 +442,7 @@ public class PdfFileParser : IFileParser
         }
         catch (Exception ex)
         {
-            _logger.LogDebug(ex, "Failed to extract images from PDF page");
+            ServiceLogMessages.LogPdfParserFailedToExtractImagesFromPage(_logger, ex);
             return false;
         }
     }
@@ -488,7 +471,7 @@ public class PdfFileParser : IFileParser
 
             if (scaledBitmap == null)
             {
-                _logger.LogDebug("Failed to upscale bitmap for PDF page {PageIndex}, using original resolution", pageIndex);
+                ServiceLogMessages.LogPdfParserFailedToUpscaleBitmap(_logger, pageIndex, null);
 
                 // Fallback to original bitmap
                 using var image = SKImage.FromBitmap(originalBitmap);
@@ -496,8 +479,7 @@ public class PdfFileParser : IFileParser
                 var stream = new MemoryStream(data.ToArray());
                 stream.Position = 0;
 
-                _logger.LogDebug("Successfully rendered PDF page {PageIndex} to bitmap ({Width}x{Height})",
-                    pageIndex, originalBitmap.Width, originalBitmap.Height);
+                ServiceLogMessages.LogPdfParserSuccessfullyRenderedPageToBitmap(_logger, pageIndex, originalBitmap.Width, originalBitmap.Height, null);
 
                 return stream;
             }
@@ -508,14 +490,13 @@ public class PdfFileParser : IFileParser
             var finalStream = new MemoryStream(scaledData.ToArray());
             finalStream.Position = 0;
 
-            _logger.LogDebug("Successfully rendered and upscaled PDF page {PageIndex} to bitmap ({OriginalWidth}x{OriginalHeight} → {ScaledWidth}x{ScaledHeight})",
-                pageIndex, originalBitmap.Width, originalBitmap.Height, scaledBitmap.Width, scaledBitmap.Height);
+            ServiceLogMessages.LogPdfParserSuccessfullyRenderedAndUpscaled(_logger, pageIndex, originalBitmap.Width, originalBitmap.Height, scaledBitmap.Width, scaledBitmap.Height, null);
 
             return finalStream;
         }
         catch (Exception ex)
         {
-            _logger.LogDebug(ex, "Failed to render PDF page {PageIndex} to bitmap", pageIndex);
+            ServiceLogMessages.LogPdfParserFailedToRenderPageToBitmap(_logger, pageIndex, ex);
             return null;
         }
     }
@@ -581,8 +562,7 @@ public class PdfFileParser : IFileParser
                             continue;
 
                         fixedText = correctedText;
-                        _logger.LogDebug("Fixed PDF text encoding using {Encoding}: replacement chars {Original}->{Corrected}, suspicious chars {OriginalSusp}->{CorrectedSusp}",
-                            encodingName, originalReplacementCount, correctedReplacementCount, originalSuspiciousCount, correctedSuspiciousCount);
+                        ServiceLogMessages.LogPdfParserFixedTextEncoding(_logger, encodingName, originalReplacementCount, correctedReplacementCount, originalSuspiciousCount, correctedSuspiciousCount, null);
                         break;
                     }
                     catch
@@ -611,7 +591,7 @@ public class PdfFileParser : IFileParser
         }
         catch (Exception ex)
         {
-            _logger.LogDebug(ex, "Failed to fix PDF text encoding, using original text");
+            ServiceLogMessages.LogPdfParserFailedToFixTextEncoding(_logger, ex);
             return text;
         }
     }

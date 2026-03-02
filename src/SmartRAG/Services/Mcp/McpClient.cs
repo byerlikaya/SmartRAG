@@ -1,3 +1,4 @@
+using SmartRAG.Services.Shared;
 
 namespace SmartRAG.Services.Mcp;
 
@@ -29,13 +30,13 @@ public class McpClient : IMcpClient
     {
         McpRequestValidator.ValidateConfig(config);
 
-        _logger.LogInformation("Connecting to MCP server at {Endpoint}", config.Endpoint);
+        ServiceLogMessages.LogMcpConnecting(_logger, config.Endpoint, null);
 
         try
         {
             if (_connections.ContainsKey(config.ServerId))
             {
-                _logger.LogWarning("Already connected to server");
+                ServiceLogMessages.LogMcpAlreadyConnected(_logger, null);
                 return Task.FromResult(true);
             }
 
@@ -50,12 +51,12 @@ public class McpClient : IMcpClient
             _connections[config.ServerId] = client;
             _serverConfigs[config.ServerId] = config;
 
-            _logger.LogInformation("Successfully connected to MCP server");
+            ServiceLogMessages.LogMcpConnected(_logger, null);
             return Task.FromResult(true);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to connect to MCP server");
+            ServiceLogMessages.LogMcpConnectFailed(_logger, ex);
             return Task.FromException<bool>(ex);
         }
     }
@@ -84,7 +85,7 @@ public class McpClient : IMcpClient
 
             if (!response.IsSuccess)
             {
-                _logger.LogError("Failed to discover tools: {Error}", response.Error?.Message ?? "Unknown error");
+                ServiceLogMessages.LogMcpDiscoverToolsFailed(_logger, response.Error?.Message ?? "Unknown error", null);
                 return new List<McpTool>();
             }
 
@@ -112,12 +113,12 @@ public class McpClient : IMcpClient
                 }
             }
 
-            _logger.LogInformation("Discovered {Count} tools", tools.Count);
+            ServiceLogMessages.LogMcpDiscoveredTools(_logger, tools.Count, null);
             return tools;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error discovering tools");
+            ServiceLogMessages.LogMcpDiscoverToolsError(_logger, ex);
             return new List<McpTool>();
         }
     }
@@ -154,7 +155,7 @@ public class McpClient : IMcpClient
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error calling MCP tool");
+            ServiceLogMessages.LogMcpCallToolError(_logger, ex);
             return new McpResponse
             {
                 Error = new McpError
@@ -211,7 +212,7 @@ public class McpClient : IMcpClient
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error parsing MCP response");
+            ServiceLogMessages.LogMcpParseResponseError(_logger, ex);
             return new McpResponse
             {
                 Error = new McpError

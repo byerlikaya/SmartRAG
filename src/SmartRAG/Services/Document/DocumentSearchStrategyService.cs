@@ -1,3 +1,4 @@
+using SmartRAG.Services.Shared;
 
 namespace SmartRAG.Services.Document;
 
@@ -77,7 +78,7 @@ public class DocumentSearchStrategyService : IDocumentSearchStrategyService
             var searchResults = await _documentRepository.SearchAsync(query, maxResults * InitialSearchMultiplier, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
 
-            _logger.LogDebug("Repository search returned {Count} results for query length {QueryLength}", searchResults.Count, query.Length);
+            ServiceLogMessages.LogDocumentSearchRepositorySearchReturnedResults(_logger, searchResults.Count, query.Length, null);
 
             if (searchResults.Count > 0)
             {
@@ -252,7 +253,7 @@ public class DocumentSearchStrategyService : IDocumentSearchStrategyService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Repository search failed, falling back to keyword scoring");
+            ServiceLogMessages.LogDocumentSearchRepositorySearchFailedFallback(_logger, ex);
         }
 
         // Stage 2: Simple keyword-based fallback strategy

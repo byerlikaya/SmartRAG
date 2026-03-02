@@ -1,3 +1,4 @@
+using SmartRAG.Services.Shared;
 
 namespace SmartRAG.Services.Mcp;
 
@@ -28,7 +29,7 @@ public class McpConnectionManager : IMcpConnectionManager
     {
         if (_options.McpServers.Count == 0)
         {
-            _logger.LogInformation("No MCP servers configured");
+            ServiceLogMessages.LogMcpConnectionNoServersConfigured(_logger, null);
             return;
         }
 
@@ -36,11 +37,11 @@ public class McpConnectionManager : IMcpConnectionManager
 
         if (autoConnectServers.Count == 0)
         {
-            _logger.LogInformation("No MCP servers with AutoConnect enabled");
+            ServiceLogMessages.LogMcpConnectionNoAutoConnectServers(_logger, null);
             return;
         }
 
-        _logger.LogInformation("Connecting to {Count} MCP servers", autoConnectServers.Count);
+        ServiceLogMessages.LogMcpConnectionConnectingToServers(_logger, autoConnectServers.Count, null);
 
         foreach (var server in autoConnectServers)
         {
@@ -49,16 +50,16 @@ public class McpConnectionManager : IMcpConnectionManager
                 var connected = await _mcpClient.ConnectAsync(server);
                 if (connected)
                 {
-                    _logger.LogInformation("Successfully connected to MCP server");
+                    ServiceLogMessages.LogMcpConnectionSuccess(_logger, null);
                 }
                 else
                 {
-                    _logger.LogWarning("Failed to connect to MCP server");
+                    ServiceLogMessages.LogMcpConnectionFailed(_logger, null);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error connecting to MCP server");
+                ServiceLogMessages.LogMcpConnectionError(_logger, ex);
             }
         }
     }

@@ -29,14 +29,14 @@ public class CrossDatabaseMappingDetector
 
         if (connections == null || connections.Count < 2)
         {
-            _logger.LogInformation("Less than 2 databases configured, no cross-database mappings to detect");
+            DatabaseLogMessages.LogLessThanTwoDatabasesNoMappings(_logger, null);
             return mappings;
         }
 
         var allSchemas = await _schemaAnalyzer.GetAllSchemasAsync(cancellationToken);
         if (allSchemas.Count < 2)
         {
-            _logger.LogInformation("Less than 2 schemas available, no cross-database mappings to detect");
+            DatabaseLogMessages.LogLessThanTwoSchemasNoMappings(_logger, null);
             return mappings;
         }
 
@@ -69,7 +69,7 @@ public class CrossDatabaseMappingDetector
             }
         }
 
-        _logger.LogInformation("Detected {Count} cross-database mappings", mappings.Count);
+        DatabaseLogMessages.LogDetectedCrossDatabaseMappings(_logger, mappings.Count, null);
         return mappings;
     }
 
@@ -111,10 +111,7 @@ public class CrossDatabaseMappingDetector
                     };
 
                     mappings.Add(mapping);
-                _logger.LogDebug(
-                    "Detected mapping: {SourceDB}.{SourceTable}.{SourceColumn} -> {TargetDB}.{TargetTable}.{TargetColumn}",
-                    mapping.SourceDatabase, mapping.SourceTable, mapping.SourceColumn,
-                    mapping.TargetDatabase, mapping.TargetTable, mapping.TargetColumn);
+                DatabaseLogMessages.LogDetectedMapping(_logger, mapping.SourceDatabase, mapping.SourceTable, mapping.SourceColumn, mapping.TargetDatabase, mapping.TargetTable, mapping.TargetColumn, null);
             }
 
             foreach (var foreignKey in sourceTable.ForeignKeys)
@@ -144,10 +141,7 @@ public class CrossDatabaseMappingDetector
                     continue;
 
                 mappings.Add(mapping);
-                _logger.LogDebug(
-                    "Detected FK mapping: {SourceDB}.{SourceTable}.{SourceColumn} -> {TargetDB}.{TargetTable}.{TargetColumn}",
-                    mapping.SourceDatabase, mapping.SourceTable, mapping.SourceColumn,
-                    mapping.TargetDatabase, mapping.TargetTable, mapping.TargetColumn);
+                DatabaseLogMessages.LogDetectedFkMapping(_logger, mapping.SourceDatabase, mapping.SourceTable, mapping.SourceColumn, mapping.TargetDatabase, mapping.TargetTable, mapping.TargetColumn, null);
             }
         }
 

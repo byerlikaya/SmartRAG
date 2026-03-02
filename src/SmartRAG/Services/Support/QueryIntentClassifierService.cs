@@ -1,3 +1,4 @@
+using SmartRAG.Services.Shared;
 
 namespace SmartRAG.Services.Support;
 
@@ -209,7 +210,7 @@ IMPORTANT:
                             if (HasQuestionPunctuation(trimmedQuery) && trimmedQuery.Length > 40 &&
                                 Tokenize(trimmedQuery).Length >= 6)
                             {
-                                _logger.LogDebug("Overriding LLM CONVERSATION to INFORMATION: query has data-request pattern");
+                                ServiceLogMessages.LogQueryIntentOverrideToInformation(_logger, null);
                                 var overrideTokens = _options.Features.EnableDocumentSearch
                                     ? TokenizeForSearch(normalizedForMatching)
                                     : Array.Empty<string>();
@@ -237,7 +238,7 @@ IMPORTANT:
 
                                 if (tokens.Length < MinTokenCountForInformation)
                                 {
-                                    _logger.LogWarning("AI returned only {Count} tokens, expected at least {MinCount}. Response may be incomplete.", tokens.Length, MinTokenCountForInformation);
+                                    ServiceLogMessages.LogQueryIntentIncompleteTokens(_logger, tokens.Length, MinTokenCountForInformation, null);
                                 }
                             }
 
@@ -249,12 +250,12 @@ IMPORTANT:
                             return new QueryIntentAnalysisResult(false, tokens);
                         }
 
-                        _logger.LogWarning("AI returned JSON with unknown type value: {Type}", typeValue);
+                        ServiceLogMessages.LogQueryIntentUnknownType(_logger, typeValue ?? string.Empty, null);
                         return FallbackFromPlainClassification(classification, normalizedForMatching);
                     }
                     catch (JsonException ex)
                     {
-                        _logger.LogWarning(ex, "Failed to parse AI response as JSON. Response: {Response}", classification[..Math.Min(200, classification?.Length ?? 0)]);
+                        ServiceLogMessages.LogQueryIntentParseJsonFailed(_logger, classification[..Math.Min(200, classification?.Length ?? 0)], ex);
 
                         var cleanedJson = TryExtractJsonFromResponse(classification);
                         if (string.IsNullOrWhiteSpace(cleanedJson))
@@ -313,7 +314,7 @@ IMPORTANT:
                         }
                         catch (JsonException)
                         {
-                            _logger.LogWarning("Failed to parse cleaned JSON, falling back to plain classification");
+                            ServiceLogMessages.LogQueryIntentParseCleanedJsonFailed(_logger, null);
                         }
 
                         return FallbackFromPlainClassification(classification, normalizedForMatching);
@@ -321,7 +322,7 @@ IMPORTANT:
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "AI classification failed; defaulting to conversation.");
+                    ServiceLogMessages.LogQueryIntentClassificationFailed(_logger, ex);
                     return new QueryIntentAnalysisResult(true, Array.Empty<string>());
                 }
         }
@@ -425,8 +426,7 @@ IMPORTANT:
 
         if (tokens.Length < MinTokenCountForInformation)
         {
-            _logger.LogWarning("AI returned only {Count} tokens, expected at least {MinCount}. Tokens: {Tokens}",
-                tokens.Length, MinTokenCountForInformation, string.Join(", ", tokens));
+            ServiceLogMessages.LogQueryIntentIncompleteTokensWithPreview(_logger, tokens.Length, MinTokenCountForInformation, string.Join(", ", tokens), null);
         }
 
         return tokens;

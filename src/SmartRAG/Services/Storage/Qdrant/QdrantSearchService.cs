@@ -1,6 +1,8 @@
 using Qdrant.Client;
 using Qdrant.Client.Grpc;
 
+using SmartRAG.Services.Shared;
+
 namespace SmartRAG.Services.Storage.Qdrant;
 
 
@@ -143,7 +145,7 @@ public class QdrantSearchService : IQdrantSearchService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Vector search failed for collection: {Collection}", collectionName);
+                    ServiceLogMessages.LogQdrantSearchVectorSearchFailedForCollection(_logger, collectionName, ex);
                 }
             }
 
@@ -151,7 +153,7 @@ public class QdrantSearchService : IQdrantSearchService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Vector search failed");
+            ServiceLogMessages.LogQdrantSearchVectorSearchFailed(_logger, ex);
             return new List<DocumentChunk>();
         }
     }
@@ -267,7 +269,7 @@ public class QdrantSearchService : IQdrantSearchService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Fallback search failed for collection: {Collection}", collectionName);
+                    ServiceLogMessages.LogQdrantSearchFallbackSearchFailedForCollection(_logger, collectionName, ex);
                 }
             }
 
@@ -279,7 +281,7 @@ public class QdrantSearchService : IQdrantSearchService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Fallback text search failed");
+            ServiceLogMessages.LogQdrantSearchFallbackTextSearchFailed(_logger, ex);
             return new List<DocumentChunk>();
         }
     }

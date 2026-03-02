@@ -36,7 +36,7 @@ public class DatabaseParserService : IDatabaseParserService
         if (dbStream == null) throw new ArgumentNullException(nameof(dbStream));
         if (string.IsNullOrWhiteSpace(fileName)) throw new ArgumentNullException(nameof(fileName));
 
-        _logger.LogInformation("Starting database file parsing for: {FileName}", fileName);
+        DatabaseLogMessages.LogDatabaseFileParsingStarted(_logger, fileName, null);
 
         var tempPath = Path.GetTempFileName();
 
@@ -60,12 +60,12 @@ public class DatabaseParserService : IDatabaseParserService
 
             var result = await ParseSQLiteDatabaseAsync(connectionString, config, cancellationToken);
 
-            _logger.LogInformation("Database file parsing completed for: {FileName}", fileName);
+            DatabaseLogMessages.LogDatabaseFileParsingCompleted(_logger, fileName, null);
             return result;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error parsing database file: {FileName}", fileName);
+            DatabaseLogMessages.LogDatabaseFileParsingFailed(_logger, fileName, ex);
             throw;
         }
         finally
@@ -77,7 +77,7 @@ public class DatabaseParserService : IDatabaseParserService
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to delete temporary file: {TempPath}", tempPath);
+                DatabaseLogMessages.LogTempFileDeleteFailed(_logger, tempPath, ex);
             }
         }
     }
@@ -90,7 +90,7 @@ public class DatabaseParserService : IDatabaseParserService
         if (string.IsNullOrWhiteSpace(connectionString)) throw new ArgumentNullException(nameof(connectionString));
         if (config == null) throw new ArgumentNullException(nameof(config));
 
-        _logger.LogInformation("Starting database connection parsing for type: {DatabaseType}", config.Type);
+        DatabaseLogMessages.LogDatabaseConnectionParsingStarted(_logger, config.Type.ToString(), null);
 
         try
         {
@@ -107,7 +107,7 @@ public class DatabaseParserService : IDatabaseParserService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error parsing database connection for type: {DatabaseType}", config.Type);
+            DatabaseLogMessages.LogDatabaseConnectionParsingFailed(_logger, config.Type.ToString(), ex);
             throw;
         }
     }
@@ -292,7 +292,7 @@ public class DatabaseParserService : IDatabaseParserService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Database connection validation failed for type: {DatabaseType}", databaseType);
+            DatabaseLogMessages.LogDatabaseConnectionValidationFailed(_logger, databaseType.ToString(), ex);
             return false;
         }
     }
@@ -333,7 +333,7 @@ public class DatabaseParserService : IDatabaseParserService
         var allTables = await GetSQLiteTableNamesInternalAsync(connection, cancellationToken);
         var tablesToProcess = FilterTables(allTables, config);
 
-        _logger.LogInformation("Processing {TableCount} tables from SQLite database", tablesToProcess.Count);
+        DatabaseLogMessages.LogProcessingTablesSqlite(_logger, tablesToProcess.Count, null);
 
         foreach (var tableName in tablesToProcess)
         {
@@ -354,7 +354,7 @@ public class DatabaseParserService : IDatabaseParserService
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Error processing table: {TableName}", tableName);
+                DatabaseLogMessages.LogErrorProcessingTable(_logger, tableName, ex);
                 content.AppendLine($"Error processing table {tableName}: {ex.Message}");
                 content.AppendLine();
             }
@@ -463,7 +463,7 @@ public class DatabaseParserService : IDatabaseParserService
             var allTables = await GetSqlServerTableNamesInternalAsync(connection, cancellationToken);
             var tablesToProcess = FilterTables(allTables, config);
 
-            _logger.LogInformation("Processing {TableCount} tables from SQL Server database", tablesToProcess.Count);
+            DatabaseLogMessages.LogProcessingTablesSqlServer(_logger, tablesToProcess.Count, null);
 
             foreach (var tableName in tablesToProcess)
             {
@@ -484,7 +484,7 @@ public class DatabaseParserService : IDatabaseParserService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Error processing table: {TableName}", tableName);
+                    DatabaseLogMessages.LogErrorProcessingTable(_logger, tableName, ex);
                     content.AppendLine($"Error processing table {tableName}: {ex.Message}");
                     content.AppendLine();
                 }
@@ -496,11 +496,11 @@ public class DatabaseParserService : IDatabaseParserService
         {
             if (sqlEx.Number == 4060 || sqlEx.Message.Contains("Cannot open database"))
             {
-                _logger.LogWarning("SQL Server database does not exist yet");
+                DatabaseLogMessages.LogSqlServerDatabaseNotExistYet(_logger, null);
                 return "=== SQL Server Database Content ===\nDatabase does not exist yet. Please create the database first.\n";
             }
 
-            _logger.LogError(sqlEx, "Error parsing SQL Server database");
+            DatabaseLogMessages.LogSqlServerParsingFailed(_logger, sqlEx);
             throw;
         }
     }
@@ -518,11 +518,11 @@ public class DatabaseParserService : IDatabaseParserService
         {
             if (sqlEx.Number == 4060 || sqlEx.Message.Contains("Cannot open database"))
             {
-                _logger.LogInformation($"Database does not exist yet, returning empty table list");
+                DatabaseLogMessages.LogDatabaseNotExistEmptyTableList(_logger, null);
                 return new List<string>();
             }
 
-            _logger.LogError(sqlEx, "Error getting SQL Server table names");
+            DatabaseLogMessages.LogSqlServerTableNamesFailed(_logger, sqlEx);
             throw;
         }
     }
@@ -614,11 +614,11 @@ public class DatabaseParserService : IDatabaseParserService
         {
             if (sqlEx.Number == 4060 || sqlEx.Message.Contains("Cannot open database"))
             {
-                _logger.LogWarning("SQL Server database does not exist yet for query execution");
+                DatabaseLogMessages.LogSqlServerQueryExecutionNotExist(_logger, null);
                 return "Error: Database does not exist yet. Please create the database first.\n";
             }
 
-            _logger.LogError(sqlEx, "Error executing SQL Server query");
+            DatabaseLogMessages.LogSqlServerQueryExecutionFailed(_logger, sqlEx);
             throw;
         }
     }
@@ -645,22 +645,22 @@ public class DatabaseParserService : IDatabaseParserService
 
                     await using var masterConnection = new SqlConnection(builder.ConnectionString);
                     await masterConnection.OpenAsync(cancellationToken);
-                    _logger.LogInformation($"SQL Server is accessible but database '{targetDatabase}' does not exist yet. This is expected for first-time setup.");
-                    return true; // Server is accessible, database can be created
+                    DatabaseLogMessages.LogSqlServerAccessibleDbNotExist(_logger, targetDatabase, null);
+                    return true;
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "SQL Server validation failed - server not accessible");
+                    DatabaseLogMessages.LogSqlServerValidationNotAccessible(_logger, ex);
                     return false;
                 }
             }
 
-            _logger.LogWarning(sqlEx, $"SQL Server connection validation failed with error {sqlEx.Number}: {sqlEx.Message}");
+            DatabaseLogMessages.LogSqlServerConnectionValidationFailed(_logger, sqlEx.Number, sqlEx.Message, sqlEx);
             return false;
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "SQL Server connection validation failed");
+            DatabaseLogMessages.LogSqlServerConnectionValidationFailedGeneric(_logger, ex);
             return false;
         }
     }
@@ -681,7 +681,7 @@ public class DatabaseParserService : IDatabaseParserService
         var allTables = await GetMySqlTableNamesInternalAsync(connection, cancellationToken);
         var tablesToProcess = FilterTables(allTables, config);
 
-        _logger.LogInformation("Processing {TableCount} tables from MySQL database", tablesToProcess.Count);
+        DatabaseLogMessages.LogProcessingTablesMySql(_logger, tablesToProcess.Count, null);
 
         foreach (var tableName in tablesToProcess)
         {
@@ -702,7 +702,7 @@ public class DatabaseParserService : IDatabaseParserService
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Error processing table: {TableName}", tableName);
+                DatabaseLogMessages.LogErrorProcessingTable(_logger, tableName, ex);
                 content.AppendLine($"Error processing table {tableName}: {ex.Message}");
                 content.AppendLine();
             }
@@ -831,7 +831,7 @@ public class DatabaseParserService : IDatabaseParserService
         var allTables = await GetPostgreSqlTableNamesInternalAsync(connection, cancellationToken);
         var tablesToProcess = FilterTables(allTables, config);
 
-        _logger.LogInformation("Processing {TableCount} tables from PostgreSQL database", tablesToProcess.Count);
+        DatabaseLogMessages.LogProcessingTablesPostgres(_logger, tablesToProcess.Count, null);
 
         foreach (var tableName in tablesToProcess)
         {
@@ -852,7 +852,7 @@ public class DatabaseParserService : IDatabaseParserService
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Error processing table: {TableName}", tableName);
+                DatabaseLogMessages.LogErrorProcessingTable(_logger, tableName, ex);
                 content.AppendLine($"Error processing table {tableName}: {ex.Message}");
                 content.AppendLine();
             }
