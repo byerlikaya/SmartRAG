@@ -6,6 +6,20 @@ All notable changes to SmartRAG will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.0] - 2026-02-06
+
+### Breaking Changes
+- **Target Framework**: Migrated from .NET Standard 2.1 to .NET 6. Projects must target .NET 6 or higher.
+- **SmartRAG.Dashboard Project Merged**: Dashboard was a separate project (never a NuGet package). It is now included in the main SmartRAG package. Remove `SmartRAG.Dashboard` project reference if you had one; use `SmartRAG` only.
+- **Minimum .NET Version**: .NET 6+ required. .NET Core 3.0, .NET 5, and .NET Standard 2.1 no longer supported.
+
+### Added
+- **Built-in Dashboard**: Document management and chat UI is now part of SmartRAG. No separate package needed.
+- Same API: `AddSmartRagDashboard()`, `UseSmartRagDashboard()`, `MapSmartRagDashboard()` - no code changes for consumers.
+
+### Migration
+- See [migration guide](https://byerlikaya.github.io/SmartRAG/en/changelog/migration-guides.html#migrating-from-v3x-to-v400) for upgrade instructions.
+
 ## [3.9.0] - 2026-02-05
 
 ### ✨ Added

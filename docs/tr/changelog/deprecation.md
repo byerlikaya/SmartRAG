@@ -18,13 +18,17 @@ lang: tr
     </ul>
 </div>
 
-### v3.0.0'da Kullanımdan Kaldırıldı (v4.0.0'da Kaldırılacak)
+### v4.0.0'da Kaldırıldı
 
-<div class="alert alert-warning">
-    <h4><i class="fas fa-clock me-2"></i> Kaldırma Planlandı</h4>
-    <p>Aşağıdaki metodlar kullanımdan kaldırıldı ve v4.0.0'da kaldırılacak:</p>
+<div class="alert alert-danger">
+    <h4><i class="fas fa-times-circle me-2"></i> Kırıcı Değişiklikler</h4>
+    <p>Aşağıdaki metodlar v4.0.0'da kaldırıldı. Yerine geçen metodlara taşının:</p>
     <ul class="mb-0">
-        <li><code>IDocumentSearchService.GenerateRagAnswerAsync()</code> - Yerine <code>QueryIntelligenceAsync()</code> kullanın</li>
+        <li><code>IDocumentSearchService.GenerateRagAnswerAsync()</code> → <code>QueryIntelligenceAsync()</code></li>
+        <li><code>IRagAnswerGeneratorService.GenerateBasicRagAnswerAsync(string, int, ...)</code> → <code>GenerateBasicRagAnswerAsync(GenerateRagAnswerRequest)</code></li>
+        <li><code>IQueryStrategyExecutorService</code> ayrı parametreli overload'lar → <code>QueryStrategyRequest</code> overload'larını kullanın</li>
+        <li><code>IDocumentService.UploadDocumentAsync(Stream, string, ...)</code> → <code>UploadDocumentAsync(UploadDocumentRequest)</code></li>
+        <li><code>IMultiDatabaseQueryCoordinator.AnalyzeQueryIntentAsync()</code> → <code>IQueryIntentAnalyzer.AnalyzeQueryIntentAsync()</code></li>
     </ul>
 </div>
 

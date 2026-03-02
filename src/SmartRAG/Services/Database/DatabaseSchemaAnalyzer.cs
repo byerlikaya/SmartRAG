@@ -1,773 +1,734 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.Data.SqlClient;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using MySql.Data.MySqlClient;
 using Npgsql;
-using SmartRAG.Enums;
-using SmartRAG.Interfaces.AI;
-using SmartRAG.Interfaces.Database;
-using SmartRAG.Models;
-using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Data;
-using System.Data.Common;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 
-namespace SmartRAG.Services.Database
+namespace SmartRAG.Services.Database;
+
+
+/// <summary>
+/// Analyzes database schemas and generates intelligent metadata
+/// </summary>
+public class DatabaseSchemaAnalyzer : IDatabaseSchemaAnalyzer
 {
-    /// <summary>
-    /// Analyzes database schemas and generates intelligent metadata
-    /// </summary>
-    public class DatabaseSchemaAnalyzer : IDatabaseSchemaAnalyzer
+    private readonly IDatabaseParserService _databaseParserService;
+    private readonly ILogger<DatabaseSchemaAnalyzer> _logger;
+    private readonly ConcurrentDictionary<string, DatabaseSchemaInfo> _schemaCache;
+    private readonly ConcurrentDictionary<string, DateTime> _lastRefreshTimes;
+    private readonly SmartRagOptions _options;
+
+    public DatabaseSchemaAnalyzer(
+        IDatabaseParserService databaseParserService,
+        ILogger<DatabaseSchemaAnalyzer> logger,
+        IOptions<SmartRagOptions> options)
     {
-        private readonly IDatabaseParserService _databaseParserService;
-        private readonly ILogger<DatabaseSchemaAnalyzer> _logger;
-        private readonly ConcurrentDictionary<string, DatabaseSchemaInfo> _schemaCache;
-        private readonly ConcurrentDictionary<string, DateTime> _lastRefreshTimes;
-        private readonly SmartRagOptions _options;
+        _databaseParserService = databaseParserService;
+        _logger = logger;
+        _schemaCache = new ConcurrentDictionary<string, DatabaseSchemaInfo>();
+        _lastRefreshTimes = new ConcurrentDictionary<string, DateTime>();
+        _options = options.Value;
+    }
 
-        public DatabaseSchemaAnalyzer(
-            IDatabaseParserService databaseParserService,
-            ILogger<DatabaseSchemaAnalyzer> logger,
-            IOptions<SmartRagOptions> options)
+    /// <summary>
+    /// [DB Query] Analyzes database schema
+    /// </summary>
+    public async Task<DatabaseSchemaInfo> AnalyzeDatabaseSchemaAsync(DatabaseConnectionConfig connectionConfig, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var databaseId = await GetDatabaseIdAsync(connectionConfig, cancellationToken);
+
+        var schemaInfo = new DatabaseSchemaInfo
         {
-            _databaseParserService = databaseParserService;
-            _logger = logger;
-            _schemaCache = new ConcurrentDictionary<string, DatabaseSchemaInfo>();
-            _lastRefreshTimes = new ConcurrentDictionary<string, DateTime>();
-            _options = options.Value;
-        }
+            DatabaseId = databaseId,
+            DatabaseType = connectionConfig.DatabaseType,
+            Status = SchemaAnalysisStatus.InProgress,
+            LastAnalyzed = DateTime.UtcNow
+        };
 
-        /// <summary>
-        /// [DB Query] Analyzes database schema
-        /// </summary>
-        public async Task<DatabaseSchemaInfo> AnalyzeDatabaseSchemaAsync(DatabaseConnectionConfig connectionConfig, CancellationToken cancellationToken = default)
+        try
         {
-            var databaseId = await GetDatabaseIdAsync(connectionConfig);
+            schemaInfo.DatabaseName = await ExtractDatabaseNameAsync(connectionConfig, cancellationToken);
 
-            var schemaInfo = new DatabaseSchemaInfo
+            var tableNames = await _databaseParserService.GetTableNamesAsync(
+                connectionConfig.ConnectionString,
+                connectionConfig.DatabaseType,
+                cancellationToken);
+
+            tableNames = FilterTables(tableNames, connectionConfig);
+
+            long totalRows = 0;
+
+            foreach (var tableName in tableNames)
             {
-                DatabaseId = databaseId,
-                DatabaseType = connectionConfig.DatabaseType,
-                Status = SchemaAnalysisStatus.InProgress,
-                LastAnalyzed = DateTime.UtcNow
-            };
+                cancellationToken.ThrowIfCancellationRequested();
 
-            try
-            {
-                schemaInfo.DatabaseName = await ExtractDatabaseNameAsync(connectionConfig, cancellationToken);
-
-                var tableNames = await _databaseParserService.GetTableNamesAsync(
+                var tableInfo = await AnalyzeTableAsync(
                     connectionConfig.ConnectionString,
+                    tableName,
                     connectionConfig.DatabaseType,
                     cancellationToken);
 
-                tableNames = FilterTables(tableNames, connectionConfig);
+                schemaInfo.Tables.Add(tableInfo);
+                totalRows += tableInfo.RowCount;
+            }
 
-                long totalRows = 0;
+            schemaInfo.TotalRowCount = totalRows;
 
-                foreach (var tableName in tableNames)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    
-                    var tableInfo = await AnalyzeTableAsync(
-                        connectionConfig.ConnectionString,
-                        tableName,
-                        connectionConfig.DatabaseType,
-                        cancellationToken);
+            schemaInfo.Status = SchemaAnalysisStatus.Completed;
 
-                    schemaInfo.Tables.Add(tableInfo);
-                    totalRows += tableInfo.RowCount;
-                }
+            _schemaCache[databaseId] = schemaInfo;
+            _lastRefreshTimes[databaseId] = DateTime.UtcNow;
+        }
+        catch (Exception ex)
+        {
+            DatabaseLogMessages.LogErrorAnalyzingSchemaForDatabase(_logger, ex);
+            schemaInfo.Status = SchemaAnalysisStatus.Failed;
+            schemaInfo.ErrorMessage = ex.Message;
+            _schemaCache[databaseId] = schemaInfo;
+            _lastRefreshTimes[databaseId] = DateTime.UtcNow;
+        }
 
-                schemaInfo.TotalRowCount = totalRows;
+        return schemaInfo;
+    }
 
-                schemaInfo.Status = SchemaAnalysisStatus.Completed;
+    public async Task<List<DatabaseSchemaInfo>> GetAllSchemasAsync(CancellationToken cancellationToken = default)
+    {
+        if (!_schemaCache.IsEmpty || _options.DatabaseConnections is not { Count: > 0 })
+            return _schemaCache.Values.ToList();
 
-                _schemaCache[databaseId] = schemaInfo;
-                _lastRefreshTimes[databaseId] = DateTime.UtcNow;
+        foreach (var connection in _options.DatabaseConnections)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            try
+            {
+                await AnalyzeDatabaseSchemaAsync(connection, cancellationToken);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error analyzing schema for database");
-                schemaInfo.Status = SchemaAnalysisStatus.Failed;
-                schemaInfo.ErrorMessage = ex.Message;
+                DatabaseLogMessages.LogFailedToAnalyzeSchemaForConnection(_logger, ex);
             }
-
-            return schemaInfo;
         }
 
-        public async Task<List<DatabaseSchemaInfo>> GetAllSchemasAsync(CancellationToken cancellationToken = default)
+        return _schemaCache.Values.ToList();
+    }
+
+    public Task<DatabaseSchemaInfo> GetSchemaAsync(string databaseId, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        _schemaCache.TryGetValue(databaseId, out var schema);
+        return Task.FromResult(schema);
+    }
+
+    private async Task<string> GetDatabaseIdAsync(DatabaseConnectionConfig config, CancellationToken cancellationToken = default)
+    {
+        if (!string.IsNullOrEmpty(config.Name))
         {
-            if (_schemaCache.IsEmpty && _options.DatabaseConnections != null && _options.DatabaseConnections.Count > 0)
+            return config.Name;
+        }
+
+        var dbName = await ExtractDatabaseNameAsync(config, cancellationToken);
+        return $"{config.DatabaseType}_{dbName}";
+    }
+
+    private async Task<string> ExtractDatabaseNameAsync(DatabaseConnectionConfig config, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            switch (config.DatabaseType)
             {
-                foreach (var connection in _options.DatabaseConnections)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    
+                case DatabaseType.SqlServer:
                     try
                     {
-                        await AnalyzeDatabaseSchemaAsync(connection, cancellationToken);
+                        var builder = new SqlConnectionStringBuilder(config.ConnectionString);
+                        if (!string.IsNullOrEmpty(builder.InitialCatalog))
+                        {
+                            return builder.InitialCatalog;
+                        }
                     }
-                    catch (Exception ex)
+                    catch (Exception)
                     {
-                        _logger.LogWarning(ex, "Failed to analyze schema for configured database connection");
+                        // Connection string parsing failed, fall through to connection attempt
+                        // This is expected behavior when connection string format is non-standard
                     }
-                }
+                    break;
+
+                case DatabaseType.SQLite:
+                    var match = Regex.Match(
+                        config.ConnectionString,
+                        @"Data Source=(.+?)(;|$)");
+
+                    if (match.Success)
+                    {
+                        var path = match.Groups[1].Value;
+                        return Path.GetFileNameWithoutExtension(path);
+                    }
+                    break;
+
+                case DatabaseType.MySQL:
+                    try
+                    {
+                        var builder = new MySqlConnectionStringBuilder(config.ConnectionString);
+                        if (!string.IsNullOrEmpty(builder.Database))
+                        {
+                            return builder.Database;
+                        }
+                    }
+                    catch (Exception)
+                    {
+                        // Connection string parsing failed, fall through to connection attempt
+                        // This is expected behavior when connection string format is non-standard
+                    }
+                    break;
+
+                case DatabaseType.PostgreSQL:
+                    try
+                    {
+                        var builder = new NpgsqlConnectionStringBuilder(config.ConnectionString);
+                        if (!string.IsNullOrEmpty(builder.Database))
+                        {
+                            return builder.Database;
+                        }
+                    }
+                    catch (Exception)
+                    {
+                        // Connection string parsing failed, fall through to connection attempt
+                        // This is expected behavior when connection string format is non-standard
+                    }
+                    break;
             }
 
-            return _schemaCache.Values.ToList();
-        }
-
-        public Task<DatabaseSchemaInfo> GetSchemaAsync(string databaseId, CancellationToken cancellationToken = default)
-        {
-            _schemaCache.TryGetValue(databaseId, out var schema);
-            return Task.FromResult(schema);
-        }
-
-        private async Task<string> GetDatabaseIdAsync(DatabaseConnectionConfig config, CancellationToken cancellationToken = default)
-        {
-            if (!string.IsNullOrEmpty(config.Name))
-            {
-                return config.Name;
-            }
-
-            var dbName = await ExtractDatabaseNameAsync(config, cancellationToken);
-            return $"{config.DatabaseType}_{dbName}";
-        }
-
-        private async Task<string> ExtractDatabaseNameAsync(DatabaseConnectionConfig config, CancellationToken cancellationToken = default)
-        {
             try
             {
-                switch (config.DatabaseType)
+                await using var connection = CreateConnection(config.ConnectionString, config.DatabaseType);
+                await connection.OpenAsync(cancellationToken);
+                var databaseName = connection.Database;
+
+                if (!string.IsNullOrEmpty(databaseName))
                 {
-                    case DatabaseType.SqlServer:
-                        try
-                        {
-                            var builder = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(config.ConnectionString);
-                            if (!string.IsNullOrEmpty(builder.InitialCatalog))
-                            {
-                                return builder.InitialCatalog;
-                            }
-                        }
-                        catch (Exception)
-                        {
-                            // Connection string parsing failed, fall through to connection attempt
-                            // This is expected behavior when connection string format is non-standard
-                        }
-                        break;
-
-                    case DatabaseType.SQLite:
-                        var match = System.Text.RegularExpressions.Regex.Match(
-                            config.ConnectionString,
-                            @"Data Source=(.+?)(;|$)");
-
-                        if (match.Success)
-                        {
-                            var path = match.Groups[1].Value;
-                            return System.IO.Path.GetFileNameWithoutExtension(path);
-                        }
-                        break;
-
-                    case DatabaseType.MySQL:
-                        try
-                        {
-                            var builder = new MySql.Data.MySqlClient.MySqlConnectionStringBuilder(config.ConnectionString);
-                            if (!string.IsNullOrEmpty(builder.Database))
-                            {
-                                return builder.Database;
-                            }
-                        }
-                        catch (Exception)
-                        {
-                            // Connection string parsing failed, fall through to connection attempt
-                            // This is expected behavior when connection string format is non-standard
-                        }
-                        break;
-
-                    case DatabaseType.PostgreSQL:
-                        try
-                        {
-                            var builder = new Npgsql.NpgsqlConnectionStringBuilder(config.ConnectionString);
-                            if (!string.IsNullOrEmpty(builder.Database))
-                            {
-                                return builder.Database;
-                            }
-                        }
-                        catch (Exception)
-                        {
-                            // Connection string parsing failed, fall through to connection attempt
-                            // This is expected behavior when connection string format is non-standard
-                        }
-                        break;
+                    return databaseName;
                 }
-
-                try
-                {
-                    using var connection = CreateConnection(config.ConnectionString, config.DatabaseType);
-                    await connection.OpenAsync();
-                    var databaseName = connection.Database;
-
-                    if (!string.IsNullOrEmpty(databaseName))
-                    {
-                        return databaseName;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Could not open connection to extract database name, using connection string info");
-                }
-
-                return config.Name ?? "UnknownDatabase";
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Could not extract database name from connection string");
-                return config.Name ?? "UnknownDatabase";
+                DatabaseLogMessages.LogCouldNotOpenConnectionToExtractDbName(_logger, ex);
             }
+
+            return config.Name;
+        }
+        catch (Exception ex)
+        {
+            DatabaseLogMessages.LogCouldNotExtractDatabaseNameFromConnection(_logger, ex);
+            return config.Name;
+        }
+    }
+
+    private static List<string> FilterTables(List<string> tableNames, DatabaseConnectionConfig config)
+    {
+        if (tableNames == null)
+            return new List<string>();
+
+        var includedTables = config.IncludedTables ?? Array.Empty<string>();
+        var excludedTables = config.ExcludedTables ?? Array.Empty<string>();
+
+        if (includedTables.Length > 0)
+        {
+            tableNames = tableNames
+                .Where(t => includedTables.Contains(t, StringComparer.OrdinalIgnoreCase))
+                .ToList();
         }
 
-        private List<string> FilterTables(List<string> tableNames, DatabaseConnectionConfig config)
+        if (excludedTables.Length > 0)
         {
-            if (config.IncludedTables != null && config.IncludedTables.Length > 0)
-            {
-                tableNames = tableNames
-                    .Where(t => config.IncludedTables.Contains(t, StringComparer.OrdinalIgnoreCase))
-                    .ToList();
-            }
-
-            if (config.ExcludedTables != null && config.ExcludedTables.Length > 0)
-            {
-                tableNames = tableNames
-                    .Where(t => !config.ExcludedTables.Contains(t, StringComparer.OrdinalIgnoreCase))
-                    .ToList();
-            }
-
-            return tableNames;
+            tableNames = tableNames
+                .Where(t => !excludedTables.Contains(t, StringComparer.OrdinalIgnoreCase))
+                .ToList();
         }
 
-        private async Task<TableSchemaInfo> AnalyzeTableAsync(
-            string connectionString,
-            string tableName,
-            DatabaseType databaseType,
-            CancellationToken cancellationToken = default)
+        return tableNames;
+    }
+
+    private async Task<TableSchemaInfo> AnalyzeTableAsync(
+        string connectionString,
+        string tableName,
+        DatabaseType databaseType,
+        CancellationToken cancellationToken = default)
+    {
+        var tableInfo = new TableSchemaInfo
         {
-            var tableInfo = new TableSchemaInfo
+            TableName = tableName
+        };
+
+        try
+        {
+            await using var connection = CreateConnection(connectionString, databaseType);
+            await connection.OpenAsync(cancellationToken);
+
+            tableInfo.Columns = await GetColumnsAsync(connection, tableName, databaseType);
+
+            tableInfo.PrimaryKeys = tableInfo.Columns
+                .Where(c => c.IsPrimaryKey)
+                .Select(c => c.ColumnName)
+                .ToList();
+
+            tableInfo.ForeignKeys = await GetForeignKeysAsync(connection, tableName, databaseType);
+
+            foreach (var fk in tableInfo.ForeignKeys)
             {
-                TableName = tableName
+                var column = tableInfo.Columns.FirstOrDefault(c => c.ColumnName == fk.ColumnName);
+                if (column != null)
+                {
+                    column.IsForeignKey = true;
+                }
+            }
+
+            tableInfo.RowCount = await GetRowCountAsync(connection, tableName);
+
+            tableInfo.SampleData = await GetSampleDataAsync(connection, tableName, databaseType);
+        }
+        catch (SqlException sqlEx) when (databaseType == DatabaseType.SqlServer)
+        {
+            if (sqlEx.Number == 4060 || sqlEx.Message.Contains("Cannot open database"))
+            {
+                DatabaseLogMessages.LogSqlServerDatabaseNotExistForTable(_logger, tableName, null);
+                return tableInfo; // Return empty table info
+            }
+
+            DatabaseLogMessages.LogErrorAnalyzingSqlServerTable(_logger, tableName, sqlEx);
+        }
+        catch (Exception ex)
+        {
+            DatabaseLogMessages.LogErrorAnalyzingTable(_logger, tableName, ex);
+        }
+
+        return tableInfo;
+    }
+
+    private Task<List<ColumnSchemaInfo>> GetColumnsAsync(
+        DbConnection connection,
+        string tableName,
+        DatabaseType databaseType)
+    {
+        var columns = new List<ColumnSchemaInfo>();
+
+        DataTable schema;
+
+        if (databaseType == DatabaseType.SQLite)
+        {
+            return GetColumnsSQLiteAsync(connection, tableName);
+        }
+        else
+        {
+            string schemaName = null;
+            var actualTableName = tableName;
+
+            if (tableName.Contains('.'))
+            {
+                var parts = tableName.Split('.', 2);
+                schemaName = parts[0];
+                actualTableName = parts[1];
+            }
+
+            schema = connection.GetSchema("Columns", new[] { null, schemaName, actualTableName, null });
+        }
+
+        foreach (DataRow row in schema.Rows)
+        {
+            var column = new ColumnSchemaInfo
+            {
+                ColumnName = row["COLUMN_NAME"].ToString() ?? string.Empty,
+                DataType = row["DATA_TYPE"].ToString() ?? string.Empty,
+                IsNullable = row["IS_NULLABLE"].ToString()?.ToUpper() == "YES"
             };
 
-            try
+            if (row.Table.Columns.Contains("CHARACTER_MAXIMUM_LENGTH") &&
+                row["CHARACTER_MAXIMUM_LENGTH"] != DBNull.Value)
             {
-                using var connection = CreateConnection(connectionString, databaseType);
-                await connection.OpenAsync(cancellationToken);
-
-                tableInfo.Columns = await GetColumnsAsync(connection, tableName, databaseType);
-
-                tableInfo.PrimaryKeys = tableInfo.Columns
-                    .Where(c => c.IsPrimaryKey)
-                    .Select(c => c.ColumnName)
-                    .ToList();
-
-                tableInfo.ForeignKeys = await GetForeignKeysAsync(connection, tableName, databaseType);
-
-                foreach (var fk in tableInfo.ForeignKeys)
+                var maxLengthValue = row["CHARACTER_MAXIMUM_LENGTH"];
+                // Handle LONGBLOB/BLOB types that may return -1 or very large values
+                if (maxLengthValue is long longValue)
                 {
-                    var column = tableInfo.Columns.FirstOrDefault(c => c.ColumnName == fk.ColumnName);
-                    if (column != null)
+                    if (longValue is > int.MaxValue or < int.MinValue)
                     {
-                        column.IsForeignKey = true;
+                        // For BLOB types, set to null or a reasonable max
+                        column.MaxLength = null;
+                    }
+                    else
+                    {
+                        column.MaxLength = (int)longValue;
                     }
                 }
-
-                tableInfo.RowCount = await GetRowCountAsync(connection, tableName);
-
-                tableInfo.SampleData = await GetSampleDataAsync(connection, tableName, databaseType);
-            }
-            catch (Microsoft.Data.SqlClient.SqlException sqlEx) when (databaseType == DatabaseType.SqlServer)
-            {
-                if (sqlEx.Number == 4060 || sqlEx.Message.Contains("Cannot open database"))
+                else
                 {
-                    _logger.LogWarning("SQL Server database does not exist yet for table {TableName}", tableName);
-                    return tableInfo; // Return empty table info
+                    try
+                    {
+                        column.MaxLength = Convert.ToInt32(maxLengthValue);
+                    }
+                    catch (OverflowException)
+                    {
+                        // For BLOB/LONGBLOB types, set to null
+                        column.MaxLength = null;
+                    }
                 }
-
-                _logger.LogWarning(sqlEx, "Error analyzing SQL Server table {TableName}", tableName);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Error analyzing table {TableName}", tableName);
             }
 
-            return tableInfo;
+            columns.Add(column);
         }
 
-        private Task<List<ColumnSchemaInfo>> GetColumnsAsync(
-            DbConnection connection,
-            string tableName,
-            DatabaseType databaseType)
+        try
         {
-            var columns = new List<ColumnSchemaInfo>();
+            string schemaName = null;
+            var actualTableName = tableName;
 
-            DataTable schema;
-
-            if (databaseType == DatabaseType.SQLite)
+            if (tableName.Contains('.'))
             {
-                return GetColumnsSQLiteAsync(connection, tableName);
+                var parts = tableName.Split('.', 2);
+                schemaName = parts[0];
+                actualTableName = parts[1];
             }
-            else
+
+            var pkSchema = connection.GetSchema("IndexColumns", new[] { null, schemaName, actualTableName, null });
+            var primaryKeyColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (DataRow row in pkSchema.Rows)
             {
-                string schemaName = null;
-                string actualTableName = tableName;
-                
-                if (tableName.Contains('.'))
+                if (!row.Table.Columns.Contains("constraint_name") ||
+                    !(row["constraint_name"].ToString()?.IndexOf("PK", StringComparison.OrdinalIgnoreCase) >=
+                      0))
+                    continue;
+                var columnName = row["column_name"].ToString();
+                if (!string.IsNullOrEmpty(columnName))
                 {
-                    var parts = tableName.Split('.', 2);
-                    schemaName = parts[0];
-                    actualTableName = parts[1];
+                    primaryKeyColumns.Add(columnName);
                 }
-                
-                schema = connection.GetSchema("Columns", new[] { null, schemaName, actualTableName, null });
             }
 
-            foreach (DataRow row in schema.Rows)
+            foreach (var column in columns)
+            {
+                column.IsPrimaryKey = primaryKeyColumns.Contains(column.ColumnName);
+            }
+        }
+        catch (Exception ex)
+        {
+            DatabaseLogMessages.LogCouldNotRetrievePrimaryKeyForTable(_logger, tableName, ex);
+        }
+
+        return Task.FromResult(columns);
+    }
+
+    private Task<List<ColumnSchemaInfo>> GetColumnsSQLiteAsync(DbConnection connection, string tableName)
+    {
+        var columns = new List<ColumnSchemaInfo>();
+
+        try
+        {
+            using var cmd = connection.CreateCommand();
+            cmd.CommandText = $"PRAGMA table_info('{tableName}')";
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
             {
                 var column = new ColumnSchemaInfo
                 {
-                    ColumnName = row["COLUMN_NAME"].ToString() ?? string.Empty,
-                    DataType = row["DATA_TYPE"].ToString() ?? string.Empty,
-                    IsNullable = row["IS_NULLABLE"].ToString()?.ToUpper() == "YES"
+                    ColumnName = reader["name"].ToString() ?? string.Empty,
+                    DataType = reader["type"].ToString() ?? string.Empty,
+                    IsNullable = reader["notnull"].ToString() == "0",
+                    IsPrimaryKey = reader["pk"].ToString() != "0"
                 };
-
-                if (row.Table.Columns.Contains("CHARACTER_MAXIMUM_LENGTH") &&
-                    row["CHARACTER_MAXIMUM_LENGTH"] != DBNull.Value)
-                {
-                    var maxLengthValue = row["CHARACTER_MAXIMUM_LENGTH"];
-                    // Handle LONGBLOB/BLOB types that may return -1 or very large values
-                    if (maxLengthValue is long longValue)
-                    {
-                        if (longValue > int.MaxValue || longValue < int.MinValue)
-                        {
-                            // For BLOB types, set to null or a reasonable max
-                            column.MaxLength = null;
-                        }
-                        else
-                        {
-                            column.MaxLength = (int)longValue;
-                        }
-                    }
-                    else
-                    {
-                        try
-                        {
-                            column.MaxLength = Convert.ToInt32(maxLengthValue);
-                        }
-                        catch (OverflowException)
-                        {
-                            // For BLOB/LONGBLOB types, set to null
-                            column.MaxLength = null;
-                        }
-                    }
-                }
 
                 columns.Add(column);
             }
-
-            if (databaseType != DatabaseType.SQLite)
-            {
-                try
-                {
-                    string schemaName = null;
-                    string actualTableName = tableName;
-                    
-                    if (tableName.Contains('.'))
-                    {
-                        var parts = tableName.Split('.', 2);
-                        schemaName = parts[0];
-                        actualTableName = parts[1];
-                    }
-                    
-                    var pkSchema = connection.GetSchema("IndexColumns", new[] { null, schemaName, actualTableName, null });
-                    var primaryKeyColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-                    foreach (DataRow row in pkSchema.Rows)
-                    {
-                        if (row.Table.Columns.Contains("constraint_name") &&
-                            row["constraint_name"].ToString()?.IndexOf("PK", StringComparison.OrdinalIgnoreCase) >= 0)
-                        {
-                            var columnName = row["column_name"].ToString();
-                            if (!string.IsNullOrEmpty(columnName))
-                            {
-                                primaryKeyColumns.Add(columnName);
-                            }
-                        }
-                    }
-
-                    foreach (var column in columns)
-                    {
-                        column.IsPrimaryKey = primaryKeyColumns.Contains(column.ColumnName);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogDebug(ex, "Could not retrieve primary key information for table {TableName}", tableName);
-                }
-            }
-
-            return Task.FromResult(columns);
+        }
+        catch (Exception ex)
+        {
+            DatabaseLogMessages.LogErrorGettingSqliteColumnsForTable(_logger, tableName, ex);
         }
 
-        private Task<List<ColumnSchemaInfo>> GetColumnsSQLiteAsync(DbConnection connection, string tableName)
+        return Task.FromResult(columns);
+    }
+
+    private Task<List<ForeignKeyInfo>> GetForeignKeysAsync(
+        DbConnection connection,
+        string tableName,
+        DatabaseType databaseType)
+    {
+        var foreignKeys = new List<ForeignKeyInfo>();
+
+        if (databaseType == DatabaseType.SQLite)
         {
-            var columns = new List<ColumnSchemaInfo>();
-
-            try
-            {
-                using var cmd = connection.CreateCommand();
-                cmd.CommandText = $"PRAGMA table_info('{tableName}')";
-                using var reader = cmd.ExecuteReader();
-                while (reader.Read())
-                {
-                    var column = new ColumnSchemaInfo
-                    {
-                        ColumnName = reader["name"].ToString() ?? string.Empty,
-                        DataType = reader["type"].ToString() ?? string.Empty,
-                        IsNullable = reader["notnull"].ToString() == "0",
-                        IsPrimaryKey = reader["pk"].ToString() != "0"
-                    };
-
-                    columns.Add(column);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Error getting SQLite columns for table {TableName}", tableName);
-            }
-
-            return Task.FromResult(columns);
+            return GetForeignKeysSQLiteAsync(connection, tableName);
         }
 
-        private Task<List<ForeignKeyInfo>> GetForeignKeysAsync(
-            DbConnection connection,
-            string tableName,
-            DatabaseType databaseType)
+        try
         {
-            var foreignKeys = new List<ForeignKeyInfo>();
+            using var cmd = connection.CreateCommand();
 
-            if (databaseType == DatabaseType.SQLite)
+            string schemaName = null;
+            string actualTableName = tableName;
+
+            if (tableName.Contains('.'))
             {
-                return GetForeignKeysSQLiteAsync(connection, tableName);
+                var parts = tableName.Split('.', 2);
+                schemaName = parts[0];
+                actualTableName = parts[1];
             }
 
-            try
+            switch (databaseType)
             {
-                using var cmd = connection.CreateCommand();
-                
-                string schemaName = null;
-                string actualTableName = tableName;
-                
-                if (tableName.Contains('.'))
+                case DatabaseType.SqlServer:
+                    cmd.CommandText = !string.IsNullOrEmpty(schemaName) ? $@"
+                        SELECT
+                            fk.name AS ForeignKeyName,
+                            COL_NAME(fkc.parent_object_id, fkc.parent_column_id) AS ColumnName,
+                            SCHEMA_NAME(OBJECTPROPERTY(fkc.referenced_object_id, 'SchemaId')) + '.' + OBJECT_NAME(fkc.referenced_object_id) AS ReferencedTable,
+                            COL_NAME(fkc.referenced_object_id, fkc.referenced_column_id) AS ReferencedColumn
+                        FROM sys.foreign_keys AS fk
+                        INNER JOIN sys.foreign_key_columns AS fkc ON fk.object_id = fkc.constraint_object_id
+                        WHERE SCHEMA_NAME(OBJECTPROPERTY(fk.parent_object_id, 'SchemaId')) = '{schemaName}'
+                        AND OBJECT_NAME(fk.parent_object_id) = '{actualTableName}'" : $@"
+                        SELECT
+                            fk.name AS ForeignKeyName,
+                            COL_NAME(fkc.parent_object_id, fkc.parent_column_id) AS ColumnName,
+                            OBJECT_NAME(fkc.referenced_object_id) AS ReferencedTable,
+                            COL_NAME(fkc.referenced_object_id, fkc.referenced_column_id) AS ReferencedColumn
+                        FROM sys.foreign_keys AS fk
+                        INNER JOIN sys.foreign_key_columns AS fkc ON fk.object_id = fkc.constraint_object_id
+                        WHERE OBJECT_NAME(fk.parent_object_id) = '{actualTableName}'";
+                    break;
+                case DatabaseType.MySQL:
+                    cmd.CommandText = $@"
+                    SELECT
+                        CONSTRAINT_NAME AS ForeignKeyName,
+                        COLUMN_NAME AS ColumnName,
+                        REFERENCED_TABLE_NAME AS ReferencedTable,
+                        REFERENCED_COLUMN_NAME AS ReferencedColumn
+                    FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
+                    WHERE TABLE_SCHEMA = DATABASE()
+                    AND TABLE_NAME = '{actualTableName}'
+                    AND REFERENCED_TABLE_NAME IS NOT NULL";
+                    break;
+                case DatabaseType.PostgreSQL when !string.IsNullOrEmpty(schemaName):
+                    cmd.CommandText = $@"
+                        SELECT
+                            tc.constraint_name AS ForeignKeyName,
+                            kcu.column_name AS ColumnName,
+                            ccu.table_schema || '.' || ccu.table_name AS ReferencedTable,
+                            ccu.column_name AS ReferencedColumn
+                        FROM information_schema.table_constraints AS tc
+                        JOIN information_schema.key_column_usage AS kcu ON tc.constraint_name = kcu.constraint_name
+                        JOIN information_schema.constraint_column_usage AS ccu ON ccu.constraint_name = tc.constraint_name
+                        WHERE tc.constraint_type = 'FOREIGN KEY'
+                        AND tc.table_schema = '{schemaName}'
+                        AND tc.table_name = '{actualTableName}'";
+                    break;
+                case DatabaseType.PostgreSQL:
+                    cmd.CommandText = $@"
+                        SELECT
+                            tc.constraint_name AS ForeignKeyName,
+                            kcu.column_name AS ColumnName,
+                            ccu.table_name AS ReferencedTable,
+                            ccu.column_name AS ReferencedColumn
+                        FROM information_schema.table_constraints AS tc
+                        JOIN information_schema.key_column_usage AS kcu ON tc.constraint_name = kcu.constraint_name
+                        JOIN information_schema.constraint_column_usage AS ccu ON ccu.constraint_name = tc.constraint_name
+                        WHERE tc.constraint_type = 'FOREIGN KEY'
+                        AND tc.table_name = '{actualTableName}'";
+                    break;
+                default:
+                    return Task.FromResult(foreignKeys);
+            }
+
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                var fk = new ForeignKeyInfo
+                {
+                    ForeignKeyName = reader["ForeignKeyName"].ToString() ?? string.Empty,
+                    ColumnName = reader["ColumnName"].ToString() ?? string.Empty,
+                    ReferencedTable = reader["ReferencedTable"].ToString() ?? string.Empty,
+                    ReferencedColumn = reader["ReferencedColumn"].ToString() ?? string.Empty
+                };
+
+                if (!string.IsNullOrEmpty(fk.ColumnName) && !string.IsNullOrEmpty(fk.ReferencedTable))
+                {
+                    foreignKeys.Add(fk);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            DatabaseLogMessages.LogCouldNotRetrieveForeignKeysForTable(_logger, tableName, ex);
+        }
+
+        return Task.FromResult(foreignKeys);
+    }
+
+    private Task<List<ForeignKeyInfo>> GetForeignKeysSQLiteAsync(DbConnection connection, string tableName)
+    {
+        var foreignKeys = new List<ForeignKeyInfo>();
+
+        try
+        {
+            using var cmd = connection.CreateCommand();
+            cmd.CommandText = $"PRAGMA foreign_key_list('{tableName}')";
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                var fk = new ForeignKeyInfo
+                {
+                    ForeignKeyName = $"FK_{tableName}_{reader["from"]}",
+                    ColumnName = reader["from"].ToString() ?? string.Empty,
+                    ReferencedTable = reader["table"].ToString() ?? string.Empty,
+                    ReferencedColumn = reader["to"].ToString() ?? string.Empty
+                };
+
+                if (!string.IsNullOrEmpty(fk.ColumnName) && !string.IsNullOrEmpty(fk.ReferencedTable))
+                {
+                    foreignKeys.Add(fk);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            DatabaseLogMessages.LogCouldNotRetrieveSqliteForeignKeysForTable(_logger, tableName, ex);
+        }
+
+        return Task.FromResult(foreignKeys);
+    }
+
+    private async Task<long> GetRowCountAsync(DbConnection connection, string tableName)
+    {
+        try
+        {
+            await using var cmd = connection.CreateCommand();
+            string quotedTable;
+            var connectionType = connection.GetType().Name;
+
+            switch (connectionType)
+            {
+                case "SqlConnection" when tableName.Contains('.'):
                 {
                     var parts = tableName.Split('.', 2);
-                    schemaName = parts[0];
-                    actualTableName = parts[1];
+                    quotedTable = $"[{parts[0]}].[{parts[1]}]";
+                    break;
                 }
-                
-                if (databaseType == DatabaseType.SqlServer)
+                case "SqlConnection":
+                    quotedTable = $"[{tableName}]";
+                    break;
+                case "MySqlConnection" when tableName.Contains('.'):
                 {
-                    if (!string.IsNullOrEmpty(schemaName))
-                    {
-                        cmd.CommandText = $@"
-                            SELECT 
-                                fk.name AS ForeignKeyName,
-                                COL_NAME(fkc.parent_object_id, fkc.parent_column_id) AS ColumnName,
-                                SCHEMA_NAME(OBJECTPROPERTY(fkc.referenced_object_id, 'SchemaId')) + '.' + OBJECT_NAME(fkc.referenced_object_id) AS ReferencedTable,
-                                COL_NAME(fkc.referenced_object_id, fkc.referenced_column_id) AS ReferencedColumn
-                            FROM sys.foreign_keys AS fk
-                            INNER JOIN sys.foreign_key_columns AS fkc ON fk.object_id = fkc.constraint_object_id
-                            WHERE SCHEMA_NAME(OBJECTPROPERTY(fk.parent_object_id, 'SchemaId')) = '{schemaName}'
-                            AND OBJECT_NAME(fk.parent_object_id) = '{actualTableName}'";
-                    }
-                    else
-                    {
-                        cmd.CommandText = $@"
-                            SELECT 
-                                fk.name AS ForeignKeyName,
-                                COL_NAME(fkc.parent_object_id, fkc.parent_column_id) AS ColumnName,
-                                OBJECT_NAME(fkc.referenced_object_id) AS ReferencedTable,
-                                COL_NAME(fkc.referenced_object_id, fkc.referenced_column_id) AS ReferencedColumn
-                            FROM sys.foreign_keys AS fk
-                            INNER JOIN sys.foreign_key_columns AS fkc ON fk.object_id = fkc.constraint_object_id
-                            WHERE OBJECT_NAME(fk.parent_object_id) = '{actualTableName}'";
-                    }
+                    var parts = tableName.Split('.', 2);
+                    quotedTable = $"`{parts[0]}`.`{parts[1]}`";
+                    break;
                 }
-                else if (databaseType == DatabaseType.MySQL)
+                case "MySqlConnection":
+                    quotedTable = $"`{tableName}`";
+                    break;
+                case "NpgsqlConnection" when tableName.Contains('.'):
                 {
-                    cmd.CommandText = $@"
-                        SELECT 
-                            CONSTRAINT_NAME AS ForeignKeyName,
-                            COLUMN_NAME AS ColumnName,
-                            REFERENCED_TABLE_NAME AS ReferencedTable,
-                            REFERENCED_COLUMN_NAME AS ReferencedColumn
-                        FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
-                        WHERE TABLE_SCHEMA = DATABASE()
-                        AND TABLE_NAME = '{actualTableName}' 
-                        AND REFERENCED_TABLE_NAME IS NOT NULL";
+                    var parts = tableName.Split('.', 2);
+                    quotedTable = $"\"{parts[0]}\".\"{parts[1]}\"";
+                    break;
                 }
-                else if (databaseType == DatabaseType.PostgreSQL)
-                {
-                    if (!string.IsNullOrEmpty(schemaName))
-                    {
-                        cmd.CommandText = $@"
-                            SELECT 
-                                tc.constraint_name AS ForeignKeyName,
-                                kcu.column_name AS ColumnName,
-                                ccu.table_schema || '.' || ccu.table_name AS ReferencedTable,
-                                ccu.column_name AS ReferencedColumn
-                            FROM information_schema.table_constraints AS tc 
-                            JOIN information_schema.key_column_usage AS kcu ON tc.constraint_name = kcu.constraint_name
-                            JOIN information_schema.constraint_column_usage AS ccu ON ccu.constraint_name = tc.constraint_name
-                            WHERE tc.constraint_type = 'FOREIGN KEY' 
-                            AND tc.table_schema = '{schemaName}'
-                            AND tc.table_name = '{actualTableName}'";
-                    }
-                    else
-                    {
-                        cmd.CommandText = $@"
-                            SELECT 
-                                tc.constraint_name AS ForeignKeyName,
-                                kcu.column_name AS ColumnName,
-                                ccu.table_name AS ReferencedTable,
-                                ccu.column_name AS ReferencedColumn
-                            FROM information_schema.table_constraints AS tc 
-                            JOIN information_schema.key_column_usage AS kcu ON tc.constraint_name = kcu.constraint_name
-                            JOIN information_schema.constraint_column_usage AS ccu ON ccu.constraint_name = tc.constraint_name
-                            WHERE tc.constraint_type = 'FOREIGN KEY' 
-                            AND tc.table_name = '{actualTableName}'";
-                    }
-                }
-                else
-                {
-                    return Task.FromResult(foreignKeys);
-                }
-
-                using var reader = cmd.ExecuteReader();
-                while (reader.Read())
-                {
-                    var fk = new ForeignKeyInfo
-                    {
-                        ForeignKeyName = reader["ForeignKeyName"]?.ToString() ?? string.Empty,
-                        ColumnName = reader["ColumnName"]?.ToString() ?? string.Empty,
-                        ReferencedTable = reader["ReferencedTable"]?.ToString() ?? string.Empty,
-                        ReferencedColumn = reader["ReferencedColumn"]?.ToString() ?? string.Empty
-                    };
-
-                    if (!string.IsNullOrEmpty(fk.ColumnName) && !string.IsNullOrEmpty(fk.ReferencedTable))
-                    {
-                        foreignKeys.Add(fk);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogDebug(ex, "Could not retrieve foreign keys for table {TableName}", tableName);
-            }
-
-            return Task.FromResult(foreignKeys);
-        }
-
-        private Task<List<ForeignKeyInfo>> GetForeignKeysSQLiteAsync(DbConnection connection, string tableName)
-        {
-            var foreignKeys = new List<ForeignKeyInfo>();
-
-            try
-            {
-                using var cmd = connection.CreateCommand();
-                cmd.CommandText = $"PRAGMA foreign_key_list('{tableName}')";
-                using var reader = cmd.ExecuteReader();
-                while (reader.Read())
-                {
-                    var fk = new ForeignKeyInfo
-                    {
-                        ForeignKeyName = $"FK_{tableName}_{reader["from"]}",
-                        ColumnName = reader["from"].ToString() ?? string.Empty,
-                        ReferencedTable = reader["table"].ToString() ?? string.Empty,
-                        ReferencedColumn = reader["to"].ToString() ?? string.Empty
-                    };
-
-                    if (!string.IsNullOrEmpty(fk.ColumnName) && !string.IsNullOrEmpty(fk.ReferencedTable))
-                    {
-                        foreignKeys.Add(fk);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogDebug(ex, "Could not retrieve SQLite foreign keys for table {TableName}", tableName);
-            }
-
-            return Task.FromResult(foreignKeys);
-        }
-
-        private async Task<long> GetRowCountAsync(DbConnection connection, string tableName)
-        {
-            try
-            {
-                using var cmd = connection.CreateCommand();
-                string quotedTable;
-                var connectionType = connection.GetType().Name;
-
-                if (connectionType == "SqlConnection")
-                {
-                    if (tableName.Contains('.'))
-                    {
-                        var parts = tableName.Split('.', 2);
-                        quotedTable = $"[{parts[0]}].[{parts[1]}]";
-                    }
-                    else
-                    {
-                        quotedTable = $"[{tableName}]";
-                    }
-                }
-                else if (connectionType == "MySqlConnection")
-                {
-                    if (tableName.Contains('.'))
-                    {
-                        var parts = tableName.Split('.', 2);
-                        quotedTable = $"`{parts[0]}`.`{parts[1]}`";
-                    }
-                    else
-                    {
-                        quotedTable = $"`{tableName}`";
-                    }
-                }
-                else if (connectionType == "NpgsqlConnection")
-                {
-                    if (tableName.Contains('.'))
-                    {
-                        var parts = tableName.Split('.', 2);
-                        quotedTable = $"\"{parts[0]}\".\"{parts[1]}\"";
-                    }
-                    else
-                    {
-                        quotedTable = $"\"{tableName}\"";
-                    }
-                }
-                else
-                {
+                case "NpgsqlConnection":
+                    quotedTable = $"\"{tableName}\"";
+                    break;
+                default:
                     quotedTable = tableName;
-                }
+                    break;
+            }
 
-                cmd.CommandText = $"SELECT COUNT(*) FROM {quotedTable}";
-                var result = await cmd.ExecuteScalarAsync();
-                return Convert.ToInt64(result);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogDebug(ex, "Could not get row count for table {TableName}", tableName);
-                return 0;
-            }
+            cmd.CommandText = $"SELECT COUNT(*) FROM {quotedTable}";
+            var result = await cmd.ExecuteScalarAsync();
+            return Convert.ToInt64(result);
         }
-
-        private async Task<string> GetSampleDataAsync(
-            DbConnection connection,
-            string tableName,
-            DatabaseType databaseType)
+        catch (Exception ex)
         {
-            try
+            DatabaseLogMessages.LogCouldNotGetRowCountForTable(_logger, tableName, ex);
+            return 0;
+        }
+    }
+
+    private async Task<string> GetSampleDataAsync(
+        DbConnection connection,
+        string tableName,
+        DatabaseType databaseType)
+    {
+        try
+        {
+            string quotedTable;
+            var connectionType = connection.GetType().Name;
+
+            switch (connectionType)
             {
-                string quotedTable;
-                var connectionType = connection.GetType().Name;
-                
-                if (connectionType == "SqlConnection")
+                case "SqlConnection" when tableName.Contains('.'):
                 {
-                    if (tableName.Contains('.'))
-                    {
-                        var parts = tableName.Split('.', 2);
-                        quotedTable = $"[{parts[0]}].[{parts[1]}]";
-                    }
-                    else
-                    {
-                        quotedTable = $"[{tableName}]";
-                    }
+                    var parts = tableName.Split('.', 2);
+                    quotedTable = $"[{parts[0]}].[{parts[1]}]";
+                    break;
                 }
-                else if (connectionType == "MySqlConnection")
+                case "SqlConnection":
+                    quotedTable = $"[{tableName}]";
+                    break;
+                case "MySqlConnection" when tableName.Contains('.'):
                 {
-                    if (tableName.Contains('.'))
-                    {
-                        var parts = tableName.Split('.', 2);
-                        quotedTable = $"`{parts[0]}`.`{parts[1]}`";
-                    }
-                    else
-                    {
-                        quotedTable = $"`{tableName}`";
-                    }
+                    var parts = tableName.Split('.', 2);
+                    quotedTable = $"`{parts[0]}`.`{parts[1]}`";
+                    break;
                 }
-                else if (connectionType == "NpgsqlConnection")
+                case "MySqlConnection":
+                    quotedTable = $"`{tableName}`";
+                    break;
+                case "NpgsqlConnection" when tableName.Contains('.'):
                 {
-                    if (tableName.Contains('.'))
-                    {
-                        var parts = tableName.Split('.', 2);
-                        quotedTable = $"\"{parts[0]}\".\"{parts[1]}\"";
-                    }
-                    else
-                    {
-                        quotedTable = $"\"{tableName}\"";
-                    }
+                    var parts = tableName.Split('.', 2);
+                    quotedTable = $"\"{parts[0]}\".\"{parts[1]}\"";
+                    break;
                 }
-                else
-                {
+                case "NpgsqlConnection":
+                    quotedTable = $"\"{tableName}\"";
+                    break;
+                default:
                     quotedTable = tableName;
-                }
-                
-                string query = databaseType switch
-                {
-                    DatabaseType.SqlServer => $"SELECT TOP 3 * FROM {quotedTable}",
-                    DatabaseType.MySQL => $"SELECT * FROM {quotedTable} LIMIT 3",
-                    DatabaseType.PostgreSQL => $"SELECT * FROM {quotedTable} LIMIT 3",
-                    _ => $"SELECT * FROM {quotedTable} LIMIT 3",
-                };
-                using var cmd = connection.CreateCommand();
-                cmd.CommandText = query;
-
-                using var reader = await cmd.ExecuteReaderAsync();
-                var sb = new StringBuilder();
-                var rowCount = 0;
-
-                while (await reader.ReadAsync() && rowCount < 3)
-                {
-                    for (int i = 0; i < reader.FieldCount; i++)
-                    {
-                        sb.Append($"{reader.GetName(i)}: {reader.GetValue(i)}, ");
-                    }
-                    sb.AppendLine();
-                    rowCount++;
-                }
-
-                return sb.ToString();
+                    break;
             }
-            catch (Exception ex)
+
+            var query = databaseType switch
             {
-                _logger.LogDebug(ex, "Could not get sample data for table {TableName}", tableName);
-                return string.Empty;
+                DatabaseType.SqlServer => $"SELECT TOP 3 * FROM {quotedTable}",
+                DatabaseType.MySQL => $"SELECT * FROM {quotedTable} LIMIT 3",
+                DatabaseType.PostgreSQL => $"SELECT * FROM {quotedTable} LIMIT 3",
+                _ => $"SELECT * FROM {quotedTable} LIMIT 3",
+            };
+
+            await using var cmd = connection.CreateCommand();
+            cmd.CommandText = query;
+
+            await using var reader = await cmd.ExecuteReaderAsync();
+            var sb = new StringBuilder();
+            var rowCount = 0;
+
+            while (await reader.ReadAsync() && rowCount < 3)
+            {
+                for (var i = 0; i < reader.FieldCount; i++)
+                {
+                    sb.Append($"{reader.GetName(i)}: {reader.GetValue(i)}, ");
+                }
+                sb.AppendLine();
+                rowCount++;
             }
+
+            return sb.ToString();
         }
-
-        private DbConnection CreateConnection(string connectionString, DatabaseType databaseType)
+        catch (Exception ex)
         {
-            if (databaseType == DatabaseType.SQLite)
-            {
-                var sanitizedConnectionString = ValidateAndSanitizeSQLiteConnectionString(connectionString);
-                return new SqliteConnection(sanitizedConnectionString);
-            }
-            
+            DatabaseLogMessages.LogCouldNotGetSampleDataForTable(_logger, tableName, ex);
+            return string.Empty;
+        }
+    }
+
+    private DbConnection CreateConnection(string connectionString, DatabaseType databaseType)
+    {
+        if (databaseType != DatabaseType.SQLite)
             return databaseType switch
             {
                 DatabaseType.SqlServer => new SqlConnection(connectionString),
@@ -775,74 +736,77 @@ namespace SmartRAG.Services.Database
                 DatabaseType.PostgreSQL => new NpgsqlConnection(connectionString),
                 _ => throw new NotSupportedException($"Database type {databaseType} is not supported"),
             };
-        }
-
-        private string ValidateAndSanitizeSQLiteConnectionString(string connectionString)
-        {
-            if (string.IsNullOrWhiteSpace(connectionString))
-                throw new ArgumentException("Connection string cannot be null or empty", nameof(connectionString));
-
-            try
-            {
-                var builder = new SqliteConnectionStringBuilder(connectionString);
-
-                if (!string.IsNullOrEmpty(builder.DataSource))
-                {
-                    var dataSource = builder.DataSource;
-
-                    if (Path.IsPathRooted(dataSource))
-                    {
-                        builder.DataSource = Path.GetFullPath(dataSource);
-                    }
-                    else
-                    {
-                        var currentDir = Directory.GetCurrentDirectory();
-                        var resolvedPath = Path.Combine(currentDir, dataSource);
-                        
-                        if (!File.Exists(resolvedPath))
-                        {
-                            var projectRoot = FindProjectRoot(currentDir);
-                            if (!string.IsNullOrEmpty(projectRoot))
-                            {
-                                var projectRootPath = Path.Combine(projectRoot, dataSource);
-                                resolvedPath = projectRootPath;
-                            }
-                        }
-                        
-                        var fullPath = Path.GetFullPath(resolvedPath);
-                        var directory = Path.GetDirectoryName(fullPath);
-                        
-                        if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
-                        {
-                            Directory.CreateDirectory(directory);
-                        }
-                        
-                        builder.DataSource = fullPath;
-                    }
-                }
-
-                return builder.ConnectionString;
-            }
-            catch (Exception ex)
-            {
-                throw new ArgumentException($"Invalid SQLite connection string format: {ex.Message}", nameof(connectionString), ex);
-            }
-        }
-
-        private static string FindProjectRoot(string startDir)
-        {
-            var dir = new DirectoryInfo(startDir);
-            while (dir != null)
-            {
-                if (File.Exists(Path.Combine(dir.FullName, "SmartRAG.sln")))
-                {
-                    return Path.Combine(dir.FullName, "examples", "SmartRAG.Demo");
-                }
-                dir = dir.Parent;
-            }
-            return null;
-        }
+        var sanitizedConnectionString = ValidateAndSanitizeSQLiteConnectionString(connectionString);
+        return new SqliteConnection(sanitizedConnectionString);
 
     }
+
+    private string ValidateAndSanitizeSQLiteConnectionString(string connectionString)
+    {
+        if (string.IsNullOrWhiteSpace(connectionString))
+            throw new ArgumentException("Connection string cannot be null or empty", nameof(connectionString));
+
+        try
+        {
+            var builder = new SqliteConnectionStringBuilder(connectionString);
+
+            if (string.IsNullOrEmpty(builder.DataSource))
+                return builder.ConnectionString;
+
+            var dataSource = builder.DataSource;
+
+            if (Path.IsPathRooted(dataSource))
+            {
+                builder.DataSource = Path.GetFullPath(dataSource);
+            }
+            else
+            {
+                var currentDir = Directory.GetCurrentDirectory();
+                var resolvedPath = Path.Combine(currentDir, dataSource);
+
+                if (!File.Exists(resolvedPath))
+                {
+                    var projectRoot = FindProjectRoot(currentDir);
+                    if (!string.IsNullOrEmpty(projectRoot))
+                    {
+                        var projectRootPath = Path.Combine(projectRoot, dataSource);
+                        resolvedPath = projectRootPath;
+                    }
+                }
+
+                var fullPath = Path.GetFullPath(resolvedPath);
+                var directory = Path.GetDirectoryName(fullPath);
+
+                if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+                {
+                    Directory.CreateDirectory(directory);
+                }
+
+                builder.DataSource = fullPath;
+            }
+
+            return builder.ConnectionString;
+        }
+        catch (Exception ex)
+        {
+            throw new ArgumentException($"Invalid SQLite connection string format: {ex.Message}", nameof(connectionString), ex);
+        }
+    }
+
+    private static string? FindProjectRoot(string startDir)
+    {
+        var dir = new DirectoryInfo(startDir);
+        while (dir != null)
+        {
+            if (File.Exists(Path.Combine(dir.FullName, "SmartRAG.sln")))
+            {
+                return Path.Combine(dir.FullName, "examples", "SmartRAG.Demo");
+            }
+            dir = dir.Parent;
+        }
+        return null;
+    }
+
 }
+
 

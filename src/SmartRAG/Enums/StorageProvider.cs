@@ -1,23 +1,24 @@
-namespace SmartRAG.Enums
+namespace SmartRAG.Enums;
+
+
+/// <summary>
+/// Supported storage providers for document and vector data persistence
+/// </summary>
+public enum StorageProvider
 {
     /// <summary>
-    /// Supported storage providers for document and vector data persistence
+    /// In-memory storage (non-persistent, for testing and development)
     /// </summary>
-    public enum StorageProvider
-    {
-        /// <summary>
-        /// In-memory storage (non-persistent, for testing and development)
-        /// </summary>
-        InMemory,
+    InMemory,
 
-        /// <summary>
-        /// Redis database for high-performance caching and storage
-        /// </summary>
-        Redis,
+    /// <summary>
+    /// Redis database for high-performance caching and storage
+    /// </summary>
+    Redis,
 
-        /// <summary>
-        /// Qdrant vector database for advanced vector search capabilities
-        /// </summary>
-        Qdrant
-    }
+    /// <summary>
+    /// Qdrant vector database for advanced vector search capabilities
+    /// </summary>
+    Qdrant
 }
+

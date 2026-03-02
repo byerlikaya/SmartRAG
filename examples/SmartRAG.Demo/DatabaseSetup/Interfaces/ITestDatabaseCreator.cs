@@ -1,4 +1,3 @@
-using SmartRAG.Enums;
 
 namespace SmartRAG.Demo.DatabaseSetup.Interfaces;
 

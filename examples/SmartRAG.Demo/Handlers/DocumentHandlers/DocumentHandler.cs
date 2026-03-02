@@ -1,7 +1,3 @@
-using Microsoft.Extensions.Logging;
-using SmartRAG.Demo.Services.Console;
-using SmartRAG.Interfaces;
-using SmartRAG.Models.RequestResponse;
 
 namespace SmartRAG.Demo.Handlers.DocumentHandlers;
 

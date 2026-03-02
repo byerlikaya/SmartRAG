@@ -9,10 +9,9 @@ lang: en
 
 <div class="card">
     <div class="card-body">
-        <p>SmartRAG is available as a NuGet package and supports <strong>.NET Standard 2.1</strong>, making it compatible with:</p>
+        <p>SmartRAG is available as a NuGet package and targets <strong>.NET 6</strong>, making it compatible with:</p>
         <ul>
-            <li>✅ .NET Core 3.0+</li>
-            <li>✅ .NET 5, 6, 7, 8, 9+</li>
+            <li>✅ .NET 6, 7, 8, 9+</li>
         </ul>
 
         <h3 class="card-title">Installation Methods</h3>
@@ -32,7 +31,7 @@ lang: en
 </div>
 
 <div class="code-panel" data-tab="xml">
-<pre><code class="language-xml">&lt;PackageReference Include="SmartRAG" Version="3.6.0" /&gt;</code></pre>
+<pre><code class="language-xml">&lt;PackageReference Include="SmartRAG" Version="4.0.0" /&gt;</code></pre>
 </div>
     </div>
 </div>

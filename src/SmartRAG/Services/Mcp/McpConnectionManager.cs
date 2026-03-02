@@ -1,72 +1,68 @@
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using SmartRAG.Interfaces.Mcp;
-using SmartRAG.Models;
-using System.Linq;
-using System.Threading.Tasks;
+using SmartRAG.Services.Shared;
 
-namespace SmartRAG.Services.Mcp
+namespace SmartRAG.Services.Mcp;
+
+
+/// <summary>
+/// Manages MCP server connections
+/// </summary>
+public class McpConnectionManager : IMcpConnectionManager
 {
-    /// <summary>
-    /// Manages MCP server connections
-    /// </summary>
-    public class McpConnectionManager : IMcpConnectionManager
-    {
-        private readonly ILogger<McpConnectionManager> _logger;
-        private readonly IMcpClient _mcpClient;
-        private readonly SmartRagOptions _options;
+    private readonly ILogger<McpConnectionManager> _logger;
+    private readonly IMcpClient _mcpClient;
+    private readonly SmartRagOptions _options;
 
-        public McpConnectionManager(
-            ILogger<McpConnectionManager> logger,
-            IMcpClient mcpClient,
-            IOptions<SmartRagOptions> options)
+    public McpConnectionManager(
+        ILogger<McpConnectionManager> logger,
+        IMcpClient mcpClient,
+        IOptions<SmartRagOptions> options)
+    {
+        _logger = logger;
+        _mcpClient = mcpClient;
+        _options = options.Value;
+    }
+
+    /// <summary>
+    /// Connects to all configured MCP servers with AutoConnect enabled
+    /// </summary>
+    public async Task ConnectAllAsync()
+    {
+        if (_options.McpServers.Count == 0)
         {
-            _logger = logger;
-            _mcpClient = mcpClient;
-            _options = options.Value;
+            ServiceLogMessages.LogMcpConnectionNoServersConfigured(_logger, null);
+            return;
         }
 
-        /// <summary>
-        /// Connects to all configured MCP servers with AutoConnect enabled
-        /// </summary>
-        public async Task ConnectAllAsync()
+        var autoConnectServers = _options.McpServers.Where(s => s.AutoConnect).ToList();
+
+        if (autoConnectServers.Count == 0)
         {
-            if (_options.McpServers == null || _options.McpServers.Count == 0)
+            ServiceLogMessages.LogMcpConnectionNoAutoConnectServers(_logger, null);
+            return;
+        }
+
+        ServiceLogMessages.LogMcpConnectionConnectingToServers(_logger, autoConnectServers.Count, null);
+
+        foreach (var server in autoConnectServers)
+        {
+            try
             {
-                _logger.LogInformation("No MCP servers configured");
-                return;
-            }
-
-            var autoConnectServers = _options.McpServers.Where(s => s.AutoConnect).ToList();
-
-            if (autoConnectServers.Count == 0)
-            {
-                _logger.LogInformation("No MCP servers with AutoConnect enabled");
-                return;
-            }
-
-            _logger.LogInformation("Connecting to {Count} MCP servers", autoConnectServers.Count);
-
-            foreach (var server in autoConnectServers)
-            {
-                try
+                var connected = await _mcpClient.ConnectAsync(server);
+                if (connected)
                 {
-                    var connected = await _mcpClient.ConnectAsync(server);
-                    if (connected)
-                    {
-                        _logger.LogInformation("Successfully connected to MCP server");
-                    }
-                    else
-                    {
-                        _logger.LogWarning("Failed to connect to MCP server");
-                    }
+                    ServiceLogMessages.LogMcpConnectionSuccess(_logger, null);
                 }
-                catch (System.Exception ex)
+                else
                 {
-                    _logger.LogError(ex, "Error connecting to MCP server");
+                    ServiceLogMessages.LogMcpConnectionFailed(_logger, null);
                 }
+            }
+            catch (Exception ex)
+            {
+                ServiceLogMessages.LogMcpConnectionError(_logger, ex);
             }
         }
     }
 }
+
 

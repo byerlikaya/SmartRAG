@@ -1,100 +1,89 @@
-#nullable enable
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using SmartRAG.Enums;
-using SmartRAG.Interfaces.AI;
-using SmartRAG.Interfaces.Support;
-using SmartRAG.Models;
-using SmartRAG.Models.Results;
-using System;
-using System.Globalization;
-using System.Linq;
-using System.Text.Json;
-using System.Threading.Tasks;
+using SmartRAG.Services.Shared;
 
-namespace SmartRAG.Services.Support
+namespace SmartRAG.Services.Support;
+
+
+/// <summary>
+/// Service for classifying query intent (conversation vs information)
+/// </summary>
+public class QueryIntentClassifierService : IQueryIntentClassifierService
 {
+    private const int MinTokenCountForInformation = 8;
+    private const int MaxTokenCountForInformation = 12;
+    private const int MaxHistoryLength = 400;
+    private const int MinTokenLength = 2;
+    private const int MaxShortConversationLength = 25;
+
+    private readonly IAIService _aiService;
+    private readonly ILogger<QueryIntentClassifierService> _logger;
+    private readonly ITextNormalizationService _textNormalizationService;
+    private readonly SmartRagOptions _options;
+
     /// <summary>
-    /// Service for classifying query intent (conversation vs information)
+    /// Initializes a new instance of the QueryIntentClassifierService
     /// </summary>
-    public class QueryIntentClassifierService : IQueryIntentClassifierService
+    /// <param name="aiService">AI service for text generation</param>
+    /// <param name="logger">Logger instance for this service</param>
+    /// <param name="textNormalizationService">Service for text normalization</param>
+    /// <param name="options">SmartRAG configuration options</param>
+    public QueryIntentClassifierService(
+        IAIService aiService,
+        ILogger<QueryIntentClassifierService> logger,
+        ITextNormalizationService textNormalizationService,
+        IOptions<SmartRagOptions> options)
     {
-        private const int MinTokenCountForInformation = 8;
-        private const int MaxTokenCountForInformation = 12;
-        private const int MaxHistoryLength = 400;
-        private const int MinTokenLength = 2;
-        private const int MaxShortConversationLength = 25;
+        _aiService = aiService;
+        _logger = logger;
+        _textNormalizationService = textNormalizationService;
+        _options = options.Value;
+    }
 
-        private readonly IAIService _aiService;
-        private readonly ILogger<QueryIntentClassifierService> _logger;
-        private readonly ITextNormalizationService _textNormalizationService;
-        private readonly SmartRagOptions _options;
-
-        /// <summary>
-        /// Initializes a new instance of the QueryIntentClassifierService
-        /// </summary>
-        /// <param name="aiService">AI service for text generation</param>
-        /// <param name="logger">Logger instance for this service</param>
-        /// <param name="textNormalizationService">Service for text normalization</param>
-        /// <param name="options">SmartRAG configuration options</param>
-        public QueryIntentClassifierService(
-            IAIService aiService,
-            ILogger<QueryIntentClassifierService> logger,
-            ITextNormalizationService textNormalizationService,
-            IOptions<SmartRagOptions> options)
+    /// <summary>
+    /// [AI Query] Analyzes the query intent and returns both conversation classification and tokenized query terms.
+    /// </summary>
+    /// <param name="query">User query to analyze</param>
+    /// <param name="conversationHistory">Optional conversation history for context</param>
+    /// <param name="cancellationToken">Token to cancel the operation</param>
+    /// <returns>Analysis result containing conversation flag and normalized tokens for non-conversational queries</returns>
+    public async Task<QueryIntentAnalysisResult> AnalyzeQueryAsync(string query, string? conversationHistory = null, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(query))
         {
-            _aiService = aiService;
-            _logger = logger;
-            _textNormalizationService = textNormalizationService;
-            _options = options.Value;
+            return new QueryIntentAnalysisResult(true, Array.Empty<string>());
         }
 
-        /// <summary>
-        /// [AI Query] Analyzes the query intent and returns both conversation classification and tokenized query terms.
-        /// </summary>
-        /// <param name="query">User query to analyze</param>
-        /// <param name="conversationHistory">Optional conversation history for context</param>
-        /// <param name="cancellationToken">Token to cancel the operation</param>
-        /// <returns>Analysis result containing conversation flag and normalized tokens for non-conversational queries</returns>
-        public async Task<QueryIntentAnalysisResult> AnalyzeQueryAsync(string query, string? conversationHistory = null, System.Threading.CancellationToken cancellationToken = default)
+        var trimmedQuery = query.Trim();
+        var normalizedForMatching = _textNormalizationService.NormalizeForMatching(trimmedQuery);
+
+        var heuristic = HeuristicClassify(trimmedQuery, out var heuristicScore);
+
+        switch (heuristic)
         {
-            if (string.IsNullOrWhiteSpace(query))
-            {
+            case HeuristicDecision.Conversation:
                 return new QueryIntentAnalysisResult(true, Array.Empty<string>());
-            }
-
-            var trimmedQuery = query.Trim();
-            var normalizedForMatching = _textNormalizationService.NormalizeForMatching(trimmedQuery);
-
-            var heuristic = HeuristicClassify(trimmedQuery, out var heuristicScore);
-
-            switch (heuristic)
+            case HeuristicDecision.Information when heuristicScore >= 4:
             {
-                case HeuristicDecision.Conversation:
-                    return new QueryIntentAnalysisResult(true, Array.Empty<string>());
-                case HeuristicDecision.Information when heuristicScore >= 4:
+                var heuristicTokens = _options.Features.EnableDocumentSearch
+                    ? TokenizeForSearch(normalizedForMatching)
+                    : Array.Empty<string>();
+                return new QueryIntentAnalysisResult(false, heuristicTokens);
+            }
+            case HeuristicDecision.Unknown:
+            default:
+                try
                 {
-                    var heuristicTokens = _options.Features.EnableDocumentSearch
-                        ? TokenizeForSearch(normalizedForMatching)
-                        : Array.Empty<string>();
-                    return new QueryIntentAnalysisResult(false, heuristicTokens);
-                }
-                case HeuristicDecision.Unknown:
-                default:
-                    try
+                    var historySnippet = string.Empty;
+                    if (!string.IsNullOrWhiteSpace(conversationHistory))
                     {
-                        var historySnippet = string.Empty;
-                        if (!string.IsNullOrWhiteSpace(conversationHistory))
-                        {
-                            var normalizedHistory = conversationHistory.Trim();
-                            historySnippet = normalizedHistory.Length > MaxHistoryLength
-                                ? normalizedHistory.Substring(normalizedHistory.Length - MaxHistoryLength, MaxHistoryLength)
-                                : normalizedHistory;
-                        }
+                        var normalizedHistory = conversationHistory.Trim();
+                        historySnippet = normalizedHistory.Length > MaxHistoryLength
+                            ? normalizedHistory.Substring(normalizedHistory.Length - MaxHistoryLength, MaxHistoryLength)
+                            : normalizedHistory;
+                    }
 
-                        var classificationPrompt = string.Format(
-                            CultureInfo.InvariantCulture,
-                            @"You MUST analyze the input and decide whether it is CONVERSATION or INFORMATION, and also provide search tokens when it is INFORMATION.
+                    var classificationPrompt = string.Format(
+                        CultureInfo.InvariantCulture,
+                        @"You MUST analyze the input and decide whether it is CONVERSATION or INFORMATION, and also provide search tokens when it is INFORMATION.
 
 CRITICAL: Classify as CONVERSATION if:
 - Greeting in any human language (generic salutations/greetings)
@@ -131,9 +120,9 @@ CRITICAL CONTEXT RULES:
 OUTPUT FORMAT (JSON ONLY):
 - You MUST return a single JSON object with the following shape:
 - {{
-    ""type"": ""CONVERSATION"" or ""INFORMATION"",
-    ""tokens"": [ /* array of strings, can be empty for CONVERSATION */ ],
-    ""answer"": ""Natural language answer for conversation queries, empty for information queries""
+""type"": ""CONVERSATION"" or ""INFORMATION"",
+""tokens"": [ /* array of strings, can be empty for CONVERSATION */ ],
+""answer"": ""Natural language answer for conversation queries, empty for information queries""
   }}
 
 ANSWER RULES (CRITICAL FOR CONVERSATION QUERIES):
@@ -169,10 +158,10 @@ TOKEN RULES (CRITICAL FOR INFORMATION QUERIES):
   - CRITICAL: Include ALL question words from the query (all interrogative/question words that appear in the query, regardless of language - these are words that indicate the query is asking for information). Question words are ESSENTIAL for search.
   - Include BOTH single words AND important multi-word phrases from the query.
   - CRITICAL FOR WORD VARIANTS: For each significant word in the query, include its grammatical variants:
-    * If query has ""WordWithSuffix"", include: ""WordWithSuffix"", ""WordRoot"", ""WordRootVariant""
-    * If query has ""PluralWord"", include: ""PluralWord"", ""SingularWord"", ""PluralWordRoot""
-    * If query has ""WordInLocation"", include: ""WordInLocation"", ""WordRoot"", ""LocationForm""
-    * Generate ALL possible grammatical forms that might appear in documents (case forms, number forms, tense forms, etc. depending on the language's grammar rules)
+* If query has ""WordWithSuffix"", include: ""WordWithSuffix"", ""WordRoot"", ""WordRootVariant""
+* If query has ""PluralWord"", include: ""PluralWord"", ""SingularWord"", ""PluralWordRoot""
+* If query has ""WordInLocation"", include: ""WordInLocation"", ""WordRoot"", ""LocationForm""
+* Generate ALL possible grammatical forms that might appear in documents (case forms, number forms, tense forms, etc. depending on the language's grammar rules)
   - Include ALL question words FROM THE QUERY (all interrogative words that appear in the query, regardless of language) - these are critical for search.
   - Use lower-case for all tokens while preserving original character encoding EXACTLY (e.g., if query has ""WordA"", keep it as ""worda"" with exact same special characters).
   - Remove punctuation and control characters ONLY (do NOT change letters).
@@ -191,378 +180,310 @@ IMPORTANT:
 - Do NOT wrap JSON in markdown code blocks (no ```json or ```).
 - Do NOT add comments, explanations, markdown, or extra text outside the JSON object.
 - Return the raw JSON object directly, starting with {{ and ending with }}.",
-                            normalizedForMatching,
-                            string.IsNullOrWhiteSpace(historySnippet) ? "" : $"Conversation History:\n\"{historySnippet}\"\n\n",
-                            MinTokenCountForInformation,
-                            MaxTokenCountForInformation);
+                        normalizedForMatching,
+                        string.IsNullOrWhiteSpace(historySnippet) ? "" : $"Conversation History:\n\"{historySnippet}\"\n\n",
+                        MinTokenCountForInformation,
+                        MaxTokenCountForInformation);
 
-                        cancellationToken.ThrowIfCancellationRequested();
-                        var classification = await _aiService.GenerateResponseAsync(classificationPrompt, Array.Empty<string>()).ConfigureAwait(false);
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var classification = await _aiService.GenerateResponseAsync(classificationPrompt, Array.Empty<string>(), cancellationToken).ConfigureAwait(false);
 
-                        if (string.IsNullOrWhiteSpace(classification))
+                    if (string.IsNullOrWhiteSpace(classification))
+                    {
+                        return new QueryIntentAnalysisResult(true, Array.Empty<string>());
+                    }
+
+                    try
+                    {
+                        var cleanedClassification = TryExtractJsonFromResponse(classification) ?? classification;
+                        using var document = JsonDocument.Parse(cleanedClassification);
+                        var root = document.RootElement;
+
+                        if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty("type", out var typeElement) || typeElement.ValueKind != JsonValueKind.String)
                         {
-                            return new QueryIntentAnalysisResult(true, Array.Empty<string>());
+                            return FallbackFromPlainClassification(classification, normalizedForMatching);
                         }
+
+                        var typeValue = typeElement.GetString()?.Trim().ToUpperInvariant();
+                        if (string.Equals(typeValue, "CONVERSATION", StringComparison.Ordinal))
+                        {
+                            if (HasQuestionPunctuation(trimmedQuery) && trimmedQuery.Length > 40 &&
+                                Tokenize(trimmedQuery).Length >= 6)
+                            {
+                                ServiceLogMessages.LogQueryIntentOverrideToInformation(_logger, null);
+                                var overrideTokens = _options.Features.EnableDocumentSearch
+                                    ? TokenizeForSearch(normalizedForMatching)
+                                    : Array.Empty<string>();
+                                return new QueryIntentAnalysisResult(false, overrideTokens);
+                            }
+                            string? answer = null;
+                            if (root.TryGetProperty("answer", out var answerElement) && answerElement.ValueKind == JsonValueKind.String)
+                            {
+                                answer = answerElement.GetString();
+                                if (string.IsNullOrWhiteSpace(answer))
+                                {
+                                    answer = null;
+                                }
+                            }
+
+                            return new QueryIntentAnalysisResult(true, Array.Empty<string>(), answer);
+                        }
+
+                        if (string.Equals(typeValue, "INFORMATION", StringComparison.Ordinal))
+                        {
+                            var tokens = Array.Empty<string>();
+                            if (root.TryGetProperty("tokens", out var tokensElement) && tokensElement.ValueKind == JsonValueKind.Array)
+                            {
+                                tokens = ExtractTokensFromJsonArray(tokensElement);
+
+                                if (tokens.Length < MinTokenCountForInformation)
+                                {
+                                    ServiceLogMessages.LogQueryIntentIncompleteTokens(_logger, tokens.Length, MinTokenCountForInformation, null);
+                                }
+                            }
+
+                            if (tokens.Length == 0 && _options.Features.EnableDocumentSearch)
+                            {
+                                tokens = TokenizeForSearch(normalizedForMatching);
+                            }
+
+                            return new QueryIntentAnalysisResult(false, tokens);
+                        }
+
+                        ServiceLogMessages.LogQueryIntentUnknownType(_logger, typeValue ?? string.Empty, null);
+                        return FallbackFromPlainClassification(classification, normalizedForMatching);
+                    }
+                    catch (JsonException ex)
+                    {
+                        ServiceLogMessages.LogQueryIntentParseJsonFailed(_logger, classification[..Math.Min(200, classification?.Length ?? 0)], ex);
+
+                        var cleanedJson = TryExtractJsonFromResponse(classification);
+                        if (string.IsNullOrWhiteSpace(cleanedJson))
+                            return FallbackFromPlainClassification(classification, normalizedForMatching);
 
                         try
                         {
-                            var cleanedClassification = TryExtractJsonFromResponse(classification) ?? classification;
-                            using var document = JsonDocument.Parse(cleanedClassification);
+                            using var document = JsonDocument.Parse(cleanedJson);
                             var root = document.RootElement;
 
-                            if (root.ValueKind != JsonValueKind.Object)
+                            if (root.ValueKind == JsonValueKind.Object)
                             {
-                                return FallbackFromPlainClassification(classification, normalizedForMatching);
-                            }
-
-                            if (!root.TryGetProperty("type", out var typeElement) || typeElement.ValueKind != JsonValueKind.String)
-                            {
-                                return FallbackFromPlainClassification(classification, normalizedForMatching);
-                            }
-
-                            var typeValue = typeElement.GetString()?.Trim().ToUpperInvariant();
-                            if (string.Equals(typeValue, "CONVERSATION", StringComparison.Ordinal))
-                            {
-                                if (HasQuestionPunctuation(trimmedQuery) && trimmedQuery.Length > 40 &&
-                                    Tokenize(trimmedQuery).Length >= 6)
+                                if (root.TryGetProperty("type", out var typeElement) && typeElement.ValueKind == JsonValueKind.String)
                                 {
-                                    _logger.LogDebug("Overriding LLM CONVERSATION to INFORMATION: query has data-request pattern");
-                                    var overrideTokens = _options.Features.EnableDocumentSearch
-                                        ? TokenizeForSearch(normalizedForMatching)
-                                        : Array.Empty<string>();
-                                    return new QueryIntentAnalysisResult(false, overrideTokens);
-                                }
-                                string? answer = null;
-                                if (root.TryGetProperty("answer", out var answerElement) && answerElement.ValueKind == JsonValueKind.String)
-                                {
-                                    answer = answerElement.GetString();
-                                    if (string.IsNullOrWhiteSpace(answer))
+                                    var typeValue = typeElement.GetString()?.Trim().ToUpperInvariant();
+                                    if (string.Equals(typeValue, "CONVERSATION", StringComparison.Ordinal))
                                     {
-                                        answer = null;
-                                    }
-                                }
-                                
-                                return new QueryIntentAnalysisResult(true, Array.Empty<string>(), answer);
-                            }
-
-                            if (string.Equals(typeValue, "INFORMATION", StringComparison.Ordinal))
-                            {
-                                string[] tokens = Array.Empty<string>();
-                                if (root.TryGetProperty("tokens", out var tokensElement) && tokensElement.ValueKind == JsonValueKind.Array)
-                                {
-                                    tokens = ExtractTokensFromJsonArray(tokensElement);
-                            
-                                    if (tokens.Length < MinTokenCountForInformation)
-                                    {
-                                        _logger.LogWarning("AI returned only {Count} tokens, expected at least {MinCount}. Response may be incomplete.", tokens.Length, MinTokenCountForInformation);
-                                    }
-                                }
-
-                                if (tokens.Length == 0 && _options.Features.EnableDocumentSearch)
-                                {
-                                    tokens = TokenizeForSearch(normalizedForMatching);
-                                }
-
-                                return new QueryIntentAnalysisResult(false, tokens);
-                            }
-
-                            _logger.LogWarning("AI returned JSON with unknown type value: {Type}", typeValue);
-                            return FallbackFromPlainClassification(classification, normalizedForMatching);
-                        }
-                        catch (JsonException ex)
-                        {
-                            _logger.LogWarning(ex, "Failed to parse AI response as JSON. Response: {Response}", classification?.Substring(0, Math.Min(200, classification?.Length ?? 0)));
-                    
-                            var cleanedJson = TryExtractJsonFromResponse(classification);
-                            if (!string.IsNullOrWhiteSpace(cleanedJson))
-                            {
-                                try
-                                {
-                                    using var document = JsonDocument.Parse(cleanedJson);
-                                    var root = document.RootElement;
-                            
-                                    if (root.ValueKind == JsonValueKind.Object)
-                                    {
-                                        if (root.TryGetProperty("type", out var typeElement) && typeElement.ValueKind == JsonValueKind.String)
+                                        if (HasQuestionPunctuation(trimmedQuery) && trimmedQuery.Length > 40 &&
+                                            Tokenize(trimmedQuery).Length >= 6)
                                         {
-                                            var typeValue = typeElement.GetString()?.Trim().ToUpperInvariant();
-                                            if (string.Equals(typeValue, "CONVERSATION", StringComparison.Ordinal))
-                                            {
-                                                if (HasQuestionPunctuation(trimmedQuery) && trimmedQuery.Length > 40 &&
-                                                    Tokenize(trimmedQuery).Length >= 6)
-                                                {
-                                                    var overrideTokens = _options.Features.EnableDocumentSearch
-                                                        ? TokenizeForSearch(normalizedForMatching)
-                                                        : Array.Empty<string>();
-                                                    return new QueryIntentAnalysisResult(false, overrideTokens);
-                                                }
-                                                string? answer = null;
-                                                if (root.TryGetProperty("answer", out var answerElement) && answerElement.ValueKind == JsonValueKind.String)
-                                                {
-                                                    answer = answerElement.GetString();
-                                                    if (string.IsNullOrWhiteSpace(answer))
-                                                    {
-                                                        answer = null;
-                                                    }
-                                                }
-                                                
-                                                return new QueryIntentAnalysisResult(true, Array.Empty<string>(), answer);
-                                            }
-                                    
-                                            if (string.Equals(typeValue, "INFORMATION", StringComparison.Ordinal))
-                                            {
-                                                string[] tokens = Array.Empty<string>();
-                                                if (root.TryGetProperty("tokens", out var tokensElement) && tokensElement.ValueKind == JsonValueKind.Array)
-                                                {
-                                                    tokens = ExtractTokensFromJsonArray(tokensElement);
-                                                }
-                                        
-                                                if (tokens.Length == 0 && _options.Features.EnableDocumentSearch)
-                                                {
-                                                    tokens = TokenizeForSearch(normalizedForMatching);
-                                                }
-                                        
-                                                return new QueryIntentAnalysisResult(false, tokens);
-                                            }
+                                            var overrideTokens = _options.Features.EnableDocumentSearch
+                                                ? TokenizeForSearch(normalizedForMatching)
+                                                : Array.Empty<string>();
+                                            return new QueryIntentAnalysisResult(false, overrideTokens);
                                         }
+
+                                        if (!root.TryGetProperty("answer", out var answerElement) ||
+                                            answerElement.ValueKind != JsonValueKind.String)
+                                            return new QueryIntentAnalysisResult(true, Array.Empty<string>());
+                                        var answer = answerElement.GetString();
+                                        if (string.IsNullOrWhiteSpace(answer))
+                                        {
+                                            answer = null;
+                                        }
+
+                                        return new QueryIntentAnalysisResult(true, Array.Empty<string>(), answer);
+                                    }
+
+                                    if (string.Equals(typeValue, "INFORMATION", StringComparison.Ordinal))
+                                    {
+                                        var tokens = Array.Empty<string>();
+                                        if (root.TryGetProperty("tokens", out var tokensElement) && tokensElement.ValueKind == JsonValueKind.Array)
+                                        {
+                                            tokens = ExtractTokensFromJsonArray(tokensElement);
+                                        }
+
+                                        if (tokens.Length == 0 && _options.Features.EnableDocumentSearch)
+                                        {
+                                            tokens = TokenizeForSearch(normalizedForMatching);
+                                        }
+
+                                        return new QueryIntentAnalysisResult(false, tokens);
                                     }
                                 }
-                                catch (JsonException)
-                                {
-                                    _logger.LogWarning("Failed to parse cleaned JSON, falling back to plain classification");
-                                }
                             }
-                    
-                            return FallbackFromPlainClassification(classification, normalizedForMatching);
                         }
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "AI classification failed; defaulting to conversation.");
-                        return new QueryIntentAnalysisResult(true, Array.Empty<string>());
-                    }
-            }
-        }
+                        catch (JsonException)
+                        {
+                            ServiceLogMessages.LogQueryIntentParseCleanedJsonFailed(_logger, null);
+                        }
 
-        /// <summary>
-        /// Parses command from user input and extracts payload if available
-        /// </summary>
-        public bool TryParseCommand(string input, out QueryCommandType commandType, out string payload)
-        {
-            commandType = QueryCommandType.None;
-            payload = string.Empty;
-
-            if (string.IsNullOrWhiteSpace(input))
-            {
-                return false;
-            }
-
-            var trimmed = input.Trim();
-            var lowerTrimmed = trimmed.ToLowerInvariant();
-
-            if (lowerTrimmed == "/new" || 
-                lowerTrimmed == "/reset" || 
-                lowerTrimmed == "/clear" ||
-                lowerTrimmed.StartsWith("/new ") || 
-                lowerTrimmed.StartsWith("/reset ") || 
-                lowerTrimmed.StartsWith("/clear "))
-            {
-                commandType = QueryCommandType.NewConversation;
-                if (lowerTrimmed.StartsWith("/new "))
-                    payload = trimmed[5..].TrimStart();
-                else if (lowerTrimmed.StartsWith("/reset ") || lowerTrimmed.StartsWith("/clear "))
-                    payload = trimmed[7..].TrimStart();
-                return true;
-            }
-
-            if (!trimmed.StartsWith("/chat", StringComparison.OrdinalIgnoreCase) && 
-                !trimmed.StartsWith("/talk", StringComparison.OrdinalIgnoreCase) &&
-                !trimmed.StartsWith("/conversation", StringComparison.OrdinalIgnoreCase)) 
-                return false;
-            
-            commandType = QueryCommandType.ForceConversation;
-            payload = trimmed.Length > 5 ? trimmed[5..].TrimStart() : string.Empty;
-            
-            return true;
-
-        }
-
-        private HeuristicDecision HeuristicClassify(string query, out int score)
-        {
-            score = 0;
-            var trimmed = query.Trim();
-            var tokens = Tokenize(trimmed);
-
-            if (HasQuestionPunctuation(trimmed)) score++;
-            if (HasUnicodeDigits(trimmed)) score++;
-            if (HasMultipleNumericGroups(trimmed)) score++;
-            if (tokens.Length >= 5) score++;
-            if (HasOperatorsOrSymbols(trimmed)) score++;
-            if (HasDateOrTimePattern(trimmed)) score++;
-            if (HasNumericRangeOrList(trimmed)) score++;
-            if (HasIdLikeToken(tokens)) score++;
-            if (HasQuestionPunctuation(trimmed) && tokens.Length >= 6 && trimmed.Length > 40)
-                score += 2;
-
-            var hasNoTechnicalIndicators = !HasUnicodeDigits(trimmed) && !HasOperatorsOrSymbols(trimmed) &&
-                !HasDateOrTimePattern(trimmed) && !HasIdLikeToken(tokens);
-            if (trimmed.Length <= MaxShortConversationLength && tokens.Length <= 2 && hasNoTechnicalIndicators)
-            {
-                return HeuristicDecision.Conversation;
-            }
-
-            var convoScore = 0;
-            if (trimmed.Length <= 2) convoScore++;
-            if (tokens.Length <= 2 && !HasQuestionPunctuation(trimmed) && !HasUnicodeDigits(trimmed)) convoScore++;
-
-            if (convoScore >= 1 && score == 0)
-            {
-                return HeuristicDecision.Conversation;
-            }
-
-            if (score >= 3)
-            {
-                return HeuristicDecision.Information;
-            }
-
-            return HeuristicDecision.Unknown;
-        }
-
-        private static string[] Tokenize(string input) =>
-            input.Split(new[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
-
-        private static bool HasQuestionPunctuation(string input) =>
-            input.IndexOf('?', StringComparison.Ordinal) >= 0 ||
-            input.IndexOf('¿', StringComparison.Ordinal) >= 0 ||
-            input.IndexOf('؟', StringComparison.Ordinal) >= 0;
-
-        private static bool HasUnicodeDigits(string input) =>
-            input.Any(c => char.GetUnicodeCategory(c) == UnicodeCategory.DecimalDigitNumber);
-
-        private static bool HasMultipleNumericGroups(string input)
-        {
-            var matches = System.Text.RegularExpressions.Regex.Matches(input, @"\p{Nd}+");
-            return matches.Count >= 2;
-        }
-
-        private static bool HasOperatorsOrSymbols(string input) =>
-            input.IndexOf('>') >= 0 || input.IndexOf('<') >= 0 ||
-            input.IndexOf('=') >= 0 || input.IndexOf('+') >= 0 ||
-            input.IndexOf('-') >= 0 || input.IndexOf('*') >= 0 ||
-            input.IndexOf('/') >= 0 || input.IndexOf('%') >= 0 ||
-            input.IndexOf('€') >= 0 || input.IndexOf('$') >= 0 ||
-            input.IndexOf('£') >= 0 || input.IndexOf('¥') >= 0 ||
-            input.IndexOf('₺') >= 0;
-
-        private static bool HasDateOrTimePattern(string input) =>
-            System.Text.RegularExpressions.Regex.IsMatch(input, @"\b\d{4}[-/\.]\d{1,2}[-/\.]\d{1,2}\b") ||
-            System.Text.RegularExpressions.Regex.IsMatch(input, @"\b\d{1,2}:\d{2}(:\d{2})?\b");
-
-        private static bool HasNumericRangeOrList(string input) =>
-            System.Text.RegularExpressions.Regex.IsMatch(input, @"\b\d+\s*[-–—]\s*\d+\b") ||
-            System.Text.RegularExpressions.Regex.IsMatch(input, @"\b\d+\s*,\s*\d+(\s*,\s*\d+)+\b");
-
-        private static bool HasIdLikeToken(string[] tokens) =>
-            tokens.Any(t => System.Text.RegularExpressions.Regex.IsMatch(t, @"\p{L}*\p{Nd}+\w*"));
-
-        private string[] TokenizeForSearch(string input)
-        {
-            var basicTokens = Tokenize(input);
-
-            return basicTokens
-                .Where(t => t.Length > MinTokenLength)
-                .Select(t => t.ToLowerInvariant())
-                .Distinct(StringComparer.Ordinal)
-                .ToArray();
-        }
-
-        private string[] ExtractTokensFromJsonArray(JsonElement tokensElement)
-        {
-            var tokens = tokensElement
-                .EnumerateArray()
-                .Where(e => e.ValueKind == JsonValueKind.String)
-                .Select(e => e.GetString())
-                .Where(s => !string.IsNullOrWhiteSpace(s))
-                .Select(s => s!.Trim())
-                .Where(s => s.Length > MinTokenLength)
-                .Distinct(StringComparer.Ordinal)
-                .ToArray();
-
-            if (tokens.Length < MinTokenCountForInformation)
-            {
-                _logger.LogWarning("AI returned only {Count} tokens, expected at least {MinCount}. Tokens: {Tokens}", 
-                    tokens.Length, MinTokenCountForInformation, string.Join(", ", tokens));
-            }
-
-            return tokens;
-        }
-
-        private static string? TryExtractJsonFromResponse(string? response)
-        {
-            if (string.IsNullOrWhiteSpace(response))
-                return null;
-
-            var trimmed = response.Trim();
-            
-            if (trimmed.StartsWith("```json", StringComparison.OrdinalIgnoreCase) || 
-                trimmed.StartsWith("```", StringComparison.OrdinalIgnoreCase))
-            {
-                var codeBlockStart = trimmed.IndexOf("```", StringComparison.OrdinalIgnoreCase);
-                if (codeBlockStart >= 0)
-                {
-                    var afterStart = trimmed.Substring(codeBlockStart + 3);
-                    var codeBlockEnd = afterStart.IndexOf("```", StringComparison.OrdinalIgnoreCase);
-                    if (codeBlockEnd >= 0)
-                    {
-                        trimmed = afterStart.Substring(0, codeBlockEnd).Trim();
-                    }
-                    else
-                    {
-                        trimmed = afterStart.Trim();
+                        return FallbackFromPlainClassification(classification, normalizedForMatching);
                     }
                 }
-            }
-            
-            if (trimmed.StartsWith("json", StringComparison.OrdinalIgnoreCase))
-            {
-                trimmed = trimmed.Substring(4).Trim();
-            }
-            
-            var startIndex = trimmed.IndexOf('{');
-            if (startIndex < 0)
-                return null;
-
-            var endIndex = trimmed.LastIndexOf('}');
-            if (endIndex < startIndex)
-                return null;
-
-            return trimmed.Substring(startIndex, endIndex - startIndex + 1);
-        }
-
-        private QueryIntentAnalysisResult FallbackFromPlainClassification(string? classification, string normalizedQuery)
-        {
-            if (string.IsNullOrWhiteSpace(classification))
-            {
-                return new QueryIntentAnalysisResult(true, Array.Empty<string>());
-            }
-
-            var normalizedResult = classification.Trim().ToUpperInvariant();
-
-            if (normalizedResult.Contains("CONVERSATION", StringComparison.Ordinal))
-            {
-                return new QueryIntentAnalysisResult(true, Array.Empty<string>());
-            }
-
-            if (normalizedResult.Contains("INFORMATION", StringComparison.Ordinal))
-            {
-                var tokens = _options.Features.EnableDocumentSearch
-                    ? TokenizeForSearch(normalizedQuery)
-                    : Array.Empty<string>();
-                return new QueryIntentAnalysisResult(false, tokens);
-            }
-
-            return new QueryIntentAnalysisResult(true, Array.Empty<string>());
+                catch (Exception ex)
+                {
+                    ServiceLogMessages.LogQueryIntentClassificationFailed(_logger, ex);
+                    return new QueryIntentAnalysisResult(true, Array.Empty<string>());
+                }
         }
     }
+
+    private HeuristicDecision HeuristicClassify(string query, out int score)
+    {
+        score = 0;
+        var trimmed = query.Trim();
+        var tokens = Tokenize(trimmed);
+
+        if (HasQuestionPunctuation(trimmed)) score++;
+        if (HasUnicodeDigits(trimmed)) score++;
+        if (HasMultipleNumericGroups(trimmed)) score++;
+        if (tokens.Length >= 5) score++;
+        if (HasOperatorsOrSymbols(trimmed)) score++;
+        if (HasDateOrTimePattern(trimmed)) score++;
+        if (HasNumericRangeOrList(trimmed)) score++;
+        if (HasIdLikeToken(tokens)) score++;
+        if (HasQuestionPunctuation(trimmed) && tokens.Length >= 6 && trimmed.Length > 40)
+            score += 2;
+
+        var hasNoTechnicalIndicators = !HasUnicodeDigits(trimmed) && !HasOperatorsOrSymbols(trimmed) &&
+            !HasDateOrTimePattern(trimmed) && !HasIdLikeToken(tokens);
+        if (trimmed.Length <= MaxShortConversationLength && tokens.Length <= 2 && hasNoTechnicalIndicators)
+        {
+            return HeuristicDecision.Conversation;
+        }
+
+        var convoScore = 0;
+        if (trimmed.Length <= 2) convoScore++;
+        if (tokens.Length <= 2 && !HasQuestionPunctuation(trimmed) && !HasUnicodeDigits(trimmed)) convoScore++;
+
+        if (convoScore >= 1 && score == 0)
+        {
+            return HeuristicDecision.Conversation;
+        }
+
+        return score >= 3 ? HeuristicDecision.Information : HeuristicDecision.Unknown;
+    }
+
+    private static string[] Tokenize(string input) =>
+        input.Split(new[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+
+    private static bool HasQuestionPunctuation(string input) =>
+        input.IndexOf('?', StringComparison.Ordinal) >= 0 ||
+        input.IndexOf('¿', StringComparison.Ordinal) >= 0 ||
+        input.IndexOf('؟', StringComparison.Ordinal) >= 0;
+
+    private static bool HasUnicodeDigits(string input) =>
+        input.Any(c => char.GetUnicodeCategory(c) == UnicodeCategory.DecimalDigitNumber);
+
+    private static bool HasMultipleNumericGroups(string input)
+    {
+        var matches = Regex.Matches(input, @"\p{Nd}+");
+        return matches.Count >= 2;
+    }
+
+    private static bool HasOperatorsOrSymbols(string input) =>
+        input.IndexOf('>') >= 0 || input.IndexOf('<') >= 0 ||
+        input.IndexOf('=') >= 0 || input.IndexOf('+') >= 0 ||
+        input.IndexOf('-') >= 0 || input.IndexOf('*') >= 0 ||
+        input.IndexOf('/') >= 0 || input.IndexOf('%') >= 0 ||
+        input.IndexOf('€') >= 0 || input.IndexOf('$') >= 0 ||
+        input.IndexOf('£') >= 0 || input.IndexOf('¥') >= 0 ||
+        input.IndexOf('₺') >= 0;
+
+    private static bool HasDateOrTimePattern(string input) =>
+        Regex.IsMatch(input, @"\b\d{4}[-/\.]\d{1,2}[-/\.]\d{1,2}\b") ||
+        Regex.IsMatch(input, @"\b\d{1,2}:\d{2}(:\d{2})?\b");
+
+    private static bool HasNumericRangeOrList(string input) =>
+        Regex.IsMatch(input, @"\b\d+\s*[-–—]\s*\d+\b") ||
+        Regex.IsMatch(input, @"\b\d+\s*,\s*\d+(\s*,\s*\d+)+\b");
+
+    private static bool HasIdLikeToken(string[] tokens) =>
+        tokens.Any(t => Regex.IsMatch(t, @"\p{L}*\p{Nd}+\w*"));
+
+    private static string[] TokenizeForSearch(string input)
+    {
+        var basicTokens = Tokenize(input);
+
+        return basicTokens
+            .Where(t => t.Length > MinTokenLength)
+            .Select(t => t.ToLowerInvariant())
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+    }
+
+    private string[] ExtractTokensFromJsonArray(JsonElement tokensElement)
+    {
+        var tokens = tokensElement
+            .EnumerateArray()
+            .Where(e => e.ValueKind == JsonValueKind.String)
+            .Select(e => e.GetString())
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .Select(s => s!.Trim())
+            .Where(s => s.Length > MinTokenLength)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
+        if (tokens.Length < MinTokenCountForInformation)
+        {
+            ServiceLogMessages.LogQueryIntentIncompleteTokensWithPreview(_logger, tokens.Length, MinTokenCountForInformation, string.Join(", ", tokens), null);
+        }
+
+        return tokens;
+    }
+
+    private static string? TryExtractJsonFromResponse(string? response)
+    {
+        if (string.IsNullOrWhiteSpace(response))
+            return null;
+
+        var trimmed = response.Trim();
+
+        if (trimmed.StartsWith("```json", StringComparison.OrdinalIgnoreCase) ||
+            trimmed.StartsWith("```", StringComparison.OrdinalIgnoreCase))
+        {
+            var codeBlockStart = trimmed.IndexOf("```", StringComparison.OrdinalIgnoreCase);
+            if (codeBlockStart >= 0)
+            {
+                var afterStart = trimmed.Substring(codeBlockStart + 3);
+                var codeBlockEnd = afterStart.IndexOf("```", StringComparison.OrdinalIgnoreCase);
+                trimmed = codeBlockEnd >= 0 ? afterStart.Substring(0, codeBlockEnd).Trim() : afterStart.Trim();
+            }
+        }
+
+        if (trimmed.StartsWith("json", StringComparison.OrdinalIgnoreCase))
+        {
+            trimmed = trimmed.Substring(4).Trim();
+        }
+
+        var startIndex = trimmed.IndexOf('{');
+        if (startIndex < 0)
+            return null;
+
+        var endIndex = trimmed.LastIndexOf('}');
+        return endIndex < startIndex ? null : trimmed.Substring(startIndex, endIndex - startIndex + 1);
+    }
+
+    private QueryIntentAnalysisResult FallbackFromPlainClassification(string? classification, string normalizedQuery)
+    {
+        if (string.IsNullOrWhiteSpace(classification))
+        {
+            return new QueryIntentAnalysisResult(true, Array.Empty<string>());
+        }
+
+        var normalizedResult = classification.Trim().ToUpperInvariant();
+
+        if (normalizedResult.Contains("CONVERSATION", StringComparison.Ordinal) || !normalizedResult.Contains("INFORMATION", StringComparison.Ordinal))
+        {
+            return new QueryIntentAnalysisResult(true, Array.Empty<string>());
+        }
+
+        var tokens = _options.Features.EnableDocumentSearch
+            ? TokenizeForSearch(normalizedQuery)
+            : Array.Empty<string>();
+        return new QueryIntentAnalysisResult(false, tokens);
+
+    }
 }
+
 

@@ -26,7 +26,7 @@ dotnet run
 ```
 
 ### **Önkoşullar**
-- **.NET 9.0 SDK** - Demo'yu çalıştırmak için gerekli
+- **.NET 6.0 SDK veya üzeri** - SmartRAG .NET 6 hedefler; Demo net9.0 hedefler
 - **Docker Desktop** (opsiyonel) - Yerel servisler için (AI, veritabanları, vektör depoları)
 - **VEYA Bulut AI API Anahtarları** (opsiyonel) - Bulut AI sağlayıcıları için
 

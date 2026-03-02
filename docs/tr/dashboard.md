@@ -7,7 +7,7 @@ lang: tr
 
 ## Genel Bakış
 
-**SmartRAG.Dashboard** paketi, uygulamanıza tarayıcı tabanlı bir web arayüzü ekler. Dashboard eklendiğinde:
+SmartRAG, yerleşik tarayıcı tabanlı bir web arayüzü (Dashboard) içerir. Dashboard etkinleştirildiğinde:
 
 - **Doküman yönetimi**: Tarayıcıdan dokümanları listeleme, yükleme ve silme
 - **Desteklenen tipler**: Sadece SmartRAG’in desteklediği doküman tipleri yüklenebilir (PDF, Word, Excel, metin, görsel, ses vb.)
@@ -17,11 +17,10 @@ Dashboard varsayılan olarak `/smartrag` yolunda sunulur ve geliştirme veya gü
 
 ## Kurulum
 
-ASP.NET Core projenize SmartRAG çekirdeği ve Dashboard paketini ekleyin:
+ASP.NET Core projenize SmartRAG paketini ekleyin (Dashboard dahildir):
 
 ```bash
 dotnet add package SmartRAG
-dotnet add package SmartRAG.Dashboard
 ```
 
 ## Yapılandırma
@@ -90,6 +89,11 @@ Tüm uçlar yapılandırılan path’e göredir (örn. `/smartrag`).
 | GET | `/api/upload/supported-types` | Desteklenen uzantı ve MIME tipleri |
 | GET | `/api/chat/config` | Aktif AI provider ve model adı |
 | POST | `/api/chat/messages` | Chat mesajı (JSON: `message`, opsiyonel `sessionId`) |
+| GET | `/api/chat/sessions` | Chat oturumlarını listele |
+| GET | `/api/chat/sessions/{sessionId}` | Tek chat oturumunu mesajlarla getir |
+| DELETE | `/api/chat/sessions` | Tüm chat oturumlarını sil |
+| DELETE | `/api/chat/sessions/{sessionId}` | Tek chat oturumunu sil |
+| GET | `/api/settings` | Dashboard yapılandırması (provider'lar, özellikler, chunking vb.) |
 
 ## Kullanım
 
@@ -99,3 +103,15 @@ Tüm uçlar yapılandırılan path’e göredir (örn. `/smartrag`).
 4. **Chat** panelinden o anki AI modeli ile mesaj gönderin; aktif provider/model üstte gösterilir.
 
 Dashboard, uygulamanızın geri kalanıyla aynı SmartRAG servislerini (`IDocumentService`, `IAIService` vb.) kullandığı için dokümanlar ve chat mevcut yapılandırmanızla tutarlıdır.
+
+## Ekran Görüntüleri
+
+- **Documents paneli**: Doküman yükleme, listeleme ve yönetimi.
+- **Chat paneli**: Mesaj gönderme ve konuşma geçmişini görüntüleme.
+- **Settings paneli**: Yapılandırma görüntüleme (provider'lar, özellikler, chunking).
+
+Placeholder görseller (SmartRAG.API veya Demo ile alınan gerçek ekran görüntüleriyle değiştirilebilir):
+
+![Dashboard Documents](assets/images/dashboard-documents.png)
+![Dashboard Chat](assets/images/dashboard-chat.png)
+![Dashboard Settings](assets/images/dashboard-settings.png)

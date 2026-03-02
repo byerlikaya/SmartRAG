@@ -1,11 +1,3 @@
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using SmartRAG.Demo.Models;
-using SmartRAG.Demo.Services.Console;
-using SmartRAG.Demo.Services.TestQuery;
-using SmartRAG.Interfaces.Mcp;
-using SmartRAG.Models;
-using System.Text;
 
 namespace SmartRAG.Demo.Handlers.QueryHandlers;
 
@@ -316,7 +308,9 @@ public class QueryHandler(
 
             try
             {
-                var response = await _documentSearchService.QueryIntelligenceAsync(trimmedInput, maxResults: 8, startNewConversation: false, CancellationToken.None);
+                var response = await _documentSearchService.QueryIntelligenceAsync(
+                    new QueryIntelligenceRequest { Query = trimmedInput, MaxResults = 8 },
+                    CancellationToken.None);
 
                 Console.WriteLine();
                 _console.WriteSuccess("Assistant:");
@@ -473,7 +467,7 @@ public class QueryHandler(
     /// <param name="errorMessage">Error message to parse</param>
     /// <param name="schemas">Database schemas for context</param>
     /// <returns>Formatted error information</returns>
-    private static string ExtractSQLFromError(string errorMessage, List<SmartRAG.Models.DatabaseSchemaInfo> schemas)
+    private static string ExtractSQLFromError(string errorMessage, List<DatabaseSchemaInfo> schemas)
     {
         if (string.IsNullOrEmpty(errorMessage))
             return string.Empty;

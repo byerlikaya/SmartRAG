@@ -3,7 +3,7 @@
 **Multi-Database RAG Library for .NET**  
 Ask questions about your data in natural language
 
-SmartRAG is a comprehensive Retrieval-Augmented Generation (RAG) library that enables you to query multiple databases, documents, images, and audio files using natural language. Transform your data into intelligent conversations with a single, unified API.
+SmartRAG is a comprehensive Retrieval-Augmented Generation (RAG) library that enables you to query multiple databases, documents, images, and audio files using natural language. Targets .NET 6 and includes a built-in Dashboard for document management and chat. Transform your data into intelligent conversations with a single, unified API.
 
 ## 🚀 Quick Start
 
@@ -79,6 +79,7 @@ var response = await searchService.QueryIntelligenceAsync(
 🔌 **MCP Client Integration** - Connect to external MCP servers and extend capabilities with external tools  
 📁 **Automatic File Watching** - Monitor folders and automatically index new documents without manual uploads  
 🏠 **100% Local Processing** - GDPR, KVKK, HIPAA compliant with Ollama and Whisper.net  
+🖥️ **Built-in Dashboard** - Browser-based document management and chat UI at `/smartrag`  
 🚀 **Production Ready** - Enterprise-grade, thread-safe, high performance
 
 ## 📊 Supported Data Sources

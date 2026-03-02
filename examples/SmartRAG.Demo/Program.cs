@@ -1,16 +1,3 @@
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using SmartRAG.Demo.Handlers.DatabaseHandlers;
-using SmartRAG.Demo.Handlers.DocumentHandlers;
-using SmartRAG.Demo.Handlers.OllamaHandlers;
-using SmartRAG.Demo.Handlers.QueryHandlers;
-using SmartRAG.Demo.Services.Console;
-using SmartRAG.Demo.Services.Initialization;
-using SmartRAG.Demo.Services.Menu;
-using SmartRAG.Demo.Services.TestQuery;
-using SmartRAG.Demo.Services.Translation;
-using SmartRAG.Enums;
 
 namespace SmartRAG.Demo;
 
@@ -117,7 +104,8 @@ internal class Program
         var databaseHandler = CreateDatabaseHandler(serviceProvider, console); // nullable if EnableDatabaseSearch = false
         var documentHandler = CreateDocumentHandler(serviceProvider, console);
         var queryHandler = CreateQueryHandler(serviceProvider, console);
-        var ollamaHandler = new OllamaHandler(console);
+        var healthCheckService = serviceProvider.GetRequiredService<IHealthCheckService>();
+        var ollamaHandler = new OllamaHandler(console, healthCheckService);
 
         while (true)
         {
@@ -153,8 +141,9 @@ internal class Program
         
         var configuration = serviceProvider.GetRequiredService<IConfiguration>();
         var schemaAnalyzer = serviceProvider.GetRequiredService<IDatabaseSchemaAnalyzer>();
+        var healthCheckService = serviceProvider.GetRequiredService<IHealthCheckService>();
 
-        return new DatabaseHandler(console, configuration, connectionManager, schemaAnalyzer, serviceProvider);
+        return new DatabaseHandler(console, configuration, connectionManager, schemaAnalyzer, healthCheckService);
     }
 
     private static DocumentHandler CreateDocumentHandler(IServiceProvider serviceProvider, IConsoleService console)

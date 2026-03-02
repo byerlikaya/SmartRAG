@@ -1,4 +1,3 @@
-using SmartRAG.Demo.Services.Console;
 
 namespace SmartRAG.Demo.Services.Menu;
 

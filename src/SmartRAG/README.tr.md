@@ -3,7 +3,7 @@
 **.NET için Çoklu Veritabanı RAG Kütüphanesi**  
 Verileriniz hakkında doğal dil ile sorular sorun
 
-SmartRAG, birden fazla veritabanını, belgeyi, görüntüyü ve ses dosyasını doğal dil kullanarak sorgulamanıza olanak tanıyan kapsamlı bir Retrieval-Augmented Generation (RAG) kütüphanesidir. Verilerinizi tek, birleşik bir API ile akıllı konuşmalara dönüştürün.
+SmartRAG, birden fazla veritabanını, belgeyi, görüntüyü ve ses dosyasını doğal dil kullanarak sorgulamanıza olanak tanıyan kapsamlı bir Retrieval-Augmented Generation (RAG) kütüphanesidir. .NET 6 hedefler ve doküman yönetimi ile chat için yerleşik Dashboard içerir. Verilerinizi tek, birleşik bir API ile akıllı konuşmalara dönüştürün.
 
 ## 🚀 Hızlı Başlangıç
 
@@ -79,6 +79,7 @@ var cevap = await searchService.QueryIntelligenceAsync(
 🔌 **MCP Client Entegrasyonu** - Harici MCP sunucularına bağlan ve dış araçlarla yetenekleri genişlet  
 📁 **Otomatik Dosya İzleme** - Klasörleri izle ve yeni belgeleri manuel yükleme olmadan otomatik indeksle  
 🏠 **%100 Yerel İşleme** - Ollama ve Whisper.net ile GDPR, KVKK, HIPAA uyumlu  
+🖥️ **Yerleşik Dashboard** - `/smartrag` yolunda tarayıcı tabanlı doküman yönetimi ve chat arayüzü  
 🚀 **Üretim Hazır** - Kurumsal kalite, thread-safe, yüksek performans
 
 ## 📊 Desteklenen Veri Kaynakları

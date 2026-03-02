@@ -6,7 +6,7 @@ This directory contains example projects demonstrating how to use SmartRAG in di
 
 ### **SmartRAG.API** - ASP.NET Core Web API Example
 - **Location**: `SmartRAG.API/`
-- **Description**: Complete web API implementation showing document upload, search, and RAG operations
+- **Description**: Complete web API implementation showing document upload, search, and RAG operations. Includes built-in Dashboard at `/smartrag` for document management and chat.
 
 - **Features**: 
   - **Unified Query Intelligence**: Single endpoint searches across documents, images (OCR), audio (transcription), and databases
@@ -47,7 +47,7 @@ dotnet restore
 dotnet run
 ```
 
-Browse to `https://localhost:5001/swagger` for interactive API documentation.
+Browse to `https://localhost:5001/swagger` for interactive API documentation. Browse to `https://localhost:5001/smartrag` for the built-in Dashboard.
 
 ### SmartRAG.Demo Example
 ```bash
@@ -77,8 +77,8 @@ cp appsettings.Development.template.json appsettings.Development.json
 ## 📚 Documentation
 
 - **Main Documentation**: [SmartRAG README](../../README.md)
-- **API Reference**: [API Documentation](../../docs/api-reference.md)
-- **Configuration Guide**: [Configuration Guide](../../docs/configuration.md)
+- **API Reference**: [API Documentation](https://byerlikaya.github.io/SmartRAG/en/api-reference)
+- **Configuration Guide**: [Configuration Guide](https://byerlikaya.github.io/SmartRAG/en/configuration/basic)
 
 ## 🤝 Contributing
 

@@ -18,13 +18,17 @@ lang: en
     </ul>
 </div>
 
-### Deprecated in v3.0.0 (Removed in v4.0.0)
+### Removed in v4.0.0
 
-<div class="alert alert-warning">
-    <h4><i class="fas fa-clock me-2"></i> Planned for Removal</h4>
-    <p>The following methods are deprecated and will be removed in v4.0.0:</p>
+<div class="alert alert-danger">
+    <h4><i class="fas fa-times-circle me-2"></i> Breaking Changes</h4>
+    <p>The following methods were removed in v4.0.0. Migrate to the replacements:</p>
     <ul class="mb-0">
-        <li><code>IDocumentSearchService.GenerateRagAnswerAsync()</code> - Use <code>QueryIntelligenceAsync()</code> instead</li>
+        <li><code>IDocumentSearchService.GenerateRagAnswerAsync()</code> → <code>QueryIntelligenceAsync()</code></li>
+        <li><code>IRagAnswerGeneratorService.GenerateBasicRagAnswerAsync(string, int, ...)</code> → <code>GenerateBasicRagAnswerAsync(GenerateRagAnswerRequest)</code></li>
+        <li><code>IQueryStrategyExecutorService</code> overloads with individual params → Use <code>QueryStrategyRequest</code> overloads</li>
+        <li><code>IDocumentService.UploadDocumentAsync(Stream, string, ...)</code> → <code>UploadDocumentAsync(UploadDocumentRequest)</code></li>
+        <li><code>IMultiDatabaseQueryCoordinator.AnalyzeQueryIntentAsync()</code> → <code>IQueryIntentAnalyzer.AnalyzeQueryIntentAsync()</code></li>
     </ul>
 </div>
 

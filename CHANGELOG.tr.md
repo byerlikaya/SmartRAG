@@ -6,6 +6,20 @@ SmartRAG'deki tüm önemli değişiklikler bu dosyada belgelenecektir.
 Format [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)'a dayanmaktadır
 ve bu proje [Semantic Versioning](https://semver.org/spec/v2.0.0.html)'a uymaktadır.
 
+## [4.0.0] - 2026-02-06
+
+### Kırıcı Değişiklikler
+- **Hedef Framework**: .NET Standard 2.1'den .NET 6'ya geçiş. Projeler .NET 6 veya üzerini hedeflemelidir.
+- **SmartRAG.Dashboard Projesi Birleştirildi**: Dashboard ayrı bir projeydi (NuGet paketi hiç yayınlanmadı). Artık ana SmartRAG paketinde. `SmartRAG.Dashboard` proje referansı kullandıysanız kaldırın; sadece `SmartRAG` kullanın.
+- **Minimum .NET Sürümü**: .NET 6+ gerekli. .NET Core 3.0, .NET 5 ve .NET Standard 2.1 artık desteklenmiyor.
+
+### Eklenenler
+- **Yerleşik Dashboard**: Doküman yönetimi ve chat UI artık SmartRAG'ın parçası. Ayrı paket gerekmez.
+- Aynı API: `AddSmartRagDashboard()`, `UseSmartRagDashboard()`, `MapSmartRagDashboard()` - tüketiciler için kod değişikliği yok.
+
+### Taşınma
+- Yükseltme talimatları için [taşınma kılavuzuna](https://byerlikaya.github.io/SmartRAG/tr/changelog/migration-guides.html#v3xten-v400a-taşınma) bakın.
+
 ## [3.9.0] - 2026-02-05
 
 ### ✨ Eklenenler

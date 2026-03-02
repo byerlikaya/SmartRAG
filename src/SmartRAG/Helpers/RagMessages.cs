@@ -1,7 +1,8 @@
-namespace SmartRAG.Helpers
+namespace SmartRAG.Helpers;
+
+
+internal static class RagMessages
 {
-    internal static class RagMessages
-    {
-        internal const string NoDocumentContext = "The requested information was not found in the available documents.";
-    }
+    internal const string NoDocumentContext = "The requested information was not found in the available documents.";
 }
+
