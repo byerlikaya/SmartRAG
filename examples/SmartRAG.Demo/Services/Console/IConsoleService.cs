@@ -1,5 +1,3 @@
-using SmartRAG.Models.Health;
-
 namespace SmartRAG.Demo.Services.Console;
 
 /// <summary>
@@ -13,7 +11,7 @@ public interface IConsoleService
     void WriteInfo(string message);
     void WriteSectionHeader(string title);
     void WriteSeparator();
-    void WriteHealthStatus(HealthStatus status, bool inline = false);
+    void WriteHealthStatus(SmartRAG.Models.Health.HealthStatus status, bool inline = false);
     string? ReadLine(string prompt);
     string? ReadConfirmation(string message, string confirmText = "yes");
 }

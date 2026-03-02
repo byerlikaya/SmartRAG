@@ -1,5 +1,3 @@
-using SmartRAG.Models.Health;
-
 namespace SmartRAG.Demo.Services.Console;
 
 /// <summary>
@@ -69,7 +67,7 @@ public class ConsoleService : IConsoleService
         System.Console.WriteLine(SeparatorLine);
     }
 
-    public void WriteHealthStatus(HealthStatus status, bool inline = false)
+    public void WriteHealthStatus(SmartRAG.Models.Health.HealthStatus status, bool inline = false)
     {
         if (status.IsHealthy)
         {

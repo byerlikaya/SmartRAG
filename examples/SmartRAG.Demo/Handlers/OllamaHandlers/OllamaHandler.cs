@@ -1,6 +1,3 @@
-using SmartRAG.Interfaces.Health;
-using SmartRAG.Models.Health;
-
 namespace SmartRAG.Demo.Handlers.OllamaHandlers;
 
 /// <summary>
@@ -152,7 +149,7 @@ public class OllamaHandler(
         var status = provider == StorageProvider.Qdrant ? result.Storage : result.Conversation;
         if (status == null)
         {
-            status = new HealthStatus
+            status = new SmartRAG.Models.Health.HealthStatus
             {
                 ServiceName = provider.ToString(),
                 IsHealthy = false,
