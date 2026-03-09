@@ -1050,7 +1050,7 @@ public class DatabaseParserService : IDatabaseParserService
         {
             if (File.Exists(Path.Combine(dir.FullName, "SmartRAG.sln")))
             {
-                return Path.Combine(dir.FullName, "examples", "SmartRAG.Demo");
+                return dir.FullName;
             }
             dir = dir.Parent;
         }
