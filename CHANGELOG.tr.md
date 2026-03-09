@@ -18,7 +18,6 @@ ve bu proje [Semantic Versioning](https://semver.org/spec/v2.0.0.html)'a uymakta
 ### 📝 Notlar
 - **Geriye Dönük Uyumluluk**: Tüm değişiklikler geriye dönük uyumludur; public API yüzeyinde değişiklik yoktur.
 - **Kod Kalitesi**: 0 hata, 0 uyarı build politikası korunmuştur.
-
 ## [4.0.0] - 2026-03-02
 
 ### Kırıcı Değişiklikler

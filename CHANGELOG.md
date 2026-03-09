@@ -18,7 +18,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### 📝 Notes
 - **Backward Compatibility**: All changes are backward compatible; no public API surface changes.
 - **Code Quality**: Maintains 0 errors, 0 warnings build policy.
-
 ## [4.0.0] - 2026-03-02
 
 ### Breaking Changes
