@@ -6,6 +6,19 @@ All notable changes to SmartRAG will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.1] - 2026-03-09
+
+### Fixed
+- **LM Studio / OpenAI-Compatible Embeddings**: Improved `CustomProvider` embedding payload compatibility for OpenAI-style servers and added flexible parsing for batch embedding responses that return either Ollama-style `embeddings` arrays or OpenAI-style `data[].embedding` arrays.
+  - **Files Modified**: `src/SmartRAG/Providers/CustomProvider.cs`
+
+- **SQLite Schema Path Resolution**: Fixed SQLite schema analysis and parsing so that database files are resolved relative to the solution root, preventing accidental creation of empty databases and ensuring existing `.db` files are used for schema migration.
+  - **Files Modified**: `src/SmartRAG/Services/Database/DatabaseSchemaAnalyzer.cs`, `src/SmartRAG/Services/Database/DatabaseParserService.cs`
+
+### 📝 Notes
+- **Backward Compatibility**: All changes are backward compatible; no public API surface changes.
+- **Code Quality**: Maintains 0 errors, 0 warnings build policy.
+
 ## [4.0.0] - 2026-03-02
 
 ### Breaking Changes
