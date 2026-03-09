@@ -125,6 +125,52 @@ app.MapSmartRagDashboard("/smartrag");
 
 Then open `https://localhost:5000/smartrag` to list/upload/delete documents and chat with the active AI model. **By default the dashboard is only enabled in Development.** For production, protect the path with your own auth or use `AuthorizationFilter`. See [Dashboard documentation](https://byerlikaya.github.io/SmartRAG/en/dashboard.html) for security and options.
 
+### **Dashboard & UI Overview**
+
+SmartRAG ships with a production-ready web dashboard for managing documents, databases, and AI conversations.  
+The screenshots below show a typical setup in development:
+
+| Chat & Conversation | Database Schema Analysis |
+| ------------------- | ------------------------ |
+| ![SmartRAG Chat](screenshot/chat_3.png) | ![SmartRAG Database Schema Analyzer](screenshot/database_1.png) |
+
+| Database Details & Relations | Document Management & Settings |
+| ---------------------------- | ------------------------------ |
+| ![SmartRAG Database Details](screenshot/database_2.png) | ![SmartRAG Settings](screenshot/settings_1.png) |
+
+<details>
+<summary><strong>Show full dashboard gallery (all views)</strong></summary>
+
+#### Chat & Conversations
+
+- ![SmartRAG Chat - Conversation Overview](screenshot/chat_3.png)
+- ![SmartRAG Chat - Database-Aware Answer](screenshot/chat_2.png)
+- ![SmartRAG Chat - Mixed Sources Answer](screenshot/chat_4.png)
+
+#### Database Overview & Health
+
+- ![SmartRAG Database Overview](screenshot/database_1.png)
+- ![SmartRAG Database Details](screenshot/database_2.png)
+
+#### Schema & Table Insights
+
+- ![SmartRAG Table and Relationship View](screenshot/database_3.png)
+- ![SmartRAG Cross-Database Schema Insights](screenshot/database_3_1.png)
+- ![SmartRAG Schema-Level Summary](screenshot/database_4.png)
+- ![SmartRAG Schema Column Details](screenshot/schema_1.png)
+- ![SmartRAG Schema Relationship Map](screenshot/schema_2.png)
+
+#### Documents & File Processing
+
+- ![SmartRAG Document List View](screenshot/document_1.png)
+
+#### Settings & Configuration
+
+- ![SmartRAG Core Settings](screenshot/settings_1.png)
+- ![SmartRAG Advanced Settings](screenshot/settings_2.png)
+
+</details>
+
 ## 🏆 **Why SmartRAG?**
 
 🎯 **Unified Query Intelligence** - Single query searches across databases, documents, images, and audio automatically

@@ -187,6 +187,50 @@ Console.WriteLine(answer.Answer);
     </div>
 </section>
 
+<section class="section section-light">
+    <div class="container">
+        <div class="section-header">
+            <h2 class="section-title">Dashboard &amp; UI Screenshots</h2>
+            <p class="section-subtitle">
+                Preview the built-in SmartRAG dashboard for chat, databases, and document management
+            </p>
+        </div>
+
+        <div class="grid grid-2" style="gap: 2rem;">
+            <div class="card card-accent">
+                <h3>Chat &amp; Conversation</h3>
+                <p>Ask natural language questions and see responses directly in the SmartRAG dashboard.</p>
+                <img src="{{ site.baseurl }}/screenshot/chat_3.png" alt="SmartRAG Chat Screen" style="width: 100%; border-radius: 0.75rem;">
+            </div>
+
+            <div class="card card-accent">
+                <h3>Database Schema Analysis</h3>
+                <p>Visualize database schemas, tables, and relationships discovered by SmartRAG.</p>
+                <img src="{{ site.baseurl }}/screenshot/database_1.png" alt="SmartRAG Database Schema Analyzer" style="width: 100%; border-radius: 0.75rem;">
+            </div>
+
+            <div class="card card-accent">
+                <h3>Database Details &amp; Relations</h3>
+                <p>Inspect table structures, foreign keys, and cross-database relationships.</p>
+                <img src="{{ site.baseurl }}/screenshot/database_2.png" alt="SmartRAG Database Details" style="width: 100%; border-radius: 0.75rem;">
+            </div>
+
+            <div class="card card-accent">
+                <h3>Document Management &amp; Settings</h3>
+                <p>Manage uploaded documents and configure SmartRAG settings from a single web UI.</p>
+                <img src="{{ site.baseurl }}/screenshot/settings_1.png" alt="SmartRAG Settings and Document Management" style="width: 100%; border-radius: 0.75rem;">
+            </div>
+        </div>
+
+        <div class="text-center mt-4">
+            <a href="{{ site.baseurl }}/en/dashboard-gallery" class="btn btn-primary btn-lg">
+                <i class="fas fa-images"></i>
+                View Full Dashboard Gallery
+            </a>
+        </div>
+    </div>
+</section>
+
 <section class="section section-dark">
     <div class="container">
         <div class="section-header">
@@ -485,7 +529,7 @@ Console.WriteLine(answer.Answer);
                         <i class="fas fa-globe"></i>
                     </div>
                     <h3>Language Agnostic</h3>
-                    <p>Works in any language - Turkish, English, German, Russian, Chinese, Arabic</p>
+                    <p>Works in any human language with a fully language-agnostic design.</p>
                     </div>
             </div>
         </div>
