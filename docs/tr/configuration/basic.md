@@ -460,4 +460,17 @@ builder.Services.AddSmartRag(configuration, options =>
             </a>
         </div>
     </div>
+    
+    <div class="col-md-6">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
+                <i class="fas fa-tachometer-alt"></i>
+            </div>
+            <h3>Dashboard (Web UI)</h3>
+            <p>Doküman yönetimi ve sohbet için tarayıcı tabanlı dashboard.</p>
+            <a href="{{ site.baseurl }}/tr/dashboard" class="btn btn-outline-primary btn-sm mt-3">
+                Dashboard
+            </a>
+        </div>
+    </div>
 </div>

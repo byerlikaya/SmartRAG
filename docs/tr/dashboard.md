@@ -54,6 +54,41 @@ app.Run();
 - **EnableInDevelopmentOnly**: `true` iken dashboard sadece Development ortamında çalışır; diğer ortamlarda 404 döner. Production’da açmak istiyorsanız `false` yapıp erişimi kendiniz kısıtlamalısınız.
 - **AuthorizationFilter**: Opsiyonel `Func<HttpContext, bool>`. Tanımlandığında her istek için çağrılır; `false` dönerse yanıt 403 olur.
 
+## Dashboard Seçenekleri
+
+<div class="table-responsive">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Seçenek</th>
+                <th>Tip</th>
+                <th>Varsayılan</th>
+                <th>Açıklama</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>Path</code></td>
+                <td><code>string</code></td>
+                <td><code>"/smartrag"</code></td>
+                <td>Dashboard arayüzü ve tüm API uçları için temel yol.</td>
+            </tr>
+            <tr>
+                <td><code>EnableInDevelopmentOnly</code></td>
+                <td><code>bool</code></td>
+                <td><code>true</code></td>
+                <td><code>true</code> iken dashboard geliştirme dışındaki ortamlarda 404 döner.</td>
+            </tr>
+            <tr>
+                <td><code>AuthorizationFilter</code></td>
+                <td><code>Func&lt;HttpContext, bool&gt;</code></td>
+                <td><code>null</code></td>
+                <td>Her dashboard isteği için çalıştırılan opsiyonel filtre; erişimi engellemek için <code>false</code> döndürün (HTTP 403).</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
 ## Güvenlik ve Production
 
 - Dashboard **yerleşik kimlik doğrulama içermez**. URL’ye erişebilen herkes doküman listesini görebilir, yükleme/silme yapabilir ve chat kullanabilir.
@@ -115,3 +150,46 @@ Placeholder görseller (SmartRAG.API veya Demo ile alınan gerçek ekran görün
 ![Dashboard Documents](assets/images/dashboard-documents.png)
 ![Dashboard Chat](assets/images/dashboard-chat.png)
 ![Dashboard Settings](assets/images/dashboard-settings.png)
+
+## Sonraki Adımlar
+
+<div class="row g-4 mt-4">
+    <div class="col-md-4">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
+                <i class="fas fa-sliders-h"></i>
+            </div>
+            <h3>Temel Yapılandırma</h3>
+            <p>AI sağlayıcıları, depolama ve özellikler için temel SmartRAG seçenekleri.</p>
+            <a href="{{ site.baseurl }}/tr/configuration/basic" class="btn btn-outline-primary btn-sm mt-3">
+                Temel Yapılandırma
+            </a>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
+                <i class="fas fa-server"></i>
+            </div>
+            <h3>Veritabanı Yapılandırması</h3>
+            <p>Çoklu veritabanı bağlantıları ve şema analizi yapılandırması.</p>
+            <a href="{{ site.baseurl }}/tr/configuration/database" class="btn btn-outline-primary btn-sm mt-3">
+                Veritabanı Yapılandırması
+            </a>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
+                <i class="fas fa-folder-open"></i>
+            </div>
+            <h3>File Watcher</h3>
+            <p>İzlenen klasörlerden dokümanları otomatik olarak indeksleyin.</p>
+            <a href="{{ site.baseurl }}/tr/configuration/file-watcher" class="btn btn-outline-primary btn-sm mt-3">
+                File Watcher Yapılandırması
+            </a>
+        </div>
+    </div>
+</div>
