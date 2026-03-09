@@ -11,6 +11,49 @@ SmartRAG'deki tüm sürümler ve değişiklikler burada belgelenmiştir.
 
 <div class="accordion mt-4" id="versionAccordion">
     <div class="accordion-item">
+        <h2 class="accordion-header" id="headingversion401">
+            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseversion401" aria-expanded="true" aria-controls="collapseversion401">
+                <strong>v4.0.1</strong> - 2026-03-09
+            </button>
+        </h2>
+        <div id="collapseversion401" class="accordion-collapse collapse show" aria-labelledby="headingversion401" >
+            <div class="accordion-body">
+{% capture version_content %}
+
+### LM Studio Embeddings ve SQLite Şema Düzeltmeleri
+
+<div class="alert alert-info">
+    <h4><i class="fas fa-info-circle me-2"></i> PATCH Sürüm</h4>
+    <p class="mb-0">
+        Bu sürüm LM Studio ve diğer OpenAI-uyumlu embedding sunucuları ile uyumluluğu artırır ve yedek SQLite veritabanları için şema yol çözümlemesini düzeltir.
+        Tüm değişiklikler geriye dönük uyumludur.
+    </p>
+</div>
+
+### 🐛 Düzeltildi
+
+- **LM Studio / OpenAI-Uyumlu Embeddings**
+  - `CustomProvider` embedding isteği payload'ı OpenAI tarzı sunucularla uyumlu olacak şekilde iyileştirildi.
+  - Batch embedding yanıtları için hem Ollama stilindeki `embeddings` hem de OpenAI stilindeki `data[].embedding` JSON formatlarını destekleyen esnek ayrıştırma eklendi.
+  - **Değiştirilen Dosyalar**: `src/SmartRAG/Providers/CustomProvider.cs`
+
+- **SQLite Şema Yol Çözümleme**
+  - SQLite şema analizi ve ayrıştırması, veritabanı dosyalarını çözüm kök dizinine göre çözecek şekilde düzeltildi.
+  - Boş `.db` dosyalarının yanlışlıkla oluşturulmasını engeller ve mevcut yedek veritabanlarının şema migrasyonu için doğru şekilde kullanılmasını sağlar.
+  - **Değiştirilen Dosyalar**: `src/SmartRAG/Services/Database/DatabaseSchemaAnalyzer.cs`, `src/SmartRAG/Services/Database/DatabaseParserService.cs`
+
+### 📝 Notlar
+
+- **Geriye Dönük Uyumluluk**: Public API yüzeyinde değişiklik yoktur.
+- **Kod Kalitesi**: 0 hata, 0 uyarı build politikası korunmuştur.
+
+---
+{% endcapture %}
+{{ version_content | markdownify }}
+            </div>
+        </div>
+    </div>
+    <div class="accordion-item">
         <h2 class="accordion-header" id="headingversion400">
             <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseversion400" aria-expanded="true" aria-controls="collapseversion400">
                 <strong>v4.0.0</strong> - 2026-03-02

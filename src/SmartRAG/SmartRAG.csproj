@@ -7,7 +7,7 @@
     
     <!-- NuGet Package Configuration -->
     <PackageId>SmartRAG</PackageId>
-    <PackageVersion>4.0.0</PackageVersion>
+    <PackageVersion>4.0.1</PackageVersion>
     <Authors>Barış Yerlikaya</Authors>
     <Company>Barış Yerlikaya</Company>
     <Product>SmartRAG</Product>
@@ -22,13 +22,11 @@
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <PackageReleaseNotes>Release 4.0.0: .NET 6 target, Dashboard merged (MAJOR - 2026-03-02)
+    <PackageReleaseNotes>Release 4.0.1: LM Studio embeddings and SQLite schema fixes (PATCH - 2026-03-09)
 
-BREAKING: Target framework netstandard2.1 → net6.0. SmartRAG.Dashboard project merged into SmartRAG; Dashboard is now included. Projects must target .NET 6+.
+FIXED: CustomProvider embedding payload compatibility with OpenAI-style servers and more flexible batch embedding response parsing for Ollama/OpenAI hybrid JSON formats.
 
-ADDED: Built-in Dashboard (document management, chat UI) in main SmartRAG package.
-
-See migration guide for upgrade instructions.</PackageReleaseNotes>
+FIXED: SQLite schema analysis and parsing now resolve database files relative to the solution root instead of examples/SmartRAG.Demo, preventing accidental creation of empty databases.</PackageReleaseNotes>
     
     <!-- Build Configuration -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -40,8 +38,8 @@ See migration guide for upgrade instructions.</PackageReleaseNotes>
     <AssemblyTitle>SmartRAG</AssemblyTitle>
     <AssemblyDescription>High-performance RAG library with conversation history management for .NET</AssemblyDescription>
     <AssemblyCopyright>Copyright © 2026 Barış Yerlikaya</AssemblyCopyright>
-    <AssemblyVersion>4.0.0.0</AssemblyVersion>
-    <FileVersion>4.0.0.0</FileVersion>
+    <AssemblyVersion>4.0.1.0</AssemblyVersion>
+    <FileVersion>4.0.1.0</FileVersion>
     <NeutralLanguage>en</NeutralLanguage>
     <Culture>en-US</Culture>
   </PropertyGroup>

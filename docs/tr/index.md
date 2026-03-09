@@ -187,6 +187,50 @@ Console.WriteLine(answer.Answer);
     </div>
 </section>
 
+<section class="section section-light">
+    <div class="container">
+        <div class="section-header">
+            <h2 class="section-title">Dashboard ve Arayüz Ekran Görüntüleri</h2>
+            <p class="section-subtitle">
+                SmartRAG'in yerleşik dashboard'unu sohbet, veritabanı ve doküman yönetimi için önizleyin
+            </p>
+        </div>
+
+        <div class="grid grid-2" style="gap: 2rem;">
+            <div class="card card-accent">
+                <h3>Sohbet ve Konuşma</h3>
+                <p>Doğal dilde sorular sorun ve cevapları doğrudan SmartRAG dashboard üzerinde görün.</p>
+                <img src="{{ site.baseurl }}/screenshot/chat_3.png" alt="SmartRAG Sohbet Ekranı" style="width: 100%; border-radius: 0.75rem;">
+            </div>
+
+            <div class="card card-accent">
+                <h3>Veritabanı Şema Analizi</h3>
+                <p>SmartRAG tarafından keşfedilen veritabanı şemalarını, tabloları ve ilişkileri görselleştirin.</p>
+                <img src="{{ site.baseurl }}/screenshot/database_1.png" alt="SmartRAG Veritabanı Şema Analizörü" style="width: 100%; border-radius: 0.75rem;">
+            </div>
+
+            <div class="card card-accent">
+                <h3>Veritabanı Detayları ve İlişkiler</h3>
+                <p>Tablo yapıları, yabancı anahtarlar ve çapraz veritabanı ilişkilerini detaylı inceleyin.</p>
+                <img src="{{ site.baseurl }}/screenshot/database_2.png" alt="SmartRAG Veritabanı Detayları" style="width: 100%; border-radius: 0.75rem;">
+            </div>
+
+            <div class="card card-accent">
+                <h3>Doküman Yönetimi ve Ayarlar</h3>
+                <p>Yüklenen dokümanları yönetin ve SmartRAG ayarlarını tek bir web arayüzünden yapılandırın.</p>
+                <img src="{{ site.baseurl }}/screenshot/settings_1.png" alt="SmartRAG Ayarlar ve Doküman Yönetimi" style="width: 100%; border-radius: 0.75rem;">
+            </div>
+        </div>
+
+        <div class="text-center mt-4">
+            <a href="{{ site.baseurl }}/tr/dashboard-gallery" class="btn btn-primary btn-lg">
+                <i class="fas fa-images"></i>
+                Tüm Dashboard Galerisini Görüntüle
+            </a>
+        </div>
+    </div>
+</section>
+
 <section class="section section-dark">
     <div class="container">
         <div class="section-header">
@@ -485,8 +529,8 @@ Console.WriteLine(answer.Answer);
                         <i class="fas fa-globe"></i>
                     </div>
                     <h3>Dil Agnostik</h3>
-                    <p>Her dilde çalışır - Türkçe, İngilizce, Almanca, Rusça, Çince, Arapça</p>
-                </div>
+                    <p>Her insan dilinde çalışabilen tamamen dil-agnostik bir tasarım sunar.</p>
+                    </div>
             </div>
         </div>
     </div>

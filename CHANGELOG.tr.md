@@ -6,6 +6,18 @@ SmartRAG'deki tüm önemli değişiklikler bu dosyada belgelenecektir.
 Format [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)'a dayanmaktadır
 ve bu proje [Semantic Versioning](https://semver.org/spec/v2.0.0.html)'a uymaktadır.
 
+## [4.0.1] - 2026-03-09
+
+### Düzeltmeler
+- **LM Studio / OpenAI-Uyumlu Embeddings**: `CustomProvider` için embedding isteği payload'ı OpenAI tarzı sunucularla daha uyumlu hale getirildi ve batch embedding yanıtları için hem Ollama stilindeki `embeddings` dizilerini hem de OpenAI stilindeki `data[].embedding` yapılarını esnek şekilde parse eden geliştirilmiş JSON ayrıştırma eklendi.
+  - **Değiştirilen Dosyalar**: `src/SmartRAG/Providers/CustomProvider.cs`
+
+- **SQLite Şema Yol Çözümleme**: SQLite şema analizi ve ayrıştırması, veritabanı dosyalarını çözüm kök dizinine göre çözecek şekilde düzeltildi; böylece boş veritabanı dosyalarının yanlışlıkla oluşturulması engellendi ve mevcut `.db` dosyalarının şema migrasyonu için doğru şekilde kullanılması sağlandı.
+  - **Değiştirilen Dosyalar**: `src/SmartRAG/Services/Database/DatabaseSchemaAnalyzer.cs`, `src/SmartRAG/Services/Database/DatabaseParserService.cs`
+
+### 📝 Notlar
+- **Geriye Dönük Uyumluluk**: Tüm değişiklikler geriye dönük uyumludur; public API yüzeyinde değişiklik yoktur.
+- **Kod Kalitesi**: 0 hata, 0 uyarı build politikası korunmuştur.
 ## [4.0.0] - 2026-03-02
 
 ### Kırıcı Değişiklikler

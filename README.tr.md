@@ -125,6 +125,52 @@ app.MapSmartRagDashboard("/smartrag");
 
 Ardından dokümanları listelemek, yüklemek/silmek ve aktif AI modeli ile sohbet etmek için `https://localhost:5000/smartrag` adresini açın. **Varsayılan olarak dashboard sadece Development ortamında açıktır.** Production için bu yolu kendi auth’unuzla koruyun veya `AuthorizationFilter` kullanın. Güvenlik ve seçenekler için [Dashboard dokümantasyonuna](https://byerlikaya.github.io/SmartRAG/tr/dashboard.html) bakın.
 
+### **Dashboard ve Arayüz Genel Görünümü**
+
+SmartRAG, dokümanları, veritabanlarını ve yapay zeka sohbetlerini yönetmek için üretime hazır bir web dashboard ile birlikte gelir.  
+Aşağıdaki ekran görüntüleri, tipik bir geliştirme ortamı kurulumunu göstermektedir:
+
+| Sohbet ve Konuşma | Veritabanı Şema Analizi |
+| ----------------- | ----------------------- |
+| ![SmartRAG Chat](screenshot/chat_3.png) | ![SmartRAG Veritabanı Şema Analizörü](screenshot/database_1.png) |
+
+| Veritabanı Detayları ve İlişkiler | Doküman Yönetimi ve Ayarlar |
+| --------------------------------- | --------------------------- |
+| ![SmartRAG Veritabanı Detayları](screenshot/database_2.png) | ![SmartRAG Ayarları](screenshot/settings_1.png) |
+
+<details>
+<summary><strong>Tüm dashboard galerisini göster (tüm ekranlar)</strong></summary>
+
+#### Sohbet ve Konuşmalar
+
+- ![SmartRAG Sohbet - Konuşma Genel Görünümü](screenshot/chat_3.png)
+- ![SmartRAG Sohbet - Veritabanı Farkındalıklı Yanıt](screenshot/chat_2.png)
+- ![SmartRAG Sohbet - Karma Kaynaklı Yanıt](screenshot/chat_4.png)
+
+#### Veritabanı Genel Bakış ve Sağlık
+
+- ![SmartRAG Veritabanı Genel Bakış](screenshot/database_1.png)
+- ![SmartRAG Veritabanı Detayları](screenshot/database_2.png)
+
+#### Şema ve Tablo İçgörüleri
+
+- ![SmartRAG Tablo ve İlişki Görünümü](screenshot/database_3.png)
+- ![SmartRAG Çoklu Veritabanı Şema İçgörüleri](screenshot/database_3_1.png)
+- ![SmartRAG Şema Düzeyi Özet](screenshot/database_4.png)
+- ![SmartRAG Şema Kolon Detayları](screenshot/schema_1.png)
+- ![SmartRAG Şema İlişki Haritası](screenshot/schema_2.png)
+
+#### Dokümanlar ve Dosya İşleme
+
+- ![SmartRAG Doküman Listesi Görünümü](screenshot/document_1.png)
+
+#### Ayarlar ve Konfigürasyon
+
+- ![SmartRAG Temel Ayarlar](screenshot/settings_1.png)
+- ![SmartRAG Gelişmiş Ayarlar](screenshot/settings_2.png)
+
+</details>
+
 ## 🏆 **Neden SmartRAG?**
 
 🎯 **Birleşik Sorgu Zekası** - Tek sorgu ile veritabanları, belgeler, görüntüler ve ses dosyalarını otomatik olarak arar

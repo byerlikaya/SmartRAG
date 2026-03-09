@@ -11,6 +11,49 @@ All releases and changes to SmartRAG are documented here.
 
 <div class="accordion mt-4" id="versionAccordion">
     <div class="accordion-item">
+        <h2 class="accordion-header" id="headingversion401">
+            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseversion401" aria-expanded="true" aria-controls="collapseversion401">
+                <strong>v4.0.1</strong> - 2026-03-09
+            </button>
+        </h2>
+        <div id="collapseversion401" class="accordion-collapse collapse show" aria-labelledby="headingversion401" >
+            <div class="accordion-body">
+{% capture version_content %}
+
+### LM Studio Embeddings & SQLite Schema Fixes
+
+<div class="alert alert-info">
+    <h4><i class="fas fa-info-circle me-2"></i> PATCH Release</h4>
+    <p class="mb-0">
+        This release improves compatibility with LM Studio and other OpenAI-compatible embedding servers and fixes SQLite schema path resolution for backup databases.
+        All changes are backward compatible.
+    </p>
+</div>
+
+### 🐛 Fixed
+
+- **LM Studio / OpenAI-Compatible Embeddings**
+  - Improved `CustomProvider` embedding payload to be compatible with OpenAI-style servers.
+  - Added flexible batch embedding response parsing that supports both Ollama-style `embeddings` and OpenAI-style `data[].embedding` JSON formats.
+  - **Files Modified**: `src/SmartRAG/Providers/CustomProvider.cs`
+
+- **SQLite Schema Path Resolution**
+  - Fixed SQLite schema analysis and parsing to resolve database files relative to the solution root.
+  - Prevents accidental creation of empty `.db` files and ensures existing backup databases are used for schema migration.
+  - **Files Modified**: `src/SmartRAG/Services/Database/DatabaseSchemaAnalyzer.cs`, `src/SmartRAG/Services/Database/DatabaseParserService.cs`
+
+### 📝 Notes
+
+- **Backward Compatibility**: No public API surface changes.
+- **Code Quality**: Maintains the 0 errors, 0 warnings build policy.
+
+---
+{% endcapture %}
+{{ version_content | markdownify }}
+            </div>
+        </div>
+    </div>
+    <div class="accordion-item">
         <h2 class="accordion-header" id="headingversion400">
             <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseversion400" aria-expanded="true" aria-controls="collapseversion400">
                 <strong>v4.0.0</strong> - 2026-03-02

@@ -154,9 +154,13 @@ public class CustomProvider : BaseAIProvider
             var payload = new Dictionary<string, object>
             {
                 ["model"] = config.EmbeddingModel,
-                ["input"] = batch,
-                ["keep_alive"] = "10m"
+                ["input"] = batch
             };
+
+            if (IsOllamaNativeEmbedEndpoint(embeddingEndpoint))
+            {
+                payload["keep_alive"] = "10m";
+            }
 
             var requestTask = MakeHttpRequestAsync(client, embeddingEndpoint, payload, maxRetries: 2, cancellationToken);
             var timeoutTask = Task.Delay(TimeSpan.FromSeconds(15), cancellationToken);
@@ -230,9 +234,13 @@ public class CustomProvider : BaseAIProvider
                 var singlePayload = new Dictionary<string, object>
                 {
                     ["model"] = config.EmbeddingModel,
-                    ["input"] = text,
-                    ["keep_alive"] = "10m"
+                    ["input"] = text
                 };
+
+                if (IsOllamaNativeEmbedEndpoint(embeddingEndpoint))
+                {
+                    singlePayload["keep_alive"] = "10m";
+                }
 
                 var (singleSuccess, singleResponse, singleError) = await MakeHttpRequestAsync(client, embeddingEndpoint, singlePayload, maxRetries: 3, cancellationToken);
 
@@ -463,7 +471,7 @@ public class CustomProvider : BaseAIProvider
     }
 
     /// <summary>
-    /// Parse custom AI embedding response with flexible format support
+        /// Parse custom AI embedding response with flexible format support
     /// </summary>
     private static List<List<float>> ParseOllamaBatchEmbeddingResponse(string response)
     {
@@ -473,7 +481,42 @@ public class CustomProvider : BaseAIProvider
             var root = document.RootElement;
 
             if (!root.TryGetProperty("embeddings", out var embeddingsArray))
+            {
+                if (root.TryGetProperty("data", out var dataArray) && dataArray.ValueKind == JsonValueKind.Array)
+                {
+                    var openAiResult = new List<List<float>>();
+                    foreach (var item in dataArray.EnumerateArray())
+                    {
+                        if (!item.TryGetProperty("embedding", out var embeddingElement) ||
+                            embeddingElement.ValueKind != JsonValueKind.Array)
+                        {
+                            continue;
+                        }
+
+                        var vector = new List<float>();
+                        foreach (var value in embeddingElement.EnumerateArray())
+                        {
+                            if (value.TryGetSingle(out var f))
+                            {
+                                vector.Add(f);
+                            }
+                            else if (value.TryGetDouble(out var d))
+                            {
+                                vector.Add((float)d);
+                            }
+                        }
+
+                        if (vector.Count > 0)
+                        {
+                            openAiResult.Add(vector);
+                        }
+                    }
+
+                    return openAiResult;
+                }
+
                 return new List<List<float>>();
+            }
 
             var result = new List<List<float>>();
 

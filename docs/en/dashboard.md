@@ -145,11 +145,30 @@ The dashboard uses the same SmartRAG services (`IDocumentService`, `IAIService`,
 - **Chat panel**: Send messages and view conversation history.
 - **Settings panel**: View configuration (providers, features, chunking).
 
-Placeholder images (replace with actual screenshots from SmartRAG.API or Demo):
+The examples below use real screenshots from the SmartRAG dashboard:
 
-![Dashboard Documents](assets/images/dashboard-documents.png)
-![Dashboard Chat](assets/images/dashboard-chat.png)
-![Dashboard Settings](assets/images/dashboard-settings.png)
+<div class="grid grid-auto" style="gap: 2rem;">
+    <div class="card card-accent">
+        <h3>Documents Panel</h3>
+        <p>List, upload, and manage documents that are available for RAG queries.</p>
+        <img src="{{ site.baseurl }}/screenshot/document_1.png" alt="SmartRAG Dashboard - Documents Panel" style="width: 100%; border-radius: 0.75rem;">
+    </div>
+
+    <div class="card card-accent">
+        <h3>Chat Panel</h3>
+        <p>Converse with the active AI model using natural language, with full conversation history.</p>
+        <img src="{{ site.baseurl }}/screenshot/chat_3.png" alt="SmartRAG Dashboard - Chat Panel" style="width: 100%; border-radius: 0.75rem;">
+    </div>
+
+    <div class="card card-accent">
+        <h3>Settings Panel</h3>
+        <p>Inspect core configuration such as AI providers, storage options, and enabled features.</p>
+        <img src="{{ site.baseurl }}/screenshot/settings_1.png" alt="SmartRAG Dashboard - Settings Panel" style="width: 100%; border-radius: 0.75rem;">
+    </div>
+</div>
+
+For a complete visual tour (including database and schema views), see the  
+[Full Dashboard Gallery]({{ site.baseurl }}/en/dashboard-gallery).
 
 ## Next Steps
 
